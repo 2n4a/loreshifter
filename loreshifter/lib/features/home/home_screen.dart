@@ -15,7 +15,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -35,7 +36,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     context.read<WorldsCubit>().loadPopularWorlds();
 
     // Если пользователь авторизован, загружаем его миры
-    final authState = context.read<AuthCubit>().state;
+    final authState = context
+        .read<AuthCubit>()
+        .state;
     if (authState is Authenticated) {
       context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
     }
@@ -164,13 +167,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
           if (games.isEmpty) {
             return Center(
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonPurple,
+              child: Container(
                 width: 300,
-                child: const Text(
-                  'АКТИВНЫХ КОМНАТ НЕ НАЙДЕНО',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white),
+                child: AppTheme.neonContainer(
+                  borderColor: AppTheme.neonPurple,
+                  child: const Text(
+                    'АКТИВНЫХ КОМНАТ НЕ НАЙДЕНО',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             );
@@ -188,26 +193,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         if (state is GamesFailure) {
           return Center(
-            child: AppTheme.neonContainer(
-              borderColor: AppTheme.neonPink,
+            child: Container(
               width: 300,
-              child: Text(
-                'ОШИБКА: ${state.message}',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.neonPink),
+              child: AppTheme.neonContainer(
+                borderColor: AppTheme.neonPink,
+                child: Text(
+                  'ОШИБКА: ${state.message}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.neonPink),
+                ),
               ),
             ),
           );
         }
 
         return Center(
-          child: AppTheme.neonContainer(
-            borderColor: AppTheme.neonGreen,
+          child: Container(
             width: 300,
-            child: const Text(
-              'ЗАГРУЗИТЕ СПИСОК КОМНАТ',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white),
+            child: AppTheme.neonContainer(
+              borderColor: AppTheme.neonGreen,
+              child: const Text(
+                'ЗАГРУЗИТЕ СПИСОК КОМНАТ',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
         );
@@ -219,9 +228,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildGameCard(Game game) {
     return AppTheme.neonCard(
       title: game.name,
-      titleColor: AppTheme.neonBlue,
       borderColor: AppTheme.neonBlue,
-      contentPadding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: InkWell(
         onTap: () => context.push('/games/${game.id}'),
         child: Column(
@@ -254,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     context.push('/games/${game.id}');
                   },
                   color: AppTheme.neonGreen,
-                  width: 120,
+                  width: 120.0,
                 ),
               ],
             ),
@@ -313,13 +321,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       builder: (context, authState) {
         if (authState is Unauthenticated) {
           return Center(
-            child: AppTheme.neonContainer(
-              borderColor: AppTheme.neonPurple,
+            child: Container(
               width: 300,
-              child: const Text(
-                'ВОЙДИТЕ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
+              child: AppTheme.neonContainer(
+                borderColor: AppTheme.neonPurple,
+                child: const Text(
+                  'ВОЙДИТЕ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
           );
@@ -341,13 +351,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
               if (worlds.isEmpty) {
                 return Center(
-                  child: AppTheme.neonContainer(
-                    borderColor: AppTheme.neonGreen,
+                  child: Container(
                     width: 300,
-                    child: const Text(
-                      'У ВАС ПОКА НЕТ СОЗДАННЫХ МИРОВ',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white),
+                    child: AppTheme.neonContainer(
+                      borderColor: AppTheme.neonGreen,
+                      child: const Text(
+                        'У ВАС ПОКА НЕТ СОЗДАННЫХ МИРОВ',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 );
@@ -371,26 +383,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             if (state is WorldsFailure) {
               return Center(
-                child: AppTheme.neonContainer(
-                  borderColor: AppTheme.neonPink,
+                child: Container(
                   width: 300,
-                  child: Text(
-                    'ОШИБКА: ${state.message}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.neonPink),
+                  child: AppTheme.neonContainer(
+                    borderColor: AppTheme.neonPink,
+                    child: Text(
+                      'ОШИБКА: ${state.message}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppTheme.neonPink),
+                    ),
                   ),
                 ),
               );
             }
 
             return Center(
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonGreen,
+              child: Container(
                 width: 300,
-                child: const Text(
-                  'АВТОРИЗУЙТЕСЬ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white),
+                child: AppTheme.neonContainer(
+                  borderColor: AppTheme.neonGreen,
+                  child: const Text(
+                    'АВТОРИЗУЙТЕСЬ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             );
@@ -418,13 +434,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
           if (worlds.isEmpty) {
             return Center(
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonPurple,
+              child: Container(
                 width: 300,
-                child: const Text(
-                  'МИРЫ НЕ НАЙДЕНЫ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white),
+                child: AppTheme.neonContainer(
+                  borderColor: AppTheme.neonPurple,
+                  child: const Text(
+                    'МИРЫ НЕ НАЙДЕНЫ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             );
@@ -448,26 +466,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         if (state is WorldsFailure) {
           return Center(
-            child: AppTheme.neonContainer(
-              borderColor: AppTheme.neonPink,
+            child: Container(
               width: 300,
-              child: Text(
-                'ОШИБКА: ${state.message}',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.neonPink),
+              child: AppTheme.neonContainer(
+                borderColor: AppTheme.neonPink,
+                child: Text(
+                  'ОШИБКА: ${state.message}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.neonPink),
+                ),
               ),
             ),
           );
         }
 
         return Center(
-          child: AppTheme.neonContainer(
-            borderColor: AppTheme.neonGreen,
+          child: Container(
             width: 300,
-            child: const Text(
-              'ЗАГРУЗКА МИРОВ...',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white),
+            child: AppTheme.neonContainer(
+              borderColor: AppTheme.neonGreen,
+              child: const Text(
+                'ЗАГРУЗКА МИРОВ...',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
         );
@@ -509,11 +531,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.darkAccent, Color.lerp(AppTheme.darkAccent, borderColor, 0.3)!],
+                  colors: [
+                    AppTheme.darkAccent,
+                    Color.lerp(AppTheme.darkAccent, borderColor, 0.3)!
+                  ],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15)),
               ),
               child: Text(
                 world.name.toUpperCase(),
@@ -535,12 +561,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ТИП: ${world.type.toString().split('.').last.toUpperCase()}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      'ТИП: ${world.type
+                          .toString()
+                          .split('.')
+                          .last
+                          .toUpperCase()}',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      world.description ?? 'Нет описания', // Добавляем проверку на null
+                      world.description ?? 'Нет описания',
+                      // Добавляем проверку на null
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -573,11 +605,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [borderColor.withAlpha(100), borderColor.withAlpha(50)],
+                  colors: [
+                    borderColor.withAlpha(100),
+                    borderColor.withAlpha(50)
+                  ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(15)),
               ),
               child: MaterialButton(
                 onPressed: () {
@@ -589,7 +625,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 },
                 child: Text(
                   isMyWorld ? 'СОЗДАТЬ ИГРУ' : 'ПОДРОБНЕЕ',
-                  style: TextStyle(color: borderColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: borderColor, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

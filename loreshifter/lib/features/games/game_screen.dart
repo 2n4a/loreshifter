@@ -172,7 +172,9 @@ class _GameScreenState extends State<GameScreen> {
     final text = _messageController.text;
     _messageController.clear();
 
-    print('DEBUG: Начинаем отправку сообщения: "$text" в чат ${_currentChat!.chatId}');
+    print(
+      'DEBUG: Начинаем отправку сообщения: "$text" в чат ${_currentChat!.chatId}',
+    );
 
     setState(() {
       _isSending = true;
@@ -205,19 +207,15 @@ class _GameScreenState extends State<GameScreen> {
       });
 
       // Отправляем сообщение
-      await cubit.sendMessage(
-        chatId: _currentChat!.chatId,
-        text: text,
-      );
+      await cubit.sendMessage(chatId: _currentChat!.chatId, text: text);
       print('DEBUG: Запрос на отправку сообщения выполнен');
-
     } catch (e, stacktrace) {
       print('DEBUG: ИСКЛЮЧЕНИЕ при отправке сообщения: $e');
       print('DEBUG: Стек вызовов: $stacktrace');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
       }
     } finally {
       setState(() {
@@ -304,13 +302,16 @@ class _GameScreenState extends State<GameScreen> {
                     child:
                         _currentChat == null
                             ? Center(
-                              child: AppTheme.neonContainer(
-                                borderColor: AppTheme.neonPurple,
+                              child: Container(
                                 width: 300,
-                                child: const Text(
-                                  'ВЫБЕРИТЕ ЧАТ',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white),
+                                child: AppTheme.neonContainer(
+                                  borderColor: AppTheme.neonPurple,
+
+                                  child: const Text(
+                                    'ВЫБЕРИТЕ ЧАТ',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ),
                               ),
                             )
