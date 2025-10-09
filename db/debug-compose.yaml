@@ -1,0 +1,17 @@
+services:
+  db:
+    build:
+      context: ..
+      dockerfile: ./db/Dockerfile
+    container_name: dev_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: devdb
+    volumes:
+      - devdb_data:/var/lib/postgresql/data
+
+volumes:
+  devdb_data:
