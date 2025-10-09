@@ -3,339 +3,296 @@ import 'package:loreshifter/core/models/game.dart';
 import 'package:loreshifter/core/models/message.dart';
 import 'package:loreshifter/core/models/player.dart';
 import 'package:loreshifter/core/models/user.dart';
-import 'package:loreshifter/core/services/base_service.dart';
+import 'package:loreshifter/core/services/interfaces/gameplay_service_interface.dart';
 
-/// Заглушка для сервиса игрового процесса
-class MockGameplayService extends BaseService {
-  MockGameplayService({required super.apiClient});
+import '../../models/world.dart';
 
-  // ID текущего игрока (для демо это всегда 1)
-  final int _currentUserId = 1;
+/// Простая мок-реализация GameplayService
+class MockGameplayService implements GameplayService {
+  // Базовые тестовые данные
+  final User _currentUser = User(id: 1, name: 'Вы');
+  final User _otherUser = User(id: 2, name: 'Другой игрок');
+  final User _systemUser = User(id: 0, name: 'Система');
 
-  // ID текущей игры
-  int? _currentGameId;
+  // Простое состояние игры
+  final Map<String, dynamic> _gameState = {
+    'status': 'waiting',
+    'gameChat': {'chatId': 1, 'title': 'Основной чат'},
+    'playerChats': [
+      {'chatId': 2, 'playerName': 'Другой игрок'},
+    ],
+    'adviceChats': [
+      {'chatId': 4, 'title': 'Подсказки'},
+    ],
+    'game': {'id': 1},
+  };
 
-  // Фиктивная игра
-  Game _createMockGame() {
-    final gameId = _currentGameId ?? 1;
+  // Счетчик для генерации ID
+  int _messageIdCounter = 100;
 
-    return Game(
-      id: gameId,
-      code: "GAME${gameId.toString().padLeft(3, '0')}",
-      public: true,
-      name: "Тестовая игра $gameId",
-      world: _createMockWorld(gameId % 3 + 1),
-      hostId: 1, // Текущий пользователь - хост
-      players: _createMockPlayers(),
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      maxPlayers: 4,
-      status: GameStatus.playing,
-    );
-  }
+  // Начальные данные для чатов
+  final Map<int, ChatSegment> _chats = {};
 
-  // Создать фиктивных игроков
-  List<Player> _createMockPlayers() {
-    return [
-      Player(
-        user: User(id: 1, name: "Тестовый пользователь"),
-        isReady: true,
-        isHost: true,
-        isSpectator: false,
-      ),
-      Player(
-        user: User(id: 2, name: "Игрок 2"),
-        isReady: true,
-        isHost: false,
-        isSpectator: false,
-      ),
-      Player(
-        user: User(id: 3, name: "Игрок 3"),
-        isReady: true,
-        isHost: false,
-        isSpectator: false,
-      ),
-    ];
-  }
-
-  // Создать фиктивный мир
-  dynamic _createMockWorld(int worldId) {
-    return {
-      "id": worldId,
-      "name": "Тестовый мир $worldId",
-      "public": true,
-      "createdAt": DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
-      "lastUpdatedAt": DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-      "owner": {
-        "id": 1,
-        "name": "Тестовый пользователь",
-      },
-      "description": "Это описание тестового мира $worldId."
-    };
-  }
-
-  // Создать фиктивные сообщения для чата
-  List<Message> _createMockMessages(int chatId) {
-    final now = DateTime.now();
-
-    return [
-      Message(
-        id: chatId * 100 + 1,
-        chatId: chatId,
-        kind: MessageKind.system,
-        text: "Добро пожаловать в игру!",
-        sentAt: now.subtract(const Duration(minutes: 10)),
-      ),
-      Message(
-        id: chatId * 100 + 2,
-        chatId: chatId,
-        senderId: 1,
-        kind: MessageKind.player,
-        text: "Привет всем!",
-        sentAt: now.subtract(const Duration(minutes: 8)),
-      ),
-      Message(
-        id: chatId * 100 + 3,
-        chatId: chatId,
-        senderId: 2,
-        kind: MessageKind.player,
-        text: "Приветствую!",
-        sentAt: now.subtract(const Duration(minutes: 7)),
-      ),
-      Message(
-        id: chatId * 100 + 4,
-        chatId: chatId,
-        kind: MessageKind.generalInfo,
-        text: "Вы находитесь в таверне 'Пьяный гоблин'",
-        sentAt: now.subtract(const Duration(minutes: 6)),
-      ),
-      Message(
-        id: chatId * 100 + 5,
-        chatId: chatId,
-        senderId: 3,
-        kind: MessageKind.player,
-        text: "Что будем делать дальше?",
-        sentAt: now.subtract(const Duration(minutes: 5)),
-      ),
-      Message(
-        id: chatId * 100 + 6,
-        chatId: chatId,
-        senderId: 1,
-        kind: MessageKind.player,
-        text: "Давайте исследовать окрестности",
-        sentAt: now.subtract(const Duration(minutes: 4)),
-      ),
-      Message(
-        id: chatId * 100 + 7,
-        chatId: chatId,
-        kind: MessageKind.publicInfo,
-        text: "Группа выходит из таверны и направляется в сторону тёмного леса",
-        sentAt: now.subtract(const Duration(minutes: 3)),
-      ),
-      Message(
-        id: chatId * 100 + 8,
-        chatId: chatId,
-        kind: MessageKind.privateInfo,
-        text: "Вы замечаете следы на земле, ведущие в глубь леса",
-        sentAt: now.subtract(const Duration(minutes: 2)),
-      ),
-    ];
-  }
-
-  // Создать фиктивный чат
-  ChatSegment _createMockChat(int chatId, {int? chatOwner}) {
-    return ChatSegment(
-      chatId: chatId,
-      chatOwner: chatOwner,
-      messages: _createMockMessages(chatId),
-      previousId: null,
-      nextId: null,
-      suggestions: [
-        "Пойти по следам",
-        "Вернуться в таверну",
-        "Осмотреть окрестности",
-        "Поговорить с группой"
+  MockGameplayService() {
+    // Инициализируем основной чат с приветственным сообщением
+    _chats[1] = ChatSegment(
+      chatId: 1,
+      messages: [
+        Message(
+          id: 1,
+          chatId: 1,
+          senderId: 0,
+          text: 'Добро пожаловать в игру!',
+          kind: MessageKind.system,
+          sentAt: DateTime.now().subtract(Duration(minutes: 5)),
+        ),
       ],
-      interface: ChatInterface(
-        type: ChatInterfaceType.full,
-      ),
+      suggestions: ['Привет всем!', 'Готов играть!'],
+      interface: ChatInterface(type: ChatInterfaceType.full),
     );
   }
 
-  // Получить текущее состояние игры
+  @override
   Future<dynamic> getGameState() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    final game = _createMockGame();
-    _currentGameId = game.id;
-
-    // Создаём моковое состояние игры
-    final gameState = {
-      "game": game,
-      "status": "playing",
-      "playerChats": [
-        _createMockChat(1, chatOwner: 1),
-        _createMockChat(2, chatOwner: 2),
-        _createMockChat(3, chatOwner: 3),
-      ],
-      "adviceChats": [
-        _createMockChat(4, chatOwner: 1),
-        _createMockChat(5, chatOwner: 2),
-        _createMockChat(6, chatOwner: 3),
-      ],
-      "gameChat": _createMockChat(7),
-    };
-
-    return gameState;
+    print('DEBUG: MockGameplayService.getGameState()');
+    await Future.delayed(Duration(milliseconds: 300));
+    return _gameState;
   }
 
-  // Получить сегмент чата
+  @override
   Future<ChatSegment> getChatSegment(
     int chatId, {
     int? before,
     int? after,
     int limit = 50,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    print('DEBUG: MockGameplayService.getChatSegment(chatId: $chatId)');
 
-    // Создаём фиктивный чат в зависимости от ID
-    return _createMockChat(chatId,
-      chatOwner: chatId >= 1 && chatId <= 3 ? chatId : null);
+    await Future.delayed(Duration(milliseconds: 300));
+
+    // Если чат не существует, создаем пустой
+    if (!_chats.containsKey(chatId)) {
+      _chats[chatId] = ChatSegment(
+        chatId: chatId,
+        messages: [],
+        suggestions: ['Привет!', 'Как дела?'],
+        interface: ChatInterface(type: ChatInterfaceType.full),
+      );
+    }
+
+    return _chats[chatId]!;
   }
 
-  // Отправить сообщение в чат
+  @override
   Future<Message> sendMessage(
     int chatId,
     String text, {
     String? special,
     Map<String, dynamic>? metadata,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 1200));
+    print('DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)');
 
-    // Создаём новое сообщение
-    final now = DateTime.now();
+    await Future.delayed(Duration(milliseconds: 300));
+
     final message = Message(
-      id: chatId * 100 + 9, // Условно новый ID
+      id: _messageIdCounter++,
       chatId: chatId,
-      senderId: _currentUserId,
-      kind: MessageKind.player,
+      senderId: _currentUser.id,
       text: text,
+      kind: MessageKind.player,
+      sentAt: DateTime.now(),
       special: special,
-      sentAt: now,
       metadata: metadata,
     );
+
+    // Добавляем сообщение в чат
+    if (!_chats.containsKey(chatId)) {
+      await getChatSegment(chatId);
+    }
+    _chats[chatId]!.messages.add(message);
+
+    // Добавляем ответ для основного чата
+    if (chatId == 1) {
+      _addAssistantResponse(chatId);
+    }
 
     return message;
   }
 
-  // Выгнать игрока
+  void _addAssistantResponse(int chatId) {
+    Future.delayed(Duration(seconds: 2), () {
+      final assistantMessage = Message(
+        id: _messageIdCounter++,
+        chatId: chatId,
+        senderId: 999, // ID для ассистента
+        text: 'Я получил ваше сообщение. Ожидаю начала игры.',
+        kind: MessageKind.generalInfo,
+        sentAt: DateTime.now(),
+      );
+
+      _chats[chatId]!.messages.add(assistantMessage);
+    });
+  }
+
+  @override
   Future<Player> kickPlayer(int playerId) async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+    print('DEBUG: MockGameplayService.kickPlayer(playerId: $playerId)');
 
-    if (playerId == _currentUserId) {
-      throw Exception('Нельзя выгнать самого себя');
-    }
+    await Future.delayed(Duration(milliseconds: 300));
 
-    final player = _createMockPlayers().firstWhere(
-      (player) => player.user.id == playerId,
-      orElse: () => throw Exception('Игрок с ID $playerId не найден'),
+    return Player(
+      user: _otherUser,
+      isReady: false,
+      isHost: false,
+      isSpectator: true,
     );
-
-    return player;
   }
 
-  // Сделать игрока хостом
+  @override
   Future<Player> promotePlayer(int playerId) async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+    print('DEBUG: MockGameplayService.promotePlayer(playerId: $playerId)');
 
-    if (playerId == _currentUserId) {
-      throw Exception('Вы уже являетесь хостом');
-    }
-
-    final player = _createMockPlayers().firstWhere(
-      (player) => player.user.id == playerId,
-      orElse: () => throw Exception('Игрок с ID $playerId не найден'),
-    );
+    await Future.delayed(Duration(milliseconds: 300));
 
     return Player(
-      user: player.user,
-      isReady: player.isReady,
+      user: _otherUser,
+      isReady: true,
       isHost: true,
-      isSpectator: player.isSpectator,
+      isSpectator: false,
     );
   }
 
-  // Отметить, что игрок готов
+  @override
   Future<Player> setReady(bool isReady) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    print('DEBUG: MockGameplayService.setReady(isReady: $isReady)');
 
-    final currentPlayer = _createMockPlayers().firstWhere(
-      (player) => player.user.id == _currentUserId,
-    );
+    await Future.delayed(Duration(milliseconds: 300));
 
     return Player(
-      user: currentPlayer.user,
+      user: _currentUser,
       isReady: isReady,
-      isHost: currentPlayer.isHost,
-      isSpectator: currentPlayer.isSpectator,
+      isHost: true,
+      isSpectator: false,
     );
   }
 
-  // Начать игру
+  @override
   Future<Game> startGame({int? gameId, bool force = false}) async {
-    await Future.delayed(const Duration(milliseconds: 1200));
+    print('DEBUG: MockGameplayService.startGame(force: $force)');
 
-    final game = _createMockGame();
-
-    // Проверяем, готовы ли все игроки
-    if (!force) {
-      final notReadyPlayers = game.players.where((player) => !player.isReady).toList();
-      if (notReadyPlayers.isNotEmpty) {
-        throw Exception('Не все игроки готовы');
-      }
-    }
+    await Future.delayed(Duration(milliseconds: 500));
 
     // Обновляем статус игры
+    _gameState['status'] = 'playing';
+
+    // Добавляем системное сообщение
+    final newMessage = Message(
+      id: _messageIdCounter++,
+      chatId: 1,
+      senderId: _systemUser.id,
+      text: 'Игра началась! Удачи всем участникам.',
+      kind: MessageKind.system,
+      sentAt: DateTime.now(),
+    );
+
+    _chats[1]!.messages.add(newMessage);
+
+    // Возвращаем объект игры
     return Game(
-      id: game.id,
-      code: game.code,
-      public: game.public,
-      name: game.name,
-      world: game.world,
-      hostId: game.hostId,
-      players: game.players,
-      createdAt: game.createdAt,
-      maxPlayers: game.maxPlayers,
+      id: gameId ?? 1,
+      code: 'ABC123',
+      public: true,
+      name: 'Тестовая игра',
+      world: World(
+        id: 1,
+        name: 'Тестовый мир',
+        public: true,
+        createdAt: DateTime.now().subtract(Duration(days: 10)),
+        lastUpdatedAt: DateTime.now().subtract(Duration(days: 1)),
+        owner: _currentUser,
+        type: WorldType.fantasy,
+        rating: 5,
+        data: {},
+      ),
+      hostId: _currentUser.id,
+      players: [
+        Player(
+          user: _currentUser,
+          isReady: true,
+          isHost: true,
+          isSpectator: false,
+        ),
+        Player(
+          user: _otherUser,
+          isReady: true,
+          isHost: false,
+          isSpectator: false,
+        ),
+      ],
+      createdAt: DateTime.now().subtract(Duration(minutes: 10)),
+      maxPlayers: 4,
       status: GameStatus.playing,
     );
   }
 
-  // Перезапустить игру
+  @override
   Future<Game> restartGame() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
+    print('DEBUG: MockGameplayService.restartGame()');
 
-    final game = _createMockGame();
+    await Future.delayed(Duration(milliseconds: 500));
 
-    // Проверяем, что игра завершена
-    if (game.status != GameStatus.finished) {
-      throw Exception('Игра ещё не завершена');
-    }
+    // Обновляем статус игры
+    _gameState['status'] = 'waiting';
 
-    // Создаем новую игру с тем же набором игроков
+    // Очищаем сообщения в основном чате
+    _chats[1]?.messages.clear();
+
+    // Добавляем системное сообщение
+    final newMessage = Message(
+      id: _messageIdCounter++,
+      chatId: 1,
+      senderId: _systemUser.id,
+      text: 'Игра перезапущена. Ожидаем готовности игроков.',
+      kind: MessageKind.system,
+      sentAt: DateTime.now(),
+    );
+
+    _chats[1]!.messages.add(newMessage);
+
+    // Возвращаем объект игры
     return Game(
-      id: game.id + 100, // Новый ID
-      code: "GAME${(game.id + 100).toString().padLeft(3, '0')}",
-      public: game.public,
-      name: game.name,
-      world: game.world,
-      hostId: game.hostId,
-      players: game.players.map((player) => Player(
-        user: player.user,
-        isReady: false,
-        isHost: player.isHost,
-        isSpectator: player.isSpectator,
-      )).toList(),
+      id: 2, // Новый ID игры
+      code: 'DEF456',
+      public: true,
+      name: 'Тестовая игра (перезапуск)',
+      world: World(
+        id: 1,
+        name: 'Тестовый мир',
+        public: true,
+        createdAt: DateTime.now().subtract(Duration(days: 10)),
+        lastUpdatedAt: DateTime.now(),
+        owner: _currentUser,
+        type: WorldType.fantasy,
+        rating: 5,
+        data: {},
+      ),
+      hostId: _currentUser.id,
+      players: [
+        Player(
+          user: _currentUser,
+          isReady: false,
+          isHost: true,
+          isSpectator: false,
+        ),
+        Player(
+          user: _otherUser,
+          isReady: false,
+          isHost: false,
+          isSpectator: false,
+        ),
+      ],
       createdAt: DateTime.now(),
-      maxPlayers: game.maxPlayers,
+      maxPlayers: 4,
       status: GameStatus.waiting,
     );
   }
