@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:loreshifter/core/models/game.dart';
-import 'package:loreshifter/core/models/world.dart';
-import 'package:loreshifter/features/games/games_cubit.dart';
 import 'package:loreshifter/features/worlds/worlds_cubit.dart';
+import 'package:loreshifter/features/games/games_cubit.dart';
+
+import '../../core/models/world.dart';
 
 class CreateGameScreen extends StatefulWidget {
   final int? worldId;
@@ -126,7 +126,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                       labelText: 'Выберите мир',
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedWorld,
+                    initialValue: _selectedWorld,
                     items: worlds.map((world) => DropdownMenuItem<World>(
                       value: world,
                       child: Text(world.name),

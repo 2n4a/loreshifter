@@ -1,4 +1,3 @@
-import 'package:loreshifter/core/api/api_client.dart';
 import 'package:loreshifter/core/models/user.dart';
 import 'package:loreshifter/core/services/base_service.dart';
 import 'package:loreshifter/core/services/interfaces/auth_service_interface.dart';

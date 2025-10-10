@@ -189,7 +189,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                             if (player.isHost)
                               Chip(
                                 label: const Text('Хост'),
-                                backgroundColor: Colors.amber.withOpacity(0.2),
+                                backgroundColor: Colors.amber.withValues(alpha: 0.2),
                                 side: BorderSide(color: Colors.amber.shade700),
                               ),
                             if (player.isReady)
@@ -301,7 +301,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withAlpha(51),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),

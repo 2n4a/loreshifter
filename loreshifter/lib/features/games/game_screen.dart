@@ -48,7 +48,8 @@ class _GameScreenState extends State<GameScreen> {
       final cubit = context.read<GameplayCubit>();
 
       // Подписываемся на изменения состояния
-      final subscription = cubit.stream.listen((state) {
+      late final StreamSubscription subscription;
+      subscription = cubit.stream.listen((state) {
         print(
           'DEBUG: Получено новое состояние GameplayCubit: ${state.runtimeType}',
         );
@@ -60,18 +61,20 @@ class _GameScreenState extends State<GameScreen> {
           });
           print('DEBUG: Состояние игры: $_gameState');
 
-          // Загрузим основной игровой чат
+          // Загружаем основной игровой чат
           if (_gameState['gameChat'] != null) {
             print('DEBUG: Найден gameChat, загружаем чат с индексом 0');
             _loadChat(0); // Индекс 0 для основного чата
           } else {
             print('DEBUG: ОШИБКА - gameChat не найден в состоянии игры');
           }
+          subscription.cancel();
         } else if (state is GameplayFailure) {
           print('DEBUG: ОШИБКА ЗАГРУЗКИ: ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
           );
+          subscription.cancel();
         }
       });
 
@@ -306,11 +309,26 @@ class _GameScreenState extends State<GameScreen> {
                                 width: 300,
                                 child: AppTheme.neonContainer(
                                   borderColor: AppTheme.neonPurple,
-
-                                  child: const Text(
-                                    'ВЫБЕРИТЕ ЧАТ',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.white),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.chat_bubble_outline,
+                                        size: 48,
+                                        color: AppTheme.neonPurple.withAlpha(153),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'ВЫБЕРИТЕ ЧАТ',
+                                        textAlign: TextAlign.center,
+                                        style: AppTheme.neonTextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          intensity: 0.1,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

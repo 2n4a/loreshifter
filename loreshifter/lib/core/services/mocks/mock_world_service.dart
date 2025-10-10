@@ -13,14 +13,6 @@ class MockWorldService extends BaseService implements WorldService {
     name: "Тестовый пользователь",
   );
 
-  // Генерируем случайное время создания в прошлом
-  DateTime _randomPastDate() {
-    final random = DateTime.now().subtract(
-      Duration(days: 1 + (10 * (0.1 + 0.9 * (DateTime.now().millisecondsSinceEpoch % 100) / 100)).toInt())
-    );
-    return random;
-  }
-
   // Список фиктивных миров
   final List<World> _mockWorlds = List.generate(
     10,
@@ -199,7 +191,6 @@ class MockWorldService extends BaseService implements WorldService {
     await Future.delayed(const Duration(milliseconds: 1200));
 
     final originalWorld = await getWorldById(id, includeData: true);
-    final now = DateTime.now();
 
     return createWorld(
       name: "${originalWorld.name} (копия)",

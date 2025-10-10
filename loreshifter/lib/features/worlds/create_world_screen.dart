@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:loreshifter/core/models/world.dart';
 import 'package:loreshifter/core/services/world_service.dart';
 import 'package:loreshifter/features/auth/auth_cubit.dart';
 

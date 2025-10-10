@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:loreshifter/core/models/user.dart';
-import 'package:loreshifter/core/services/auth_service.dart';
 import 'package:loreshifter/features/auth/auth_cubit.dart';
 
+import '../../core/models/user.dart';
 import '../../core/services/interfaces/auth_service_interface.dart';
 
 class ProfileScreen extends StatefulWidget {

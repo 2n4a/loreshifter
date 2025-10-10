@@ -1,9 +1,7 @@
+import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:loreshifter/core/models/user.dart';
-import 'package:loreshifter/core/services/auth_service.dart';
-
-import '../../core/services/interfaces/auth_service_interface.dart';
+import 'package:loreshifter/core/services/interfaces/auth_service_interface.dart';
 
 // События аутентификации
 abstract class AuthEvent extends Equatable {
