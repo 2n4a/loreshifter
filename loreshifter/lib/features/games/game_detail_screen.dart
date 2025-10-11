@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:loreshifter/core/models/game.dart';
 import 'package:loreshifter/features/games/games_cubit.dart';
+import 'package:loreshifter/core/widgets/game_status_chip.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int? gameId;
@@ -51,7 +52,23 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
 
       if (!mounted) return;
 
-      context.go('/game');
+      final state = gamesCubit.state;
+      int? gameId;
+      if (state is GameJoined) {
+        gameId = state.game.id;
+      } else if (state is GameLoaded) {
+        gameId = state.game.id;
+      } else {
+        gameId = widget.gameId; // запасной вариант
+      }
+
+      if (gameId != null) {
+        context.go('/game/$gameId');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось определить id игры')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -132,7 +149,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
-                      _buildGameStatusChip(game.status),
+                      GameStatusChip(status: game.status),
                     ],
                   ),
                   const Divider(height: 24),
@@ -273,40 +290,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           Expanded(flex: 3, child: Text(value)),
         ],
       ),
-    );
-  }
-
-  Widget _buildGameStatusChip(GameStatus status) {
-    String text;
-    Color color;
-
-    switch (status) {
-      case GameStatus.waiting:
-        text = 'Ожидание';
-        color = Colors.blue;
-        break;
-      case GameStatus.playing:
-        text = 'В процессе';
-        color = Colors.green;
-        break;
-      case GameStatus.finished:
-        text = 'Завершена';
-        color = Colors.orange;
-        break;
-      case GameStatus.archived:
-        text = 'В архиве';
-        color = Colors.grey;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(51),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: Text(text, style: TextStyle(color: color)),
     );
   }
 

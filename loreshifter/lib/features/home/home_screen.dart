@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen>
           fontSize: 22.0,
         ),
         elevation: 0,
-        actions: [_buildProfileButton()],
+        actions: [_buildHistoryButton(), _buildProfileButton()],
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -134,6 +134,29 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildHistoryButton() {
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, state) {
+        if (state is Authenticated) {
+          final userId = state.user.id;
+          return Container(
+            margin: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.neonShadow(AppTheme.neonPurple),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.history, color: AppTheme.neonPurple),
+              tooltip: 'История игр',
+              onPressed: () => context.push('/history/$userId'),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
       },
     );
   }

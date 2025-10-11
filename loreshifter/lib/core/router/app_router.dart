@@ -9,6 +9,8 @@ import 'package:loreshifter/features/games/game_detail_screen.dart';
 import 'package:loreshifter/features/games/game_screen.dart';
 import 'package:loreshifter/features/home/home_screen.dart';
 import 'package:loreshifter/features/profile/profile_screen.dart';
+import 'package:loreshifter/features/history/user_history_screen.dart';
+import 'package:loreshifter/features/history/world_history_screen.dart';
 
 import '../../features/worlds/create_world_screen.dart';
 import '../../features/worlds/edit_world_screen.dart';
@@ -34,6 +36,22 @@ class AppRouter {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      // История игр пользователя
+      GoRoute(
+        path: '/history/:userId',
+        builder: (context, state) {
+          final userId = int.parse(state.pathParameters['userId']!);
+          return UserHistoryScreen(userId: userId);
+        },
+      ),
+      // История конкретного мира
+      GoRoute(
+        path: '/worlds/:worldId/history',
+        builder: (context, state) {
+          final worldId = int.parse(state.pathParameters['worldId']!);
+          return WorldHistoryScreen(worldId: worldId);
+        },
       ),
       GoRoute(
         path: '/worlds/create',
@@ -76,37 +94,35 @@ class AppRouter {
           return GameDetailScreen(code: code);
         },
       ),
-      GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
+      // Экран игры с параметром gameId
+      GoRoute(
+        path: '/game/:gameId',
+        builder: (context, state) {
+          final gameId = int.parse(state.pathParameters['gameId']!);
+          return GameScreen(gameId: gameId);
+        },
+      ),
     ],
     redirect: (context, state) async {
       // Проверка авторизации для защищенных путей
       final isAuthenticated = authCubit.state is Authenticated;
       final isAuthenticating = state.matchedLocation == '/login';
 
+      final loc = state.matchedLocation;
+
       // Защищенные маршруты
-      final protectedPaths = [
-        '/profile',
-        '/worlds/create',
-        '/worlds/*/edit',
-        '/games/create',
-        '/game',
-      ];
+      final isProtectedRoute =
+          loc == '/profile' ||
+          loc.startsWith('/history/') ||
+          loc == '/worlds/create' ||
+          RegExp(r'^/worlds/[^/]+/edit$').hasMatch(loc) ||
+          loc == '/games/create' ||
+          RegExp(r'^/game/[^/]+/?$').hasMatch(loc);
 
-      // Проверка, является ли текущий путь защищенным
-      final isProtectedRoute = protectedPaths.any((path) {
-        if (path.contains('*')) {
-          final regex = RegExp(path.replaceAll('*', '[^/]+'));
-          return regex.hasMatch(state.matchedLocation);
-        }
-        return state.matchedLocation == path;
-      });
-
-      // Если путь защищенный и пользователь не авторизован, перенаправляем на страницу входа
       if (isProtectedRoute && !isAuthenticated) {
         return '/login';
       }
 
-      // Если пользователь авторизован и пытается попасть на страницу входа, перенаправляем на домашнюю страницу
       if (isAuthenticating && isAuthenticated) {
         return '/';
       }

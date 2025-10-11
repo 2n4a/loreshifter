@@ -6,62 +6,6 @@ import 'package:loreshifter/core/models/message.dart';
 import 'package:loreshifter/core/models/player.dart';
 import 'package:loreshifter/core/services/gameplay_service.dart';
 
-// События для работы с игровым процессом
-abstract class GameplayEvent extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
-
-class LoadGameStateRequested extends GameplayEvent {}
-
-class LoadChatRequested extends GameplayEvent {
-  final int chatId;
-  final int? before;
-  final int? after;
-
-  LoadChatRequested({required this.chatId, this.before, this.after});
-
-  @override
-  List<Object?> get props => [chatId, before, after];
-}
-
-class SendMessageRequested extends GameplayEvent {
-  final int chatId;
-  final String text;
-  final String? special;
-  final Map<String, dynamic>? metadata;
-
-  SendMessageRequested({
-    required this.chatId,
-    required this.text,
-    this.special,
-    this.metadata,
-  });
-
-  @override
-  List<Object?> get props => [chatId, text, special, metadata];
-}
-
-class SetReadyStatusRequested extends GameplayEvent {
-  final bool isReady;
-
-  SetReadyStatusRequested(this.isReady);
-
-  @override
-  List<Object?> get props => [isReady];
-}
-
-class StartGameRequested extends GameplayEvent {
-  final bool force;
-
-  StartGameRequested({this.force = false});
-
-  @override
-  List<Object?> get props => [force];
-}
-
-class RestartGameRequested extends GameplayEvent {}
-
 // Состояния для работы с игровым процессом
 abstract class GameplayState extends Equatable {
   @override

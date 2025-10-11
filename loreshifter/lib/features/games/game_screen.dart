@@ -11,7 +11,9 @@ import 'package:loreshifter/features/games/games_cubit.dart';
 import 'package:loreshifter/core/theme/app_theme.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final int gameId;
+
+  const GameScreen({super.key, required this.gameId});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -42,7 +44,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadGameState() async {
-    print('DEBUG: Начинаем загрузку игрового состояния');
+    print('DEBUG: Загрузка состояния игры для gameId=${widget.gameId}');
     try {
       // Регистрируем слушатель перед вызовом loadGameState
       final cubit = context.read<GameplayCubit>();

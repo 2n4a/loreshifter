@@ -3,45 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:loreshifter/core/models/game.dart';
 import 'package:loreshifter/core/services/game_service.dart';
 
-// События для работы с играми
-abstract class GamesEvent extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
-
-class LoadGamesRequested extends GamesEvent {}
-
-class LoadGameByIdRequested extends GamesEvent {
-  final int gameId;
-
-  LoadGameByIdRequested(this.gameId);
-
-  @override
-  List<Object?> get props => [gameId];
-}
-
-class LoadGameByCodeRequested extends GamesEvent {
-  final String code;
-
-  LoadGameByCodeRequested(this.code);
-
-  @override
-  List<Object?> get props => [code];
-}
-
-class JoinGameRequested extends GamesEvent {
-  final int? gameId;
-  final String? code;
-  final bool force;
-
-  JoinGameRequested({this.gameId, this.code, this.force = false});
-
-  @override
-  List<Object?> get props => [gameId, code, force];
-}
-
-class LeaveGameRequested extends GamesEvent {}
-
 // Состояния для работы с играми
 abstract class GamesState extends Equatable {
   @override
