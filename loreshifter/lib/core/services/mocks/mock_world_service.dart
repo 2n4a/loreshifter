@@ -31,6 +31,7 @@ class MockWorldService extends BaseService implements WorldService {
   });
 
   // Получить список миров
+  @override
   Future<List<World>> getWorlds({
     int limit = 25,
     int offset = 0,
@@ -76,6 +77,7 @@ class MockWorldService extends BaseService implements WorldService {
   }
 
   // Получить мир по ID
+  @override
   Future<World> getWorldById(int id, {bool includeData = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
@@ -109,6 +111,7 @@ class MockWorldService extends BaseService implements WorldService {
   }
 
   // Создать новый мир
+  @override
   Future<World> createWorld({
     required String name,
     required bool isPublic,
@@ -138,6 +141,7 @@ class MockWorldService extends BaseService implements WorldService {
   }
 
   // Обновить информацию о мире
+  @override
   Future<World> updateWorld({
     required int id,
     String? name,
@@ -170,6 +174,7 @@ class MockWorldService extends BaseService implements WorldService {
   }
 
   // Удалить мир
+  @override
   Future<World> deleteWorld(int id) async {
     await Future.delayed(const Duration(milliseconds: 1000));
 
@@ -185,6 +190,7 @@ class MockWorldService extends BaseService implements WorldService {
   }
 
   // Создать копию мира
+  @override
   Future<World> copyWorld(int id) async {
     await Future.delayed(const Duration(milliseconds: 1200));
 

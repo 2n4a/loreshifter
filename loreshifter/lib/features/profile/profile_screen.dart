@@ -91,6 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<AuthCubit>().updateUserName(_nameController.text);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Профиль успешно обновлен')));

@@ -140,7 +140,7 @@ class GamesCubit extends Cubit<GamesState> {
       return game;
     } catch (e) {
       emit(GamesFailure(e.toString()));
-      throw e;
+      rethrow;
     }
   }
 }

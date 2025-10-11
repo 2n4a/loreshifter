@@ -76,14 +76,20 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
       final worldService = context.read<WorldService>();
       _world = await worldService.getWorldById(widget.worldId);
 
+      // Если экран уже был закрыт — выходим, не трогая контроллеры
+      if (!mounted) return;
+
       // Запускаем анимации после загрузки
       _fadeController.forward();
       await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
       _slideController.forward();
     } catch (e) {
-      setState(() {
-        _error = 'Ошибка при загрузке мира: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Ошибка при загрузке мира: $e';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

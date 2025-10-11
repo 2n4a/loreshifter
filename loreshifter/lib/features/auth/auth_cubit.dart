@@ -1,4 +1,4 @@
-import 'package:bloc/bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:loreshifter/core/models/user.dart';
 import 'package:loreshifter/core/services/interfaces/auth_service_interface.dart';
