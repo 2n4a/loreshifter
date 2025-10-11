@@ -447,6 +447,8 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                 () => context.push('/games/create?worldId=${widget.worldId}'),
             size: ButtonSize.large,
             style: NeonButtonStyle.gradient,
+            gradient: AppTheme.greenToBlueGradient,
+            glowIntensity: 0.12,
           ),
           const SizedBox(height: 12),
           NeonButton(

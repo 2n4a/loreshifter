@@ -7,6 +7,7 @@ import 'package:loreshifter/features/auth/auth_cubit.dart';
 import 'package:loreshifter/features/games/games_cubit.dart';
 import 'package:loreshifter/features/worlds/worlds_cubit.dart';
 import 'package:loreshifter/core/theme/app_theme.dart';
+import 'package:loreshifter/core/widgets/game_status_chip.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -255,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),
-                _buildGameStatusChip(game.status),
+                GameStatusChip(status: game.status, uppercase: true),
               ],
             ),
             const SizedBox(height: 16),
@@ -279,49 +280,6 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // Отображение статуса игры
-  Widget _buildGameStatusChip(GameStatus status) {
-    String text;
-    Color color;
-
-    switch (status) {
-      case GameStatus.waiting:
-        text = 'ОЖИДАНИЕ';
-        color = AppTheme.neonBlue;
-        break;
-      case GameStatus.playing:
-        text = 'В ПРОЦЕССЕ';
-        color = AppTheme.neonGreen;
-        break;
-      case GameStatus.finished:
-        text = 'ЗАВЕРШЕНА';
-        color = AppTheme.neonPurple;
-        break;
-      case GameStatus.archived:
-        text = 'В АРХИВЕ';
-        color = Colors.grey;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color, width: 1.5),
-        boxShadow: AppTheme.neonShadow(color),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
         ),
       ),
     );

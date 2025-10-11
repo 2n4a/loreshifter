@@ -9,6 +9,8 @@ class NeonButton extends StatefulWidget {
   final bool isLoading;
   final ButtonSize size;
   final NeonButtonStyle style;
+  final Gradient? gradient;
+  final double glowIntensity; // 0..1, влияет на тень
 
   const NeonButton({
     super.key,
@@ -19,6 +21,8 @@ class NeonButton extends StatefulWidget {
     this.isLoading = false,
     this.size = ButtonSize.medium,
     this.style = NeonButtonStyle.filled,
+    this.gradient,
+    this.glowIntensity = 0.3,
   });
 
   @override
@@ -101,37 +105,26 @@ class _NeonButtonState extends State<NeonButton>
     _controller.reverse();
   }
 
+  bool get _isFilledLike =>
+      widget.style == NeonButtonStyle.filled ||
+      widget.style == NeonButtonStyle.gradient;
+
   Widget _buildButtonContent() {
+    final contentColor = _isFilledLike ? Colors.white : _buttonColor;
+
     if (widget.isLoading) {
       return SizedBox(
         height: _iconSize,
         width: _iconSize,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color:
-              widget.style == NeonButtonStyle.filled
-                  ? Colors.white
-                  : _buttonColor,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2, color: contentColor),
       );
     }
 
     final List<Widget> children = [];
 
     if (widget.icon != null) {
-      children.add(
-        Icon(
-          widget.icon,
-          size: _iconSize,
-          color:
-              widget.style == NeonButtonStyle.filled
-                  ? Colors.white
-                  : _buttonColor,
-        ),
-      );
-      if (widget.text.isNotEmpty) {
-        children.add(const SizedBox(width: 8));
-      }
+      children.add(Icon(widget.icon, size: _iconSize, color: contentColor));
+      if (widget.text.isNotEmpty) children.add(const SizedBox(width: 8));
     }
 
     if (widget.text.isNotEmpty) {
@@ -142,10 +135,7 @@ class _NeonButtonState extends State<NeonButton>
             fontSize: _fontSize,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
-            color:
-                widget.style == NeonButtonStyle.filled
-                    ? Colors.white
-                    : _buttonColor,
+            color: contentColor,
           ),
         ),
       );
@@ -169,7 +159,7 @@ class _NeonButtonState extends State<NeonButton>
                           widget.style == NeonButtonStyle.gradient
                       ? AppTheme.neonShadow(
                         _buttonColor,
-                        intensity: 0.3 * _glowAnimation.value,
+                        intensity: widget.glowIntensity * _glowAnimation.value,
                       )
                       : null,
             ),
@@ -246,7 +236,7 @@ class _NeonButtonState extends State<NeonButton>
           onTapCancel: () => _onTapUp(),
           child: Container(
             decoration: BoxDecoration(
-              gradient: AppTheme.neonGradient,
+              gradient: widget.gradient ?? AppTheme.neonGradient,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Material(
