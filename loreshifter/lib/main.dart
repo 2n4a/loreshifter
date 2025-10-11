@@ -10,6 +10,10 @@ import 'package:loreshifter/features/auth/auth_cubit.dart';
 import 'package:loreshifter/features/chat/gameplay_cubit.dart';
 import 'package:loreshifter/features/games/games_cubit.dart';
 import 'package:loreshifter/features/worlds/worlds_cubit.dart';
+import 'package:loreshifter/core/services/interfaces/auth_service_interface.dart';
+import 'package:loreshifter/core/services/interfaces/world_service_interface.dart';
+import 'package:loreshifter/core/services/interfaces/game_service_interface.dart';
+import 'package:loreshifter/core/services/interfaces/gameplay_service_interface.dart';
 
 import 'core/theme/app_theme.dart';
 
@@ -40,26 +44,34 @@ class MyApp extends StatelessWidget {
     // Настраиваем маршрутизацию
     final appRouter = AppRouter(authCubit);
 
-    return MultiBlocProvider(
+    return MultiRepositoryProvider(
       providers: [
-        BlocProvider<AuthCubit>(create: (_) => authCubit),
-        BlocProvider<WorldsCubit>(
-          create: (_) => WorldsCubit(worldService: worldService),
-        ),
-        BlocProvider<GamesCubit>(
-          create: (_) => GamesCubit(gameService: gameService),
-        ),
-        BlocProvider<GameplayCubit>(
-          create: (_) => GameplayCubit(gameplayService: gameplayService),
-        ),
+        RepositoryProvider<AuthService>.value(value: authService),
+        RepositoryProvider<WorldService>.value(value: worldService),
+        RepositoryProvider<GameService>.value(value: gameService),
+        RepositoryProvider<GameplayService>.value(value: gameplayService),
       ],
-      child: MaterialApp.router(
-        title: 'Loreshifter',
-        theme: AppTheme.darkTheme,
-        // Применяем киберпанк-тему
-        routerConfig: appRouter.router,
-        // Добавляем обязательный параметр конфигурации роутера
-        debugShowCheckedModeBanner: false,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthCubit>(create: (_) => authCubit),
+          BlocProvider<WorldsCubit>(
+            create: (_) => WorldsCubit(worldService: worldService),
+          ),
+          BlocProvider<GamesCubit>(
+            create: (_) => GamesCubit(gameService: gameService),
+          ),
+          BlocProvider<GameplayCubit>(
+            create: (_) => GameplayCubit(gameplayService: gameplayService),
+          ),
+        ],
+        child: MaterialApp.router(
+          title: 'Loreshifter',
+          theme: AppTheme.darkTheme,
+          // Применяем киберпанк-тему
+          routerConfig: appRouter.router,
+          // Добавляем обязательный параметр конфигурации роутера
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

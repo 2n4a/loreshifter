@@ -260,26 +260,28 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
   }
 
   Widget _buildContentSliver() {
-    return SliverToBoxAdapter(
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Column(
-            children: [
-              _buildHeaderSection(),
-              const SizedBox(height: 16),
-              _buildDescriptionSection(),
-              const SizedBox(height: 16),
-              _buildOwnerSection(),
-              const SizedBox(height: 16),
-              _buildInfoSection(),
-              const SizedBox(height: 24),
-              _buildActionButtons(),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
+    final items = <Widget>[
+      _buildHeaderSection(),
+      const SizedBox(height: 16),
+      _buildDescriptionSection(),
+      const SizedBox(height: 16),
+      _buildOwnerSection(),
+      const SizedBox(height: 16),
+      _buildInfoSection(),
+      const SizedBox(height: 24),
+      _buildActionButtons(),
+      const SizedBox(height: 32),
+    ];
+
+    Widget wrapAnimated(Widget child) => FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(position: _slideAnimation, child: child),
+    );
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => wrapAnimated(items[index]),
+        childCount: items.length,
       ),
     );
   }
