@@ -315,7 +315,9 @@ class _GameScreenState extends State<GameScreen> {
                                       Icon(
                                         Icons.chat_bubble_outline,
                                         size: 48,
-                                        color: AppTheme.neonPurple.withAlpha(153),
+                                        color: AppTheme.neonPurple.withAlpha(
+                                          153,
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
                                       Text(

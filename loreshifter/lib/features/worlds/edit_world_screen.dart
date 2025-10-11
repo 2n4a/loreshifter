@@ -7,10 +7,7 @@ import 'package:loreshifter/core/services/world_service.dart';
 class EditWorldScreen extends StatefulWidget {
   final int worldId;
 
-  const EditWorldScreen({
-    super.key,
-    required this.worldId,
-  });
+  const EditWorldScreen({super.key, required this.worldId});
 
   @override
   State<EditWorldScreen> createState() => _EditWorldScreenState();
@@ -41,7 +38,10 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
 
     try {
       final worldService = context.read<WorldService>();
-      _world = await worldService.getWorldById(widget.worldId, includeData: true);
+      _world = await worldService.getWorldById(
+        widget.worldId,
+        includeData: true,
+      );
 
       _nameController.text = _world!.name;
       _descriptionController.text = _world!.description ?? '';
@@ -73,9 +73,10 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
         id: widget.worldId,
         name: _nameController.text,
         isPublic: _isPublic,
-        description: _descriptionController.text.isNotEmpty
-          ? _descriptionController.text
-          : null,
+        description:
+            _descriptionController.text.isNotEmpty
+                ? _descriptionController.text
+                : null,
       );
 
       if (!mounted) return;
@@ -84,9 +85,9 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
         _world = updatedWorld;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Мир успешно обновлен')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Мир успешно обновлен')));
     } catch (e) {
       setState(() {
         _error = 'Ошибка при обновлении мира: $e';
@@ -124,29 +125,30 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить мир'),
-        content: const Text(
-          'Вы уверены, что хотите удалить этот мир? '
-          'Это действие нельзя будет отменить.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deleteWorld();
-            },
-            child: Text(
-              'Удалить',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Удалить мир'),
+            content: const Text(
+              'Вы уверены, что хотите удалить этот мир? '
+              'Это действие нельзя будет отменить.',
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Отмена'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _deleteWorld();
+                },
+                child: Text(
+                  'Удалить',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -171,25 +173,28 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
             ),
         ],
       ),
-      body: _isLoading && _world == null
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _world == null
+      body:
+          _isLoading && _world == null
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null && _world == null
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadWorld,
-                        child: const Text('Повторить'),
-                      ),
-                    ],
-                  ),
-                )
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadWorld,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              )
               : _buildWorldForm(),
     );
   }
@@ -266,9 +271,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   _error!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
 
@@ -280,9 +283,10 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Сохранить изменения'),
+                child:
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Сохранить изменения'),
               ),
             ),
 
@@ -292,9 +296,12 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: _isLoading || _isDeleting
-                    ? null
-                    : () => context.push('/games/create?worldId=${widget.worldId}'),
+                onPressed:
+                    _isLoading || _isDeleting
+                        ? null
+                        : () => context.push(
+                          '/games/create?worldId=${widget.worldId}',
+                        ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -308,7 +315,8 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: _isLoading || _isDeleting ? null : () => context.go('/'),
+                onPressed:
+                    _isLoading || _isDeleting ? null : () => context.go('/'),
                 child: const Text('Назад'),
               ),
             ),

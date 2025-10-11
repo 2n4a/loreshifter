@@ -47,21 +47,16 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: AppTheme.defaultCurve,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: AppTheme.defaultCurve),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: AppTheme.defaultCurve,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: AppTheme.defaultCurve),
+    );
   }
 
   @override
@@ -196,7 +191,10 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
               decoration: BoxDecoration(
                 color: AppTheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: AppTheme.neonShadow(AppTheme.neonBlue, intensity: 0.3),
+                boxShadow: AppTheme.neonShadow(
+                  AppTheme.neonBlue,
+                  intensity: 0.3,
+                ),
               ),
               child: CircularProgressIndicator(
                 color: AppTheme.neonBlue,
@@ -228,11 +226,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: AppTheme.neonPink,
-                ),
+                Icon(Icons.error_outline, size: 48, color: AppTheme.neonPink),
                 const SizedBox(height: 16),
                 Text(
                   'Упс! Что-то пошло не так',
@@ -245,9 +239,9 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                 const SizedBox(height: 8),
                 Text(
                   _error!,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -342,7 +336,8 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           Text(
             _world!.description ?? 'Описание отсутствует',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: _world!.description != null ? Colors.white : Colors.white54,
+              color:
+                  _world!.description != null ? Colors.white : Colors.white54,
               height: 1.5,
               letterSpacing: 0.3,
             ),
@@ -391,17 +386,14 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                     const SizedBox(height: 4),
                     Text(
                       'Нажмите, чтобы посмотреть профиль',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.neonBlue,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppTheme.neonBlue),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: AppTheme.neonBlue,
-              ),
+              Icon(Icons.chevron_right, color: AppTheme.neonBlue),
             ],
           ),
         ],
@@ -449,7 +441,8 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           NeonButton(
             text: 'Создать игру',
             icon: Icons.add_circle_outline,
-            onPressed: () => context.push('/games/create?worldId=${widget.worldId}'),
+            onPressed:
+                () => context.push('/games/create?worldId=${widget.worldId}'),
             size: ButtonSize.large,
             style: NeonButtonStyle.gradient,
           ),
@@ -507,8 +500,18 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   String _formatDate(DateTime date) {
     final months = [
-      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-      'юл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+      'янв',
+      'фев',
+      'мар',
+      'апр',
+      'май',
+      'июн',
+      'юл',
+      'авг',
+      'сен',
+      'окт',
+      'ноя',
+      'дек',
     ];
 
     return '${date.day} ${months[date.month - 1]} ${date.year}, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';

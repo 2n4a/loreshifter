@@ -2,11 +2,11 @@ import 'package:loreshifter/core/models/user.dart';
 
 // Определяем enum для типов миров
 enum WorldType {
-  fantasy,    // Фэнтези
-  scifi,      // Научная фантастика
+  fantasy, // Фэнтези
+  scifi, // Научная фантастика
   historical, // Исторический
-  horror,     // Хоррор
-  other       // Другой
+  horror, // Хоррор
+  other, // Другой
 }
 
 class World {

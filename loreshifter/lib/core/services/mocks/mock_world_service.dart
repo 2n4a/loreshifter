@@ -8,34 +8,27 @@ class MockWorldService extends BaseService implements WorldService {
   MockWorldService({required super.apiClient});
 
   // Фиктивный пользователь-создатель
-  final User _mockUser = User(
-    id: 1,
-    name: "Тестовый пользователь",
-  );
+  final User _mockUser = User(id: 1, name: "Тестовый пользователь");
 
   // Список фиктивных миров
-  final List<World> _mockWorlds = List.generate(
-    10,
-    (index) {
-      final createdAt = DateTime.now().subtract(Duration(days: 10 + index));
-      final lastUpdatedAt = DateTime.now().subtract(Duration(days: index));
+  final List<World> _mockWorlds = List.generate(10, (index) {
+    final createdAt = DateTime.now().subtract(Duration(days: 10 + index));
+    final lastUpdatedAt = DateTime.now().subtract(Duration(days: index));
 
-      return World(
-        id: index + 1,
-        name: "Тестовый мир ${index + 1}",
-        public: index % 3 != 0, // Некоторые приватные, некоторые публичные
-        createdAt: createdAt,
-        lastUpdatedAt: lastUpdatedAt,
-        owner: User(
-          id: 1,
-          name: "Тестовый пользователь",
-        ),
-        description: index % 2 == 0
-            ? "Это описание тестового мира ${index + 1}. Здесь могло бы быть интересное описание фантастического мира."
-            : null,
-      );
-    },
-  );
+    return World(
+      id: index + 1,
+      name: "Тестовый мир ${index + 1}",
+      public: index % 3 != 0,
+      // Некоторые приватные, некоторые публичные
+      createdAt: createdAt,
+      lastUpdatedAt: lastUpdatedAt,
+      owner: User(id: 1, name: "Тестовый пользователь"),
+      description:
+          index % 2 == 0
+              ? "Это описание тестового мира ${index + 1}. Здесь могло бы быть интересное описание фантастического мира."
+              : null,
+    );
+  });
 
   // Получить список миров
   Future<List<World>> getWorlds({
@@ -53,22 +46,27 @@ class MockWorldService extends BaseService implements WorldService {
 
     // Фильтрация по публичности
     if (isPublic != null) {
-      filteredWorlds = filteredWorlds.where((world) => world.public == isPublic).toList();
+      filteredWorlds =
+          filteredWorlds.where((world) => world.public == isPublic).toList();
     }
 
     // Фильтрация по owner_id
     if (filter != null && filter.contains('owner=')) {
       final ownerId = int.tryParse(filter.split('owner=')[1].split(',')[0]);
       if (ownerId != null) {
-        filteredWorlds = filteredWorlds.where((world) => world.owner.id == ownerId).toList();
+        filteredWorlds =
+            filteredWorlds.where((world) => world.owner.id == ownerId).toList();
       }
     }
 
     // Сортировка
     if (sort == 'lastUpdatedAt') {
-      filteredWorlds.sort((a, b) => order == 'asc'
-          ? a.lastUpdatedAt.compareTo(b.lastUpdatedAt)
-          : b.lastUpdatedAt.compareTo(a.lastUpdatedAt));
+      filteredWorlds.sort(
+        (a, b) =>
+            order == 'asc'
+                ? a.lastUpdatedAt.compareTo(b.lastUpdatedAt)
+                : b.lastUpdatedAt.compareTo(a.lastUpdatedAt),
+      );
     }
 
     // Пагинация
@@ -101,8 +99,8 @@ class MockWorldService extends BaseService implements WorldService {
           "settings": {
             "theme": "fantasy",
             "difficulty": "medium",
-            "elements": ["fire", "water", "earth", "air"]
-          }
+            "elements": ["fire", "water", "earth", "air"],
+          },
         },
       );
     }

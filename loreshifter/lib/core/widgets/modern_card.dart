@@ -46,18 +46,11 @@ class _ModernCardState extends State<ModernCard>
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.98,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppTheme.fastCurve,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: AppTheme.fastCurve));
 
-    _glowAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppTheme.defaultCurve,
-    ));
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: AppTheme.defaultCurve),
+    );
   }
 
   @override
@@ -92,18 +85,21 @@ class _ModernCardState extends State<ModernCard>
         return Transform.scale(
           scale: _scaleAnimation.value,
           child: Container(
-            margin: widget.margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin:
+                widget.margin ??
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: widget.borderRadius ?? BorderRadius.circular(20),
               gradient: widget.gradient ?? AppTheme.subtleGradient,
-              color: widget.gradient == null
-                ? (widget.color ?? AppTheme.darkSurface)
-                : null,
+              color:
+                  widget.gradient == null
+                      ? (widget.color ?? AppTheme.darkSurface)
+                      : null,
               border: Border.all(
                 color: AppTheme.outline.withAlpha(
                   widget.withGlow
-                    ? (76 + (51 * _glowAnimation.value)).round()
-                    : 76
+                      ? (76 + (51 * _glowAnimation.value)).round()
+                      : 76,
                 ),
                 width: 1,
               ),

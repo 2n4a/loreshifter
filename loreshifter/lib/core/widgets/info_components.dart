@@ -33,11 +33,7 @@ class InfoTile extends StatelessWidget {
               child: Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(
-                      icon,
-                      size: 20,
-                      color: iconColor ?? AppTheme.neonBlue,
-                    ),
+                    Icon(icon, size: 20, color: iconColor ?? AppTheme.neonBlue),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
@@ -64,11 +60,7 @@ class InfoTile extends StatelessWidget {
                   ),
                   if (onTap != null) ...[
                     const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 20,
-                      color: Colors.white38,
-                    ),
+                    Icon(Icons.chevron_right, size: 20, color: Colors.white38),
                   ],
                 ],
               ),
@@ -148,9 +140,9 @@ class SectionHeader extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white60,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.white60),
                   ),
                 ],
               ],
@@ -192,10 +184,7 @@ class GradientContainer extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: gradient ?? AppTheme.subtleGradient,
         borderRadius: borderRadius ?? BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.outline.withAlpha(76),
-          width: 1,
-        ),
+        border: Border.all(color: AppTheme.outline.withAlpha(76), width: 1),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Container(
@@ -238,10 +227,7 @@ class _LoadingShimmerState extends State<LoadingShimmer>
     _animation = Tween<double>(
       begin: -2.0,
       end: 2.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -263,11 +249,7 @@ class _LoadingShimmerState extends State<LoadingShimmer>
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              stops: [
-                0.0,
-                0.5,
-                1.0,
-              ],
+              stops: [0.0, 0.5, 1.0],
               colors: [
                 AppTheme.darkAccent,
                 AppTheme.darkAccent.withAlpha(127),

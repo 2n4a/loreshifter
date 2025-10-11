@@ -90,7 +90,9 @@ class MockGameplayService implements GameplayService {
     String? special,
     Map<String, dynamic>? metadata,
   }) async {
-    print('DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)');
+    print(
+      'DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)',
+    );
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -124,7 +126,8 @@ class MockGameplayService implements GameplayService {
       final assistantMessage = Message(
         id: _messageIdCounter++,
         chatId: chatId,
-        senderId: 999, // ID для ассистента
+        senderId: 999,
+        // ID для ассистента
         text: 'Я получил ваше сообщение. Ожидаю начала игры.',
         kind: MessageKind.generalInfo,
         sentAt: DateTime.now(),
@@ -261,7 +264,8 @@ class MockGameplayService implements GameplayService {
 
     // Возвращаем объект игры
     return Game(
-      id: 2, // Новый ID игры
+      id: 2,
+      // Новый ID игры
       code: 'DEF456',
       public: true,
       name: 'Тестовая игра (перезапуск)',

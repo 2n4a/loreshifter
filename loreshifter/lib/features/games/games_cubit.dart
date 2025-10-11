@@ -34,11 +34,7 @@ class JoinGameRequested extends GamesEvent {
   final String? code;
   final bool force;
 
-  JoinGameRequested({
-    this.gameId,
-    this.code,
-    this.force = false,
-  });
+  JoinGameRequested({this.gameId, this.code, this.force = false});
 
   @override
   List<Object?> get props => [gameId, code, force];
@@ -99,8 +95,8 @@ class GamesCubit extends Cubit<GamesState> {
   final GameService _gameService;
 
   GamesCubit({required GameService gameService})
-      : _gameService = gameService,
-        super(GamesInitial());
+    : _gameService = gameService,
+      super(GamesInitial());
 
   // Загрузить список всех доступных игр
   Future<void> loadGames() async {

@@ -3,11 +3,7 @@ class User {
   final String name;
   final String? email;
 
-  User({
-    required this.id,
-    required this.name,
-    this.email,
-  });
+  User({required this.id, required this.name, this.email});
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -18,10 +14,6 @@ class User {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      if (email != null) 'email': email,
-    };
+    return {'id': id, 'name': name, if (email != null) 'email': email};
   }
 }

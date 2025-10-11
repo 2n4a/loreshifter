@@ -42,9 +42,10 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
       final world = await worldService.createWorld(
         name: _nameController.text,
         isPublic: _isPublic,
-        description: _descriptionController.text.isNotEmpty
-          ? _descriptionController.text
-          : null,
+        description:
+            _descriptionController.text.isNotEmpty
+                ? _descriptionController.text
+                : null,
       );
 
       if (!mounted) return;
@@ -67,9 +68,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Создать мир'),
-      ),
+      appBar: AppBar(title: const Text('Создать мир')),
       body: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is! Authenticated) {
@@ -158,9 +157,10 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator()
-                          : const Text('Создать мир'),
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator()
+                              : const Text('Создать мир'),
                     ),
                   ),
 

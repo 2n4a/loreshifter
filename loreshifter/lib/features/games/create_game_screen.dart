@@ -63,9 +63,10 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 
       final game = await gamesCubit.createGame(
         worldId: _selectedWorld!.id,
-        name: _nameController.text.isNotEmpty
-          ? _nameController.text
-          : 'Игра в мире ${_selectedWorld!.name}',
+        name:
+            _nameController.text.isNotEmpty
+                ? _nameController.text
+                : 'Игра в мире ${_selectedWorld!.name}',
         isPublic: _isPublic,
         maxPlayers: _maxPlayers,
       );
@@ -74,9 +75,9 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 
       context.go('/games/${game.id}');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при создании игры: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка при создании игры: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -95,9 +96,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Создать игру'),
-      ),
+      appBar: AppBar(title: const Text('Создать игру')),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -127,10 +126,15 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                       border: OutlineInputBorder(),
                     ),
                     initialValue: _selectedWorld,
-                    items: worlds.map((world) => DropdownMenuItem<World>(
-                      value: world,
-                      child: Text(world.name),
-                    )).toList(),
+                    items:
+                        worlds
+                            .map(
+                              (world) => DropdownMenuItem<World>(
+                                value: world,
+                                child: Text(world.name),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) {
                       setState(() {
                         _selectedWorld = value;
@@ -181,12 +185,15 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                   const SizedBox(width: 16),
                   DropdownButton<int>(
                     value: _maxPlayers,
-                    items: [1, 2, 3, 4, 5, 6, 8, 10]
-                        .map((value) => DropdownMenuItem<int>(
-                          value: value,
-                          child: Text(value.toString()),
-                        ))
-                        .toList(),
+                    items:
+                        [1, 2, 3, 4, 5, 6, 8, 10]
+                            .map(
+                              (value) => DropdownMenuItem<int>(
+                                value: value,
+                                child: Text(value.toString()),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -208,9 +215,10 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('Создать игру'),
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('Создать игру'),
                 ),
               ),
             ],

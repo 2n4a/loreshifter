@@ -29,21 +29,14 @@ class MockAuthService extends BaseService implements AuthService {
 
     if (id == 1) return _mockUser;
 
-    return User(
-      id: id,
-      name: "Пользователь $id",
-    );
+    return User(id: id, name: "Пользователь $id");
   }
 
   // Обновить данные текущего пользователя
   @override
   Future<User> updateUser(String name) async {
     await Future.delayed(const Duration(milliseconds: 1000));
-    return User(
-      id: _mockUser.id,
-      name: name,
-      email: _mockUser.email,
-    );
+    return User(id: _mockUser.id, name: name, email: _mockUser.email);
   }
 
   // Проверка авторизации

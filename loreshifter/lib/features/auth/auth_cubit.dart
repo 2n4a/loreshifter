@@ -50,8 +50,8 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthService _authService;
 
   AuthCubit({required AuthService authService})
-      : _authService = authService,
-        super(AuthInitial());
+    : _authService = authService,
+      super(AuthInitial());
 
   // Проверить аутентификацию
   Future<void> checkAuth() async {

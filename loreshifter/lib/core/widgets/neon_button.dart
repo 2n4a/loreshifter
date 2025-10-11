@@ -26,6 +26,7 @@ class NeonButton extends StatefulWidget {
 }
 
 enum ButtonSize { small, medium, large }
+
 enum NeonButtonStyle { filled, outlined, text, gradient }
 
 class _NeonButtonState extends State<NeonButton>
@@ -42,21 +43,13 @@ class _NeonButtonState extends State<NeonButton>
       vsync: this,
     );
 
-    _glowAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppTheme.defaultCurve,
-    ));
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: AppTheme.defaultCurve),
+    );
 
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppTheme.bounceCurve,
-    ));
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _controller, curve: AppTheme.bounceCurve),
+    );
   }
 
   @override
@@ -115,7 +108,10 @@ class _NeonButtonState extends State<NeonButton>
         width: _iconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: widget.style == NeonButtonStyle.filled ? Colors.white : _buttonColor,
+          color:
+              widget.style == NeonButtonStyle.filled
+                  ? Colors.white
+                  : _buttonColor,
         ),
       );
     }
@@ -123,32 +119,39 @@ class _NeonButtonState extends State<NeonButton>
     final List<Widget> children = [];
 
     if (widget.icon != null) {
-      children.add(Icon(
-        widget.icon,
-        size: _iconSize,
-        color: widget.style == NeonButtonStyle.filled ? Colors.white : _buttonColor,
-      ));
+      children.add(
+        Icon(
+          widget.icon,
+          size: _iconSize,
+          color:
+              widget.style == NeonButtonStyle.filled
+                  ? Colors.white
+                  : _buttonColor,
+        ),
+      );
       if (widget.text.isNotEmpty) {
         children.add(const SizedBox(width: 8));
       }
     }
 
     if (widget.text.isNotEmpty) {
-      children.add(Text(
-        widget.text,
-        style: TextStyle(
-          fontSize: _fontSize,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 0.1,
-          color: widget.style == NeonButtonStyle.filled ? Colors.white : _buttonColor,
+      children.add(
+        Text(
+          widget.text,
+          style: TextStyle(
+            fontSize: _fontSize,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
+            color:
+                widget.style == NeonButtonStyle.filled
+                    ? Colors.white
+                    : _buttonColor,
+          ),
         ),
-      ));
+      );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
 
   @override
@@ -161,9 +164,14 @@ class _NeonButtonState extends State<NeonButton>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              boxShadow: widget.style == NeonButtonStyle.filled || widget.style == NeonButtonStyle.gradient
-                ? AppTheme.neonShadow(_buttonColor, intensity: 0.3 * _glowAnimation.value)
-                : null,
+              boxShadow:
+                  widget.style == NeonButtonStyle.filled ||
+                          widget.style == NeonButtonStyle.gradient
+                      ? AppTheme.neonShadow(
+                        _buttonColor,
+                        intensity: 0.3 * _glowAnimation.value,
+                      )
+                      : null,
             ),
             child: _buildButton(),
           ),

@@ -19,11 +19,7 @@ class LoadChatRequested extends GameplayEvent {
   final int? before;
   final int? after;
 
-  LoadChatRequested({
-    required this.chatId,
-    this.before,
-    this.after,
-  });
+  LoadChatRequested({required this.chatId, this.before, this.after});
 
   @override
   List<Object?> get props => [chatId, before, after];
@@ -144,8 +140,8 @@ class GameplayCubit extends Cubit<GameplayState> {
   final GameplayService _gameplayService;
 
   GameplayCubit({required GameplayService gameplayService})
-      : _gameplayService = gameplayService,
-        super(GameplayInitial());
+    : _gameplayService = gameplayService,
+      super(GameplayInitial());
 
   // Загрузить текущее состояние игры
   Future<void> loadGameState() async {
@@ -159,11 +155,7 @@ class GameplayCubit extends Cubit<GameplayState> {
   }
 
   // Загрузить сегмент чата
-  Future<void> loadChat({
-    required int chatId,
-    int? before,
-    int? after,
-  }) async {
+  Future<void> loadChat({required int chatId, int? before, int? after}) async {
     emit(GameplayLoading());
     try {
       final chatSegment = await _gameplayService.getChatSegment(

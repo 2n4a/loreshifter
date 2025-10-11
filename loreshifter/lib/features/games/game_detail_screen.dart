@@ -8,11 +8,11 @@ class GameDetailScreen extends StatefulWidget {
   final int? gameId;
   final String? code;
 
-  const GameDetailScreen({
-    super.key,
-    this.gameId,
-    this.code,
-  }) : assert(gameId != null || code != null, 'Необходимо указать gameId или code');
+  const GameDetailScreen({super.key, this.gameId, this.code})
+    : assert(
+        gameId != null || code != null,
+        'Необходимо указать gameId или code',
+      );
 
   @override
   State<GameDetailScreen> createState() => _GameDetailScreenState();
@@ -70,9 +70,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Детали игры'),
-      ),
+      appBar: AppBar(title: const Text('Детали игры')),
       body: BlocBuilder<GamesCubit, GamesState>(
         builder: (context, state) {
           if (state is GamesLoading) {
@@ -91,7 +89,9 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                 children: [
                   Text(
                     'Ошибка: ${state.message}',
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -104,9 +104,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
             );
           }
 
-          return const Center(
-            child: Text('Загрузите информацию о игре'),
-          );
+          return const Center(child: Text('Загрузите информацию о игре'));
         },
       ),
     );
@@ -142,7 +140,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                   _buildInfoRow('Публичная', game.public ? 'Да' : 'Нет'),
                   _buildInfoRow('Код доступа', game.code),
                   _buildInfoRow('Создана', _formatDate(game.createdAt)),
-                  _buildInfoRow('Игроков', '${game.players.length}/${game.maxPlayers}'),
+                  _buildInfoRow(
+                    'Игроков',
+                    '${game.players.length}/${game.maxPlayers}',
+                  ),
                 ],
               ),
             ),
@@ -177,7 +178,8 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                       final player = game.players[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
                           child: Text(
                             player.user.name.substring(0, 1).toUpperCase(),
                           ),
@@ -189,11 +191,12 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                             if (player.isHost)
                               Chip(
                                 label: const Text('Хост'),
-                                backgroundColor: Colors.amber.withValues(alpha: 0.2),
+                                backgroundColor: Colors.amber.withValues(
+                                  alpha: 0.2,
+                                ),
                                 side: BorderSide(color: Colors.amber.shade700),
                               ),
-                            if (player.isReady)
-                              const SizedBox(width: 8),
+                            if (player.isReady) const SizedBox(width: 8),
                             if (player.isReady)
                               const Chip(
                                 label: Text('Готов'),
@@ -244,9 +247,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: _isJoining
-                  ? const CircularProgressIndicator()
-                  : const Text('Присоединиться к игре'),
+              child:
+                  _isJoining
+                      ? const CircularProgressIndicator()
+                      : const Text('Присоединиться к игре'),
             ),
           ),
         ],
@@ -266,10 +270,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: Text(value),
-          ),
+          Expanded(flex: 3, child: Text(value)),
         ],
       ),
     );
@@ -305,10 +306,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),
-      child: Text(
-        text,
-        style: TextStyle(color: color),
-      ),
+      child: Text(text, style: TextStyle(color: color)),
     );
   }
 

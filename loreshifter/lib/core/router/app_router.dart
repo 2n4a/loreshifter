@@ -22,14 +22,8 @@ class AppRouter {
   late final router = GoRouter(
     refreshListenable: GoRouterRefreshStream(authCubit.stream),
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/profile/:userId',
         builder: (context, state) {
@@ -82,10 +76,7 @@ class AppRouter {
           return GameDetailScreen(code: code);
         },
       ),
-      GoRoute(
-        path: '/game',
-        builder: (context, state) => const GameScreen(),
-      ),
+      GoRoute(path: '/game', builder: (context, state) => const GameScreen()),
     ],
     redirect: (context, state) async {
       // Проверка авторизации для защищенных путей

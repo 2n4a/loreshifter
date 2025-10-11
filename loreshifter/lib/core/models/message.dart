@@ -4,7 +4,7 @@ enum MessageKind {
   characterCreation,
   generalInfo,
   publicInfo,
-  privateInfo
+  privateInfo,
 }
 
 class Sender {
@@ -12,11 +12,7 @@ class Sender {
   final String name;
   final String type; // 'user', 'system', 'assistant'
 
-  Sender({
-    this.id,
-    required this.name,
-    required this.type,
-  });
+  Sender({this.id, required this.name, required this.type});
 }
 
 class Message {
@@ -43,11 +39,7 @@ class Message {
     // Создаём объект Sender на основе доступных данных
     final senderName = metadata?['senderName'] as String? ?? 'Пользователь';
     final senderType = _getSenderType(kind);
-    sender = Sender(
-      id: senderId,
-      name: senderName,
-      type: senderType,
-    );
+    sender = Sender(id: senderId, name: senderName, type: senderType);
   }
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -115,11 +107,7 @@ class MessageOut {
   final String? special;
   final Map<String, dynamic>? metadata;
 
-  MessageOut({
-    required this.text,
-    this.special,
-    this.metadata,
-  });
+  MessageOut({required this.text, this.special, this.metadata});
 
   Map<String, dynamic> toJson() {
     return {

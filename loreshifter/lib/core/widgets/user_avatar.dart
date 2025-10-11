@@ -38,13 +38,9 @@ class _UserAvatarState extends State<UserAvatar>
       vsync: this,
     );
 
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppTheme.bounceCurve,
-    ));
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _controller, curve: AppTheme.bounceCurve),
+    );
   }
 
   @override
@@ -83,32 +79,32 @@ class _UserAvatarState extends State<UserAvatar>
               height: widget.size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: widget.withBorder
-                    ? Border.all(
-                        color: _glowColor,
-                        width: 2,
-                      )
-                    : null,
-                boxShadow: widget.withGlow
-                    ? AppTheme.neonShadow(_glowColor, intensity: 0.5)
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(76),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                border:
+                    widget.withBorder
+                        ? Border.all(color: _glowColor, width: 2)
+                        : null,
+                boxShadow:
+                    widget.withGlow
+                        ? AppTheme.neonShadow(_glowColor, intensity: 0.5)
+                        : [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(76),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
               ),
               child: ClipOval(
-                child: widget.imageUrl != null
-                    ? Image.network(
-                        widget.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildFallbackAvatar();
-                        },
-                      )
-                    : _buildFallbackAvatar(),
+                child:
+                    widget.imageUrl != null
+                        ? Image.network(
+                          widget.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildFallbackAvatar();
+                          },
+                        )
+                        : _buildFallbackAvatar(),
               ),
             ),
           );
@@ -121,10 +117,7 @@ class _UserAvatarState extends State<UserAvatar>
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            _glowColor.withAlpha(127),
-            _glowColor.withAlpha(76),
-          ],
+          colors: [_glowColor.withAlpha(127), _glowColor.withAlpha(76)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -178,17 +171,16 @@ class StatusBadge extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.neonGreen,
                 shape: BoxShape.circle,
-                boxShadow: AppTheme.neonShadow(AppTheme.neonGreen, intensity: 0.5),
+                boxShadow: AppTheme.neonShadow(
+                  AppTheme.neonGreen,
+                  intensity: 0.5,
+                ),
               ),
             ),
             const SizedBox(width: 6),
           ],
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: 14,
-              color: color,
-            ),
+            Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
           ],
           Text(

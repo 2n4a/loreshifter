@@ -74,12 +74,12 @@ class AppTheme {
 
   // Мягкие тени для карточек
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: Colors.black.withAlpha(64),
-          blurRadius: 14.0,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withAlpha(64),
+      blurRadius: 14.0,
+      offset: const Offset(0, 6),
+    ),
+  ];
 
   // Стиль неон-текста — точечно
   static TextStyle neonTextStyle({
@@ -186,7 +186,8 @@ class AppTheme {
           if (states.contains(WidgetState.pressed)) {
             return neonBlue.withAlpha(40);
           }
-          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.focused)) {
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
             return Colors.white.withAlpha(20);
           }
           return null;
@@ -212,9 +213,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
-      ).copyWith(
-        overlayColor: WidgetStateProperty.all(neonPink.withAlpha(26)),
-      ),
+      ).copyWith(overlayColor: WidgetStateProperty.all(neonPink.withAlpha(26))),
     ),
 
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -238,7 +237,8 @@ class AppTheme {
           if (states.contains(WidgetState.disabled)) {
             return BorderSide(color: Colors.white24, width: 1.25);
           }
-          if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
+          if (states.contains(WidgetState.pressed) ||
+              states.contains(WidgetState.focused)) {
             return BorderSide(color: neonBlue, width: 1.5);
           }
           return BorderSide(color: outline, width: 1.25);
@@ -297,7 +297,10 @@ class AppTheme {
       backgroundColor: darkSurface,
       elevation: 16,
       shadowColor: Colors.black54,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0), side: BorderSide(color: outlineVariant)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20.0),
+        side: BorderSide(color: outlineVariant),
+      ),
       titleTextStyle: const TextStyle(
         color: Colors.white,
         fontSize: 22,
@@ -314,7 +317,10 @@ class AppTheme {
       contentTextStyle: const TextStyle(color: Colors.white),
       actionTextColor: neonBlue,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0), side: BorderSide(color: outlineVariant)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+        side: BorderSide(color: outlineVariant),
+      ),
       elevation: 6,
     ),
 
@@ -327,10 +333,7 @@ class AppTheme {
     ),
 
     dividerColor: outline.withAlpha(80),
-    dividerTheme: DividerThemeData(
-      color: outline.withAlpha(80),
-      space: 1,
-    ),
+    dividerTheme: DividerThemeData(color: outline.withAlpha(80), space: 1),
 
     chipTheme: ChipThemeData(
       backgroundColor: surfaceContainer,
@@ -338,8 +341,16 @@ class AppTheme {
       selectedColor: neonBlue.withAlpha(50),
       secondarySelectedColor: neonBlue.withAlpha(80),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      labelStyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-      secondaryLabelStyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+      labelStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      secondaryLabelStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       brightness: Brightness.dark,
       side: BorderSide(color: outline.withAlpha(90)),
     ),
@@ -406,9 +417,10 @@ class AppTheme {
     TextAlign? textAlign,
   }) {
     return ShaderMask(
-      shaderCallback: (bounds) => gradient.createShader(
-        Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-      ),
+      shaderCallback:
+          (bounds) => gradient.createShader(
+            Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+          ),
       child: Text(
         text,
         style: TextStyle(

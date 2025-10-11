@@ -18,65 +18,57 @@ class MockGameService extends BaseService implements GameService {
       public: true,
       createdAt: DateTime.now().subtract(Duration(days: 10 + index)),
       lastUpdatedAt: DateTime.now().subtract(Duration(days: index)),
-      owner: User(
-        id: index % 3 + 1,
-        name: "Автор мира ${index % 3 + 1}",
-      ),
+      owner: User(id: index % 3 + 1, name: "Автор мира ${index % 3 + 1}"),
       description: "Описание мира для игры ${index + 1}",
     ),
   );
 
   // Список фиктивных игр
-  final List<Game> _mockGames = List.generate(
-    8,
-    (index) {
-      final worldIndex = index % 5;
-      final isFinished = index >= 6;
-      final isPlaying = index >= 3 && index < 6;
-      final isWaiting = index < 3;
+  final List<Game> _mockGames = List.generate(8, (index) {
+    final worldIndex = index % 5;
+    final isFinished = index >= 6;
+    final isPlaying = index >= 3 && index < 6;
+    final isWaiting = index < 3;
 
-      final players = List.generate(
-        1 + (index % 4),
-        (playerIndex) => Player(
-          user: User(
-            id: playerIndex + 1,
-            name: "Игрок ${playerIndex + 1}",
-          ),
-          isReady: isPlaying || isFinished,
-          isHost: playerIndex == 0,
-          isSpectator: playerIndex == (index % 4),
-        ),
-      );
+    final players = List.generate(
+      1 + (index % 4),
+      (playerIndex) => Player(
+        user: User(id: playerIndex + 1, name: "Игрок ${playerIndex + 1}"),
+        isReady: isPlaying || isFinished,
+        isHost: playerIndex == 0,
+        isSpectator: playerIndex == (index % 4),
+      ),
+    );
 
-      return Game(
-        id: index + 1,
-        code: "GAME${(index + 1).toString().padLeft(3, '0')}",
-        public: index % 2 == 0,
-        name: "Тестовая игра ${index + 1}",
-        world: World(
-          id: worldIndex + 1,
-          name: "Мир игры ${worldIndex + 1}",
-          public: true,
-          createdAt: DateTime.now().subtract(Duration(days: 10 + worldIndex)),
-          lastUpdatedAt: DateTime.now().subtract(Duration(days: worldIndex)),
-          owner: User(
-            id: worldIndex % 3 + 1,
-            name: "Автор мира ${worldIndex % 3 + 1}",
-          ),
-          description: "Описание мира для игры ${worldIndex + 1}",
+    return Game(
+      id: index + 1,
+      code: "GAME${(index + 1).toString().padLeft(3, '0')}",
+      public: index % 2 == 0,
+      name: "Тестовая игра ${index + 1}",
+      world: World(
+        id: worldIndex + 1,
+        name: "Мир игры ${worldIndex + 1}",
+        public: true,
+        createdAt: DateTime.now().subtract(Duration(days: 10 + worldIndex)),
+        lastUpdatedAt: DateTime.now().subtract(Duration(days: worldIndex)),
+        owner: User(
+          id: worldIndex % 3 + 1,
+          name: "Автор мира ${worldIndex % 3 + 1}",
         ),
-        hostId: 1,
-        players: players,
-        createdAt: DateTime.now().subtract(Duration(days: index)),
-        maxPlayers: 4 + (index % 3),
-        status: isFinished
-          ? GameStatus.finished
-          : isPlaying
-            ? GameStatus.playing
-            : GameStatus.waiting,
-      );
-    },
-  );
+        description: "Описание мира для игры ${worldIndex + 1}",
+      ),
+      hostId: 1,
+      players: players,
+      createdAt: DateTime.now().subtract(Duration(days: index)),
+      maxPlayers: 4 + (index % 3),
+      status:
+          isFinished
+              ? GameStatus.finished
+              : isPlaying
+              ? GameStatus.playing
+              : GameStatus.waiting,
+    );
+  });
 
   // Текущая игра пользователя (null, если пользователь не в игре)
   Game? _currentGame;
@@ -97,32 +89,39 @@ class MockGameService extends BaseService implements GameService {
     if (filter != null) {
       if (filter.contains('status=')) {
         final status = filter.split('status=')[1].split(',')[0];
-        filteredGames = filteredGames.where((game) =>
-          game.status.toString().split('.').last == status).toList();
+        filteredGames =
+            filteredGames
+                .where(
+                  (game) => game.status.toString().split('.').last == status,
+                )
+                .toList();
       }
 
       if (filter.contains('world=')) {
         final worldId = int.tryParse(filter.split('world=')[1].split(',')[0]);
         if (worldId != null) {
-          filteredGames = filteredGames.where((game) =>
-            game.world.id == worldId).toList();
+          filteredGames =
+              filteredGames.where((game) => game.world.id == worldId).toList();
         }
       }
 
       if (filter.contains('host=')) {
         final hostId = int.tryParse(filter.split('host=')[1].split(',')[0]);
         if (hostId != null) {
-          filteredGames = filteredGames.where((game) =>
-            game.hostId == hostId).toList();
+          filteredGames =
+              filteredGames.where((game) => game.hostId == hostId).toList();
         }
       }
     }
 
     // Сортировка
     if (sort == 'createdAt') {
-      filteredGames.sort((a, b) => order == 'asc'
-          ? a.createdAt.compareTo(b.createdAt)
-          : b.createdAt.compareTo(a.createdAt));
+      filteredGames.sort(
+        (a, b) =>
+            order == 'asc'
+                ? a.createdAt.compareTo(b.createdAt)
+                : b.createdAt.compareTo(a.createdAt),
+      );
     }
 
     // Пагинация
@@ -182,17 +181,18 @@ class MockGameService extends BaseService implements GameService {
 
     // Находим мир по ID
     final worldIndex = _mockWorlds.indexWhere((world) => world.id == worldId);
-    final world = worldIndex != -1
-        ? _mockWorlds[worldIndex]
-        : World(
-            id: worldId,
-            name: "Мир игры $worldId",
-            public: true,
-            createdAt: DateTime.now().subtract(const Duration(days: 10)),
-            lastUpdatedAt: DateTime.now(),
-            owner: User(id: 1, name: "Автор мира"),
-            description: "Описание мира для игры",
-          );
+    final world =
+        worldIndex != -1
+            ? _mockWorlds[worldIndex]
+            : World(
+              id: worldId,
+              name: "Мир игры $worldId",
+              public: true,
+              createdAt: DateTime.now().subtract(const Duration(days: 10)),
+              lastUpdatedAt: DateTime.now(),
+              owner: User(id: 1, name: "Автор мира"),
+              description: "Описание мира для игры",
+            );
 
     // Генерируем случайный код для игры
     final gameId = _mockGames.length + 1;
@@ -205,7 +205,8 @@ class MockGameService extends BaseService implements GameService {
       public: isPublic,
       name: name ?? "Игра в мире ${world.name}",
       world: world,
-      hostId: 1, // Текущий пользователь всегда хост
+      hostId: 1,
+      // Текущий пользователь всегда хост
       players: [
         Player(
           user: User(id: 1, name: "Тестовый пользователь"),
@@ -247,12 +248,16 @@ class MockGameService extends BaseService implements GameService {
 
     // Проверяем, что игра еще в статусе ожидания
     if (oldGame.status != GameStatus.waiting) {
-      throw Exception('Нельзя изменить игру, которая уже началась или завершилась');
+      throw Exception(
+        'Нельзя изменить игру, которая уже началась или завершилась',
+      );
     }
 
     // Проверяем, что новый хост существует среди игроков
     if (hostId != null) {
-      final hostExists = oldGame.players.any((player) => player.user.id == hostId);
+      final hostExists = oldGame.players.any(
+        (player) => player.user.id == hostId,
+      );
       if (!hostExists) {
         throw Exception('Игрок с ID $hostId не найден среди участников игры');
       }
@@ -260,19 +265,28 @@ class MockGameService extends BaseService implements GameService {
 
     // Проверяем, что maxPlayers не меньше текущего числа игроков
     if (maxPlayers != null && maxPlayers < oldGame.players.length) {
-      throw Exception('Максимальное количество игроков не может быть меньше текущего');
+      throw Exception(
+        'Максимальное количество игроков не может быть меньше текущего',
+      );
     }
 
     // Обновляем игру
     final updatedPlayers = List<Player>.from(oldGame.players);
     if (hostId != null) {
-      updatedPlayers.replaceRange(0, updatedPlayers.length,
-        updatedPlayers.map((player) => Player(
-          user: player.user,
-          isReady: player.isReady,
-          isHost: player.user.id == hostId,
-          isSpectator: player.isSpectator,
-        )).toList());
+      updatedPlayers.replaceRange(
+        0,
+        updatedPlayers.length,
+        updatedPlayers
+            .map(
+              (player) => Player(
+                user: player.user,
+                isReady: player.isReady,
+                isHost: player.user.id == hostId,
+                isSpectator: player.isSpectator,
+              ),
+            )
+            .toList(),
+      );
     }
 
     final updatedGame = Game(
@@ -305,7 +319,9 @@ class MockGameService extends BaseService implements GameService {
 
     // Проверяем, находится ли пользователь уже в игре
     if (_currentGame != null && _currentGame!.id != id && !force) {
-      throw Exception('Вы уже находитесь в игре. Выйдите или используйте force=true.');
+      throw Exception(
+        'Вы уже находитесь в игре. Выйдите или используйте force=true.',
+      );
     }
 
     // Находим игру
@@ -333,12 +349,14 @@ class MockGameService extends BaseService implements GameService {
       updatedPlayers = game.players;
     } else {
       updatedPlayers = List<Player>.from(game.players);
-      updatedPlayers.add(Player(
-        user: User(id: 1, name: "Тестовый пользователь"),
-        isReady: false,
-        isHost: false,
-        isSpectator: false,
-      ));
+      updatedPlayers.add(
+        Player(
+          user: User(id: 1, name: "Тестовый пользователь"),
+          isReady: false,
+          isHost: false,
+          isSpectator: false,
+        ),
+      );
     }
 
     // Создаем обновленную игру
@@ -370,7 +388,8 @@ class MockGameService extends BaseService implements GameService {
 
     // Находим игру
     final gameIndex = _mockGames.indexWhere(
-      (game) => game.code.toLowerCase() == code.toLowerCase());
+      (game) => game.code.toLowerCase() == code.toLowerCase(),
+    );
 
     if (gameIndex == -1) {
       throw Exception('Игра с кодом $code не найдена');
@@ -390,27 +409,35 @@ class MockGameService extends BaseService implements GameService {
       throw Exception('Вы не находитесь в игре');
     }
 
-    final gameIndex = _mockGames.indexWhere((game) => game.id == _currentGame!.id);
+    final gameIndex = _mockGames.indexWhere(
+      (game) => game.id == _currentGame!.id,
+    );
     if (gameIndex != -1) {
       final game = _mockGames[gameIndex];
 
       // Удаляем пользователя из списка игроков
-      final updatedPlayers = game.players
-        .where((player) => player.user.id != 1)
-        .toList();
+      final updatedPlayers =
+          game.players.where((player) => player.user.id != 1).toList();
 
       // Если игрок был хостом, передаем права хоста следующему игроку
       int newHostId = game.hostId;
       if (game.hostId == 1 && updatedPlayers.isNotEmpty) {
         newHostId = updatedPlayers[0].user.id;
 
-        updatedPlayers.replaceRange(0, updatedPlayers.length,
-          updatedPlayers.map((player) => Player(
-            user: player.user,
-            isReady: player.isReady,
-            isHost: player.user.id == newHostId,
-            isSpectator: player.isSpectator,
-          )).toList());
+        updatedPlayers.replaceRange(
+          0,
+          updatedPlayers.length,
+          updatedPlayers
+              .map(
+                (player) => Player(
+                  user: player.user,
+                  isReady: player.isReady,
+                  isHost: player.user.id == newHostId,
+                  isSpectator: player.isSpectator,
+                ),
+              )
+              .toList(),
+        );
       }
 
       // Обновляем игру

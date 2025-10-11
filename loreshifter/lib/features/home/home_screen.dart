@@ -36,9 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
     context.read<WorldsCubit>().loadPopularWorlds();
 
     // Если пользователь авторизован, загружаем его миры
-    final authState = context
-        .read<AuthCubit>()
-        .state;
+    final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
     }
@@ -62,9 +60,7 @@ class _HomeScreenState extends State<HomeScreen>
           fontSize: 22.0,
         ),
         elevation: 0,
-        actions: [
-          _buildProfileButton(),
-        ],
+        actions: [_buildProfileButton()],
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -98,11 +94,7 @@ class _HomeScreenState extends State<HomeScreen>
           backgroundColor: AppTheme.darkSurface,
           onPressed: () => context.push('/worlds/create'),
           tooltip: 'Создать мир',
-          child: Icon(
-            Icons.add,
-            color: AppTheme.neonPink,
-            size: 30,
-          ),
+          child: Icon(Icons.add, color: AppTheme.neonPink, size: 30),
         ),
       ),
     );
@@ -119,10 +111,7 @@ class _HomeScreenState extends State<HomeScreen>
               boxShadow: AppTheme.neonShadow(AppTheme.neonBlue),
             ),
             child: IconButton(
-              icon: Icon(
-                Icons.account_circle,
-                color: AppTheme.neonBlue,
-              ),
+              icon: Icon(Icons.account_circle, color: AppTheme.neonBlue),
               onPressed: () => context.push('/profile'),
             ),
           );
@@ -533,13 +522,14 @@ class _HomeScreenState extends State<HomeScreen>
                 gradient: LinearGradient(
                   colors: [
                     AppTheme.darkAccent,
-                    Color.lerp(AppTheme.darkAccent, borderColor, 0.3)!
+                    Color.lerp(AppTheme.darkAccent, borderColor, 0.3)!,
                   ],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
                 borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(15)),
+                  top: Radius.circular(15),
+                ),
               ),
               child: Text(
                 world.name.toUpperCase(),
@@ -561,13 +551,11 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ТИП: ${world.type
-                          .toString()
-                          .split('.')
-                          .last
-                          .toUpperCase()}',
+                      'ТИП: ${world.type.toString().split('.').last.toUpperCase()}',
                       style: const TextStyle(
-                          color: Colors.white70, fontSize: 12),
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -589,11 +577,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         if (isMyWorld)
-                          Icon(
-                            Icons.edit,
-                            color: borderColor,
-                            size: 20,
-                          ),
+                          Icon(Icons.edit, color: borderColor, size: 20),
                       ],
                     ),
                   ],
@@ -607,13 +591,14 @@ class _HomeScreenState extends State<HomeScreen>
                 gradient: LinearGradient(
                   colors: [
                     borderColor.withAlpha(100),
-                    borderColor.withAlpha(50)
+                    borderColor.withAlpha(50),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(15)),
+                  bottom: Radius.circular(15),
+                ),
               ),
               child: MaterialButton(
                 onPressed: () {
@@ -626,7 +611,9 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Text(
                   isMyWorld ? 'СОЗДАТЬ ИГРУ' : 'ПОДРОБНЕЕ',
                   style: TextStyle(
-                      color: borderColor, fontWeight: FontWeight.bold),
+                    color: borderColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

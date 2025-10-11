@@ -73,8 +73,8 @@ class WorldsCubit extends Cubit<WorldsState> {
   final WorldService _worldService;
 
   WorldsCubit({required WorldService worldService})
-      : _worldService = worldService,
-        super(WorldsInitial());
+    : _worldService = worldService,
+      super(WorldsInitial());
 
   // Загрузить список всех доступных миров
   Future<void> loadWorlds() async {
@@ -91,9 +91,7 @@ class WorldsCubit extends Cubit<WorldsState> {
   Future<void> loadUserWorlds(int userId) async {
     emit(WorldsLoading());
     try {
-      final worlds = await _worldService.getWorlds(
-        filter: 'owner=$userId',
-      );
+      final worlds = await _worldService.getWorlds(filter: 'owner=$userId');
       emit(UserWorldsLoaded(worlds));
     } catch (e) {
       emit(WorldsFailure(e.toString()));

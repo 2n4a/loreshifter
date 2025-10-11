@@ -91,11 +91,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<AuthCubit>().updateUserName(_nameController.text);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Профиль успешно обновлен'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Профиль успешно обновлен')));
     } catch (e) {
       setState(() {
         _error = 'Не удалось обновить профиль: ${e.toString()}';
@@ -128,25 +126,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _user == null
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null && _user == null
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadUserData,
-                        child: const Text('Повторить'),
-                      ),
-                    ],
-                  ),
-                )
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadUserData,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              )
               : _buildProfileContent(isCurrentUser),
     );
   }
@@ -216,9 +217,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Сохранить изменения'),
+                child:
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Сохранить изменения'),
               ),
             ),
         ],

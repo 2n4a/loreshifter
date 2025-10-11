@@ -71,10 +71,7 @@ class LoginScreen extends StatelessWidget {
                     child: Text(
                       'Платформа для создания и исследования виртуальных миров с помощью генеративной LLM',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
 
@@ -94,7 +91,8 @@ class LoginScreen extends StatelessWidget {
                           text: 'ВОЙТИ ЧЕРЕЗ GOOGLE',
                           onPressed: () {
                             // В MVP открываем URL для авторизации
-                            final loginUrl = context.read<AuthCubit>().getLoginUrl();
+                            final loginUrl =
+                                context.read<AuthCubit>().getLoginUrl();
                             // В реальном приложении надо бы настроить OAuth2
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

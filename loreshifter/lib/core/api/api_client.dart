@@ -6,11 +6,13 @@ class ApiClient {
   final String baseUrl;
 
   ApiClient({required this.baseUrl})
-      : _dio = Dio(BaseOptions(
+    : _dio = Dio(
+        BaseOptions(
           baseUrl: baseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
-        ));
+        ),
+      );
 
   Future<T> get<T>(
     String path, {
@@ -32,7 +34,11 @@ class ApiClient {
     required T Function(dynamic data) fromJson,
   }) async {
     try {
-      final response = await _dio.post(path, data: data, queryParameters: queryParameters);
+      final response = await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+      );
       return fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -46,7 +52,11 @@ class ApiClient {
     required T Function(dynamic data) fromJson,
   }) async {
     try {
-      final response = await _dio.put(path, data: data, queryParameters: queryParameters);
+      final response = await _dio.put(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+      );
       return fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -59,7 +69,10 @@ class ApiClient {
     required T Function(dynamic data) fromJson,
   }) async {
     try {
-      final response = await _dio.delete(path, queryParameters: queryParameters);
+      final response = await _dio.delete(
+        path,
+        queryParameters: queryParameters,
+      );
       return fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -68,7 +81,8 @@ class ApiClient {
 
   Exception _handleError(DioException e) {
     if (e.response != null) {
-      if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+      if (e.response?.data != null &&
+          e.response?.data is Map<String, dynamic>) {
         try {
           final error = ApiError.fromJson(e.response?.data);
           return Exception('${error.code}: ${error.message}');
