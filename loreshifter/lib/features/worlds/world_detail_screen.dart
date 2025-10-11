@@ -447,6 +447,14 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             style: NeonButtonStyle.gradient,
           ),
           const SizedBox(height: 12),
+          NeonButton(
+            text: 'История мира',
+            icon: Icons.history,
+            onPressed: () => context.push('/worlds/${widget.worldId}/history'),
+            style: NeonButtonStyle.outlined,
+            color: AppTheme.neonGreen,
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(

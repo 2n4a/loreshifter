@@ -3,18 +3,6 @@ import 'package:equatable/equatable.dart';
 import 'package:loreshifter/core/models/user.dart';
 import 'package:loreshifter/core/services/interfaces/auth_service_interface.dart';
 
-// События аутентификации
-abstract class AuthEvent extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
-
-class AuthCheckRequested extends AuthEvent {}
-
-class AuthLoginRequested extends AuthEvent {}
-
-class AuthLogoutRequested extends AuthEvent {}
-
 // Состояния аутентификации
 abstract class AuthState extends Equatable {
   @override

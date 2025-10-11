@@ -3,25 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:loreshifter/core/models/world.dart';
 import 'package:loreshifter/core/services/world_service.dart';
 
-// События для работы с мирами
-abstract class WorldsEvent extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
-
-class LoadWorldsRequested extends WorldsEvent {}
-
-class LoadUserWorldsRequested extends WorldsEvent {
-  final int userId;
-
-  LoadUserWorldsRequested(this.userId);
-
-  @override
-  List<Object?> get props => [userId];
-}
-
-class LoadPopularWorldsRequested extends WorldsEvent {}
-
 // Состояния для работы с мирами
 abstract class WorldsState extends Equatable {
   @override
