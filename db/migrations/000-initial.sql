@@ -4,21 +4,20 @@ CREATE TABLE IF NOT EXISTS meta (
 
 INSERT INTO meta (version) VALUES (0);
 
+CREATE TABLE data_protection_keys (
+  id SERIAL PRIMARY KEY,
+  friendly_name TEXT,
+  xml TEXT NOT NULL,
+  creation_time TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT UNIQUE,
-    auth_id INTEGER REFERENCES auths(id) UNIQUE ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE auths (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider TEXT NOT NULL,
-    token TEXT NOT NULL,
-    refresh_token TEXT,
-    expires_at TIMESTAMPTZ NOT NULL
+    auth_id INTEGER UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL,
+    deleted BOOLEAN NOT NULL
 );
 
 CREATE TABLE worlds (
@@ -29,7 +28,8 @@ CREATE TABLE worlds (
     description TEXT,
     data JSONB,
     created_at TIMESTAMPTZ NOT NULL,
-    last_updated_at TIMESTAMPTZ NOT NULL
+    last_updated_at TIMESTAMPTZ NOT NULL,
+    deleted BOOLEAN NOT NULL
 );
 
 CREATE TYPE game_status AS ENUM ('waiting', 'playing', 'finished', 'archived');
@@ -54,12 +54,7 @@ CREATE TABLE game_players (
     is_spectator BOOLEAN NOT NULL,
     is_joined BOOLEAN NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (game_id, user_id),
-    CONSTRAINT one_active_game_per_user CHECK (
-        NOT is_joined OR user_id NOT IN (
-            SELECT gp.user_id FROM game_players gp WHERE gp.is_joined AND gp.user_id = user_id AND gp.game_id <> game_id
-        )
-    )
+    PRIMARY KEY (game_id, user_id)
 );
 
 CREATE TYPE chat_type AS ENUM ('room', 'character_creation', 'game', 'advice');
@@ -108,13 +103,3 @@ CREATE INDEX idx_games_host ON games(host_id);
 CREATE INDEX idx_messages_chat ON messages(chat_id);
 CREATE INDEX idx_chats_game ON chats(game_id);
 CREATE INDEX idx_game_players_user ON game_players(user_id);
-
-CREATE OR REPLACE FUNCTION update_world_timestamp() RETURNS TRIGGER AS $$
-BEGIN
-  NEW.last_updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_world_modtime BEFORE UPDATE ON worlds
-FOR EACH ROW EXECUTE FUNCTION update_world_timestamp();

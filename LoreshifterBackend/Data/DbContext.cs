@@ -8,31 +8,28 @@ namespace Loreshifter.Data
     public enum ChatInterfaceType { @readonly, foreign, full, timed, foreignTimed }
     public enum MessageKind { player, system, characterCreation, generalInfo, publicInfo, privateInfo }
 
+    public class DataProtectionKey
+    {
+        public int Id { get; set; }
+        public string FriendlyName { get; set; } = default!;
+        public string Xml { get; set; } = default!;
+        public DateTime CreationTime { get; set; } = DateTime.UtcNow;
+    }
+
     public class User
     {
         public int Id { get; set; }
         public string Name { get; set; } = null!;
         public string? Email { get; set; }
+        public int? AuthId { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
-        public Auth? Auth { get; set; }
+        public bool Deleted { get; set; }
 
         public ICollection<World> Worlds { get; set; } = new List<World>();
         public ICollection<Game> HostedGames { get; set; } = new List<Game>();
         public ICollection<GamePlayer> GamePlayers { get; set; } = new List<GamePlayer>();
         public ICollection<Chat> OwnedChats { get; set; } = new List<Chat>();
         public ICollection<Message> SentMessages { get; set; } = new List<Message>();
-    }
-
-    public class Auth
-    {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public User User { get; set; } = null!;
-
-        public string Provider { get; set; } = null!;
-        public string Token { get; set; } = null!;
-        public string? RefreshToken { get; set; }
-        public DateTimeOffset ExpiresAt { get; set; }
     }
 
     public class World
@@ -46,6 +43,7 @@ namespace Loreshifter.Data
         public JsonDocument? Data { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset LastUpdatedAt { get; set; }
+        public bool Deleted { get; set; }
 
         public ICollection<Game> Games { get; set; } = new List<Game>();
     }
@@ -132,8 +130,8 @@ namespace Loreshifter.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+        public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
         public DbSet<User> Users => Set<User>();
-        public DbSet<Auth> Auths => Set<Auth>();
         public DbSet<World> Worlds => Set<World>();
         public DbSet<Game> Games => Set<Game>();
         public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
@@ -149,6 +147,18 @@ namespace Loreshifter.Data
             modelBuilder.HasPostgresEnum<ChatInterfaceType>("chat_interface_type");
             modelBuilder.HasPostgresEnum<MessageKind>("message_kind");
 
+            modelBuilder.Entity<DataProtectionKey>(b =>
+            {
+                b.ToTable("data_protection_keys");
+                b.HasKey(e => e.Id).HasName("data_protection_keys_pkey");
+                b.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+                b.Property(e => e.FriendlyName).HasColumnName("friendly_name");
+                b.Property(e => e.Xml).HasColumnName("xml").IsRequired();
+                b.Property(e => e.CreationTime)
+                    .HasColumnName("creation_time")
+                    .HasDefaultValueSql("now()");
+            });
+
             modelBuilder.Entity<User>(b =>
             {
                 b.ToTable("users");
@@ -157,26 +167,10 @@ namespace Loreshifter.Data
                 b.Property(x => x.Name).HasColumnName("name").IsRequired();
                 b.Property(x => x.Email).HasColumnName("email");
                 b.HasIndex(x => x.Email).IsUnique().HasDatabaseName("users_email_key");
+                b.Property(x => x.AuthId).HasColumnName("auth_id");
+                b.HasIndex(x => x.AuthId).IsUnique().HasDatabaseName("users_auth_id_key");
                 b.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-            });
-
-            modelBuilder.Entity<Auth>(b =>
-            {
-                b.ToTable("auths");
-                b.HasKey(a => a.Id).HasName("auth_pkey");
-                b.Property(a => a.Id).HasColumnName("id").ValueGeneratedOnAdd();
-                b.Property(a => a.UserId).HasColumnName("user_id").IsRequired();
-                b.Property(a => a.Provider).HasColumnName("provider").IsRequired();
-                b.Property(a => a.Token).HasColumnName("token").IsRequired();
-                b.Property(a => a.RefreshToken).HasColumnName("refresh_token").IsRequired();
-                b.Property(a => a.ExpiresAt).HasColumnName("expires_at").IsRequired();
-
-                b.HasOne(a => a.User)
-                .WithOne(u => u.Auth)
-                .HasForeignKey<Auth>(a => a.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-                b.HasIndex(a => a.UserId).IsUnique().HasDatabaseName("ux_auth_user_id");
+                b.Property(x => x.Deleted).HasColumnName("deleted").IsRequired();
             });
 
             modelBuilder.Entity<World>(b =>
