@@ -19,11 +19,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _initialTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // Попробуем прочитать параметр tab из URI, если он указан — используем как начальную вкладку
+    final uri = Uri.base;
+    final tabParam = uri.queryParameters['tab'];
+    _initialTabIndex = int.tryParse(tabParam ?? '') ?? 0;
+
+    // Гарантируем корректный диапазон
+    if (_initialTabIndex < 0 || _initialTabIndex > 2) _initialTabIndex = 0;
+
+    _tabController = TabController(length: 3, vsync: this, initialIndex: _initialTabIndex);
 
     // Загружаем данные при инициализации экрана
     _loadInitialData();

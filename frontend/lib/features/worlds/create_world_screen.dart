@@ -50,8 +50,9 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
 
       if (!mounted) return;
 
-      // Переходим на экран редактирования созданного мира
-      context.go('/worlds/${world.id}/edit');
+  // После создания возвращаемся в домашний экран и показываем вкладку "Мои миры"
+  // (Tab index 1 соответствует второй вкладке — "МОИ МИРЫ")
+  context.go('/?tab=1');
     } catch (e) {
       setState(() {
         _error = 'Ошибка при создании мира: $e';
