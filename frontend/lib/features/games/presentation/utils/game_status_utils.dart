@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '/core/models/game.dart';
+import '/features/games/domain/models/game.dart';
 
-/// Возвращает локализованный текст статуса игры.
 String gameStatusLabel(GameStatus status, {bool uppercase = false}) {
   String text;
   switch (status) {
@@ -21,7 +20,6 @@ String gameStatusLabel(GameStatus status, {bool uppercase = false}) {
   return uppercase ? text.toUpperCase() : text;
 }
 
-/// Возвращает цвет статуса игры.
 Color gameStatusColor(GameStatus status) {
   switch (status) {
     case GameStatus.waiting:
@@ -35,7 +33,6 @@ Color gameStatusColor(GameStatus status) {
   }
 }
 
-/// Парсит строковый статус в enum GameStatus.
 GameStatus? tryParseGameStatus(String? status) {
   switch (status) {
     case 'waiting':
@@ -50,3 +47,4 @@ GameStatus? tryParseGameStatus(String? status) {
       return null;
   }
 }
+

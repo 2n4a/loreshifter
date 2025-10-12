@@ -36,7 +36,6 @@ class Message {
     required this.sentAt,
     this.metadata,
   }) {
-    // Создаём объект Sender на основе доступных данных
     final senderName = metadata?['senderName'] as String? ?? 'Пользователь';
     final senderType = _getSenderType(kind);
     sender = Sender(id: senderId, name: senderName, type: senderType);
@@ -117,3 +116,4 @@ class MessageOut {
     };
   }
 }
+

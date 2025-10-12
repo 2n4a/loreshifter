@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '/core/models/game.dart';
-import '/core/models/world.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/features/auth/auth_cubit.dart';
 import '/features/games/games_cubit.dart';
 import '/features/worlds/worlds_cubit.dart';
 import '/core/theme/app_theme.dart';
-import '/core/widgets/game_status_chip.dart';
+import '/features/games/presentation/widgets/game_status_chip.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

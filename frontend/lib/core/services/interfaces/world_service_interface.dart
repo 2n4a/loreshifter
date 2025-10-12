@@ -1,4 +1,4 @@
-import '/core/models/world.dart';
+import '/features/worlds/domain/models/world.dart';
 
 /// Интерфейс для сервиса работы с мирами
 abstract class WorldService {

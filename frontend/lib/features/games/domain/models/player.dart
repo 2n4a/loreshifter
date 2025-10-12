@@ -1,4 +1,4 @@
-import '/core/models/user.dart';
+import '/features/auth/domain/models/user.dart';
 
 class Player {
   final User user;
@@ -31,3 +31,4 @@ class Player {
     };
   }
 }
+

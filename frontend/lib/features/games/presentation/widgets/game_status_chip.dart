@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import '/core/models/game.dart';
-import '/core/utils/game_status_utils.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/games/presentation/utils/game_status_utils.dart';
 
 class GameStatusChip extends StatelessWidget {
   final GameStatus status;
   final bool uppercase;
 
-  const GameStatusChip({
-    super.key,
-    required this.status,
-    this.uppercase = false,
-  });
+  const GameStatusChip({super.key, required this.status, this.uppercase = false});
 
   @override
   Widget build(BuildContext context) {
@@ -30,3 +26,4 @@ class GameStatusChip extends StatelessWidget {
     );
   }
 }
+

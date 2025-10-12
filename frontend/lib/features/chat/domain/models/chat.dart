@@ -1,4 +1,4 @@
-import '/core/models/message.dart';
+import '/features/chat/domain/models/message.dart';
 
 enum ChatInterfaceType { readonly, foreign, full, timed, foreignTimed }
 
@@ -11,8 +11,7 @@ class ChatInterface {
   factory ChatInterface.fromJson(Map<String, dynamic> json) {
     return ChatInterface(
       type: _parseChatInterfaceType(json['type'] as String),
-      deadline:
-          json['deadline'] != null ? DateTime.parse(json['deadline']) : null,
+      deadline: json['deadline'] != null ? DateTime.parse(json['deadline']) : null,
     );
   }
 
@@ -64,14 +63,12 @@ class ChatSegment {
     return ChatSegment(
       chatId: json['chatId'] as int,
       chatOwner: json['chatOwner'] as int?,
-      messages:
-          (json['messages'] as List)
-              .map((e) => Message.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      messages: (json['messages'] as List)
+          .map((e) => Message.fromJson(e as Map<String, dynamic>))
+          .toList(),
       previousId: json['previousId'] as int?,
       nextId: json['nextId'] as int?,
-      suggestions:
-          (json['suggestions'] as List).map((e) => e as String).toList(),
+      suggestions: (json['suggestions'] as List).map((e) => e as String).toList(),
       interface: ChatInterface.fromJson(json['interface']),
     );
   }
@@ -88,3 +85,4 @@ class ChatSegment {
     };
   }
 }
+

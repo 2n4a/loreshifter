@@ -1,4 +1,4 @@
-import '/core/models/game.dart';
+import '/features/games/domain/models/game.dart';
 
 /// Интерфейс для сервиса работы с играми
 abstract class GameService {

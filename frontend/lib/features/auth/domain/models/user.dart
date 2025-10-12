@@ -17,3 +17,4 @@ class User {
     return {'id': id, 'name': name, if (email != null) 'email': email};
   }
 }
+

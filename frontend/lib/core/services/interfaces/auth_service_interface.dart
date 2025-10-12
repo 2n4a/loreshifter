@@ -1,4 +1,4 @@
-import '/core/models/user.dart';
+import '/features/auth/domain/models/user.dart';
 
 /// Интерфейс для сервиса аутентификации
 abstract class AuthService {

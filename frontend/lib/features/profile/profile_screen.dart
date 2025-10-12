@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/auth/auth_cubit.dart';
-import '/core/models/user.dart';
+import '/features/auth/domain/models/user.dart';
 import '/core/services/interfaces/auth_service_interface.dart';
 
 class ProfileScreen extends StatefulWidget {

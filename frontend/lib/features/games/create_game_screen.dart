@@ -3,8 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/worlds/worlds_cubit.dart';
 import '/features/games/games_cubit.dart';
-
-import '../../core/models/world.dart';
+import '/features/worlds/domain/models/world.dart';
 
 class CreateGameScreen extends StatefulWidget {
   final int? worldId;

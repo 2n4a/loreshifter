@@ -1,5 +1,5 @@
-import '/core/models/user.dart';
-import '/core/models/world.dart';
+import '/features/auth/domain/models/user.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/core/services/base_service.dart';
 import '/core/services/interfaces/world_service_interface.dart';
 

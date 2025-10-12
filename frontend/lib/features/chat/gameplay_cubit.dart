@@ -1,9 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '/core/models/chat.dart';
-import '/core/models/game.dart';
-import '/core/models/message.dart';
-import '/core/models/player.dart';
+import '/features/chat/domain/models/chat.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/chat/domain/models/message.dart';
+import '/features/games/domain/models/player.dart';
 import '/core/services/gameplay_service.dart';
 
 // Состояния для работы с игровым процессом

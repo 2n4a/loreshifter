@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '/core/models/game.dart';
+import '/features/games/domain/models/game.dart';
 import '/features/games/games_cubit.dart';
-import '/core/widgets/game_status_chip.dart';
+import '/features/games/presentation/widgets/game_status_chip.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int? gameId;

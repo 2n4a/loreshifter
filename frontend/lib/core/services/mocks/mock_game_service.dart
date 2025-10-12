@@ -1,7 +1,7 @@
-import '/core/models/game.dart';
-import '/core/models/player.dart';
-import '/core/models/user.dart';
-import '/core/models/world.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/games/domain/models/player.dart';
+import '/features/auth/domain/models/user.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/core/services/base_service.dart';
 import '/core/services/interfaces/game_service_interface.dart';
 

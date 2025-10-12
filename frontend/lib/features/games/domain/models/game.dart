@@ -1,5 +1,5 @@
-import '/core/models/player.dart';
-import '/core/models/world.dart';
+import '/features/games/domain/models/player.dart';
+import '/features/worlds/domain/models/world.dart';
 
 enum GameStatus { waiting, playing, finished, archived }
 
@@ -36,10 +36,9 @@ class Game {
       name: json['name'] as String,
       world: World.fromJson(json['world']),
       hostId: json['hostId'] as int,
-      players:
-          (json['players'] as List)
-              .map((e) => Player.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      players: (json['players'] as List)
+          .map((e) => Player.fromJson(e as Map<String, dynamic>))
+          .toList(),
       createdAt: DateTime.parse(json['createdAt']),
       maxPlayers: json['maxPlayers'] as int,
       status: _parseGameStatus(json['status'] as String),
@@ -76,3 +75,4 @@ class Game {
     };
   }
 }
+

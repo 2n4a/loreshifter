@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '/core/models/world.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/core/services/world_service.dart';
 import '/core/theme/app_theme.dart';
 import '/core/widgets/modern_card.dart';

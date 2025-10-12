@@ -1,11 +1,10 @@
-import '/core/models/chat.dart';
-import '/core/models/game.dart';
-import '/core/models/message.dart';
-import '/core/models/player.dart';
-import '/core/models/user.dart';
+import '/features/chat/domain/models/chat.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/chat/domain/models/message.dart';
+import '/features/games/domain/models/player.dart';
+import '/features/auth/domain/models/user.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/core/services/interfaces/gameplay_service_interface.dart';
-
-import '../../models/world.dart';
 
 /// Простая мок-реализация GameplayService
 class MockGameplayService implements GameplayService {

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '/core/models/world.dart';
+import '/features/worlds/domain/models/world.dart';
 import '/core/services/world_service.dart';
 
 // Состояния для работы с мирами

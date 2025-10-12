@@ -1,7 +1,7 @@
-import '/core/models/chat.dart';
-import '/core/models/game.dart';
-import '/core/models/message.dart';
-import '/core/models/player.dart';
+import '/features/chat/domain/models/chat.dart';
+import '/features/games/domain/models/game.dart';
+import '/features/chat/domain/models/message.dart';
+import '/features/games/domain/models/player.dart';
 
 /// Интерфейс для сервиса игрового процесса
 abstract class GameplayService {

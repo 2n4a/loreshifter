@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '/core/models/game.dart';
+import '/features/games/domain/models/game.dart';
 import '/core/services/game_service.dart';
 
 // Состояния для работы с играми

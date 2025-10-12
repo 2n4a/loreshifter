@@ -1,13 +1,6 @@
-import '/core/models/user.dart';
+import '/features/auth/domain/models/user.dart';
 
-// Определяем enum для типов миров
-enum WorldType {
-  fantasy, // Фэнтези
-  scifi, // Научная фантастика
-  historical, // Исторический
-  horror, // Хоррор
-  other, // Другой
-}
+enum WorldType { fantasy, scifi, historical, horror, other }
 
 class World {
   final int id;
@@ -18,8 +11,8 @@ class World {
   final User owner;
   final String? description;
   final dynamic data;
-  final WorldType type; // Новое поле для типа мира
-  final int rating; // Поле для рейтинга
+  final WorldType type;
+  final int rating;
 
   World({
     required this.id,
@@ -30,15 +23,13 @@ class World {
     required this.owner,
     this.description,
     this.data,
-    this.type = WorldType.fantasy, // По умолчанию тип фэнтези
-    this.rating = 0, // По умолчанию рейтинг 0
+    this.type = WorldType.fantasy,
+    this.rating = 0,
   });
 
   factory World.fromJson(Map<String, dynamic> json) {
-    // Преобразование строки в WorldType
     WorldType getWorldTypeFromString(String? typeStr) {
       if (typeStr == null) return WorldType.fantasy;
-
       switch (typeStr.toLowerCase()) {
         case 'fantasy':
           return WorldType.fantasy;
@@ -62,15 +53,12 @@ class World {
       owner: User.fromJson(json['owner']),
       description: json['description'] as String?,
       data: json['data'],
-      // Добавляем чтение типа из JSON
       type: getWorldTypeFromString(json['type'] as String?),
-      // Добавляем чтение рейтинга из JSON
       rating: (json['rating'] as num?)?.toInt() ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
-    // Преобразование WorldType в строку
     String worldTypeToString(WorldType type) {
       switch (type) {
         case WorldType.fantasy:
@@ -95,8 +83,9 @@ class World {
       'owner': owner.toJson(),
       if (description != null) 'description': description,
       if (data != null) 'data': data,
-      'type': worldTypeToString(type), // Добавляем запись типа в JSON
-      'rating': rating, // Добавляем запись рейтинга в JSON
+      'type': worldTypeToString(type),
+      'rating': rating,
     };
   }
 }
+

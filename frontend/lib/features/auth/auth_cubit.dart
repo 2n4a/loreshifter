@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '/core/models/user.dart';
+import '/features/auth/domain/models/user.dart';
 import '/core/services/interfaces/auth_service_interface.dart';
 
 // Состояния аутентификации
