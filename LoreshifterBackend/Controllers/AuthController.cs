@@ -66,7 +66,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "GitHub OAuth client ID is not configured");
         }
 
-        var redirectUri = $"{Request.Scheme}://{Request.Host}/api/v0/login/callback/{GitHubProvider}";
+        var redirectUri = Environment.GetEnvironmentVariable("OAUTH2_GITHUB_REDIRECT_URI") ?? "http://localhost:8000/api/v0/login/callback/github";
         var scope = "user:email";
         var url =
             $"https://github.com/login/oauth/authorize?client_id={Uri.EscapeDataString(clientId)}&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope={Uri.EscapeDataString(scope)}";
