@@ -1,0 +1,6 @@
+**/.idea
+**/.vscode
+deploy/**
+docs/**
+LoreshifterBackend/bin
+LoreshifterBackend/obj

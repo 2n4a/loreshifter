@@ -1,0 +1,105 @@
+---
+- name: Deploy Loreshifter
+  hosts: all
+  become: true
+  collections:
+    - community.docker
+
+  vars:
+    app_name: loreshifter 
+    app_dir: /opt/loreshifter
+    compose_filename: compose.yaml
+    ghcr_registry: ghcr.io
+
+  tasks:
+    - name: Ensure Docker is installed
+      ansible.builtin.package:
+        name:
+          - docker.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Check that nginx is installed
+      ansible.builtin.command:
+        cmd: nginx -v
+      register: nginx_check
+      failed_when: nginx_check.rc != 0
+      changed_when: false
+
+    - name: Ensure application directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Ensure secrets directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}/secrets"
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Create secret files
+      ansible.builtin.copy:
+        content: "{{ item.value }}"
+        dest: "{{ app_dir }}/secrets/{{ item.key }}"
+        owner: root
+        group: root
+        mode: "0600"
+        no_log: true
+      loop: "{{ secrets | dict2items }}"
+      when: item.value is defined and item.value | length > 0
+
+    - name: Copy production compose file to server
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/docker-compose.yaml"
+        dest: "{{ app_dir }}/{{ compose_filename }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Log in to GitHub Container Registry
+      community.docker.docker_login:
+        registry_url: "{{ ghcr_registry }}"
+        username: "{{ github_actor }}"
+        password: "{{ github_token }}"
+
+    - name: Deploy with Docker Compose v2
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        files:
+          - "{{ compose_filename }}"
+        pull: always
+        recreate: auto
+        remove_orphans: true
+        state: present
+
+    - name: Upload nginx configuration for the application
+      ansible.builtin.copy:
+        src: nginx.conf
+        dest: /etc/nginx/conf.d/{{ app_name }}.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Test nginx configuration
+      ansible.builtin.command:
+        cmd: nginx -t
+      register: nginx_test
+      failed_when: nginx_test.rc != 0
+      changed_when: false
+
+    - name: Reload nginx to apply new configuration
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    - name: Prune old docker images
+      community.docker.docker_prune:
+        images: yes
+        containers: no
+        networks: no
+        volumes: no

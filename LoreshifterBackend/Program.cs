@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Loreshifter.Data;
+using Loreshifter.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddScoped<ISecretManager, SecretManager>();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v0", new OpenApiInfo
@@ -45,14 +48,21 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
 
-// Get database URL from environment variable or use default
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? 
-    "Host=localhost;Database=devdb;Username=devuser;Password=devpass";
-
 builder.Services.AddControllers();
 
-builder.Services.AddDbContextFactory<AppDbContext>(options =>
-    options.UseNpgsql(databaseUrl));
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost";
+var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
+var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "devdb";
+var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "devuser";
+
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={{0}}";
+
+builder.Services.AddDbContextFactory<AppDbContext>((serviceProvider, options) =>
+{
+    var secretManager = serviceProvider.GetRequiredService<ISecretManager>();
+    var dbPassword = secretManager.GetSecret("db-password", "devpass");
+    options.UseNpgsql(string.Format(connectionString, dbPassword));
+});
 
 builder.Services.AddSingleton<PostgresXmlRepository>();
 

@@ -2,7 +2,7 @@ services:
   db:
     build:
       context: ..
-      dockerfile: ./db/Dockerfile
+      dockerfile: ./db/Dockerfile.dev
     container_name: dev_db
     ports:
       - "5432:5432"

@@ -1,0 +1,72 @@
+services:
+  db:
+    build:
+      context: ..
+      dockerfile: db/Dockerfile
+      args:
+        - BUILD_ENV=production
+    environment:
+      - POSTGRES_DB=${DB_NAME:-loreshifter}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_wal:/var/lib/postgresql/wal
+    ports:
+      - "5432:5432"
+    secrets:
+      - db-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-loreshifter}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  backend:
+    build:
+      context: ../LoreshifterBackend
+      dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-loreshifter}
+      - DB_USER=${DB_USER:-postgres}
+      - ASPNETCORE_URLS=http://0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets:
+      - oauth2-github-client-id
+      - oauth2-github-client-secret
+      - db-password
+      - gen-api-key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v0/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+secrets:
+  db-password:
+    file: ./secrets/db-password
+  oauth2-github-client-id:
+    file: ./secrets/oauth2-github-client-id
+  oauth2-github-client-secret:
+    file: ./secrets/oauth2-github-client-secret
+  gen-api-key:
+    file: ./secrets/gen-api-key
+
+volumes:
+  postgres_data:
+  postgres_wal:

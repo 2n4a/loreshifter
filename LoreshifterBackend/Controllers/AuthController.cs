@@ -1,15 +1,14 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
-using System.Text;
-using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
-using Loreshifter.Models;
 using Microsoft.EntityFrameworkCore;
 using Loreshifter.Data;
+using Loreshifter.Services;
 
 namespace Loreshifter.Controllers;
 
@@ -33,7 +32,7 @@ public class GitHubUserResponse
 [Route("api/v0")]
 public class AuthController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
+    private readonly ISecretManager _secretManager;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly IWebHostEnvironment _environment;
@@ -41,12 +40,12 @@ public class AuthController : ControllerBase
     
 
     public AuthController(
-        IConfiguration configuration, 
+        ISecretManager secretManager, 
         IHttpClientFactory httpClientFactory,
         IDbContextFactory<AppDbContext> dbContextFactory,
         IWebHostEnvironment environment)
     {
-        _configuration = configuration;
+        _secretManager = secretManager;
         _httpClientFactory = httpClientFactory;
         _dbContextFactory = dbContextFactory;
         _environment = environment;
@@ -61,7 +60,7 @@ public class AuthController : ControllerBase
             return BadRequest("Unsupported provider");
         }
 
-        var clientId = _configuration["OAUTH2_GITHUB_CLIENT_ID"];
+        var clientId = _secretManager.GetSecret("oauth2-github-client-id");
         if (string.IsNullOrEmpty(clientId))
         {
             return StatusCode(500, "GitHub OAuth client ID is not configured");
@@ -156,10 +155,15 @@ public class AuthController : ControllerBase
 
     private async Task<GitHubTokenResponse> ExchangeCodeForToken(string code)
     {
-        var clientId = _configuration["OAUTH2_GITHUB_CLIENT_ID"];
-        var clientSecret = _configuration["OAUTH2_GITHUB_CLIENT_SECRET"];
-
-        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+        string clientId;
+        string clientSecret;
+        
+        try
+        {
+            clientId = _secretManager.GetSecret("oauth2-github-client-id");
+            clientSecret = _secretManager.GetSecret("oauth2-github-client-secret");
+        }
+        catch (InvalidOperationException)
         {
             throw new InvalidOperationException("GitHub OAuth credentials are not properly configured");
         }
