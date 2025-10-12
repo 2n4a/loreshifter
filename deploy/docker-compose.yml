@@ -1,6 +1,10 @@
 services:
   db:
-    image: ghcr.io/2n4a/loreshifter-db:latest
+    build:
+      context: ..
+      dockerfile: db/Dockerfile
+      args:
+        - BUILD_ENV=production
     environment:
       - POSTGRES_DB=${DB_NAME:-loreshifter}
       - POSTGRES_USER=${DB_USER:-postgres}
@@ -27,7 +31,9 @@ services:
           memory: 1G
 
   backend:
-    image: ghcr.io/2n4a/loreshifter-backend:latest
+    build:
+      context: ../LoreshifterBackend
+      dockerfile: Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - DB_HOST=db
