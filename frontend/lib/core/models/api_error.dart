@@ -50,5 +50,5 @@ class ApiError {
   }
 
   @override
-  String toString() => 'ApiError(code: ' + code + ', message: ' + message + ')';
+  String toString() => 'ApiError(code: $code, message: $message)';
 }

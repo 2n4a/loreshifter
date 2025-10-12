@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           if (games.isEmpty) {
             return Center(
-              child: Container(
+              child: SizedBox(
                 width: 300,
                 child: AppTheme.neonContainer(
                   borderColor: AppTheme.neonPurple,
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (state is GamesFailure) {
           return Center(
-            child: Container(
+            child: SizedBox(
               width: 300,
               child: AppTheme.neonContainer(
                 borderColor: AppTheme.neonPink,
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         return Center(
-          child: Container(
+          child: SizedBox(
             width: 300,
             child: AppTheme.neonContainer(
               borderColor: AppTheme.neonGreen,
@@ -291,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context, authState) {
         if (authState is Unauthenticated) {
           return Center(
-            child: Container(
+            child: SizedBox(
               width: 300,
               child: AppTheme.neonContainer(
                 borderColor: AppTheme.neonPurple,
@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen>
 
               if (worlds.isEmpty) {
                 return Center(
-                  child: Container(
+                  child: SizedBox(
                     width: 300,
                     child: AppTheme.neonContainer(
                       borderColor: AppTheme.neonGreen,
@@ -353,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen>
 
             if (state is WorldsFailure) {
               return Center(
-                child: Container(
+                child: SizedBox(
                   width: 300,
                   child: AppTheme.neonContainer(
                     borderColor: AppTheme.neonPink,
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
 
             return Center(
-              child: Container(
+              child: SizedBox(
                 width: 300,
                 child: AppTheme.neonContainer(
                   borderColor: AppTheme.neonGreen,
@@ -404,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           if (worlds.isEmpty) {
             return Center(
-              child: Container(
+              child: SizedBox(
                 width: 300,
                 child: AppTheme.neonContainer(
                   borderColor: AppTheme.neonPurple,
@@ -436,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (state is WorldsFailure) {
           return Center(
-            child: Container(
+            child: SizedBox(
               width: 300,
               child: AppTheme.neonContainer(
                 borderColor: AppTheme.neonPink,
@@ -451,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         return Center(
-          child: Container(
+          child: SizedBox(
             width: 300,
             child: AppTheme.neonContainer(
               borderColor: AppTheme.neonGreen,

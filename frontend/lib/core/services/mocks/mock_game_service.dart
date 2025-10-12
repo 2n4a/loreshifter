@@ -28,7 +28,6 @@ class MockGameService extends BaseService implements GameService {
     final worldIndex = index % 5;
     final isFinished = index >= 6;
     final isPlaying = index >= 3 && index < 6;
-    final isWaiting = index < 3;
 
     final players = List.generate(
       1 + (index % 4),
@@ -74,6 +73,7 @@ class MockGameService extends BaseService implements GameService {
   Game? _currentGame;
 
   // Получить список игр
+  @override
   Future<List<Game>> getGames({
     int limit = 25,
     int offset = 0,
@@ -131,6 +131,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Получить информацию о игре по ID
+  @override
   Future<Game> getGameById(int id) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
@@ -159,6 +160,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Получить игру по коду
+  @override
   Future<Game> getGameByCode(String code) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
@@ -171,6 +173,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Создать новую игру
+  @override
   Future<Game> createGame({
     required int worldId,
     required bool isPublic,
@@ -230,6 +233,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Обновить информацию об игре
+  @override
   Future<Game> updateGame({
     required int id,
     bool? isPublic,
@@ -314,6 +318,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Присоединиться к игре по ID
+  @override
   Future<Game> joinGameById(int id, {bool force = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
@@ -383,6 +388,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Присоединиться к игре по коду
+  @override
   Future<Game> joinGameByCode(String code, {bool force = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
@@ -402,6 +408,7 @@ class MockGameService extends BaseService implements GameService {
   }
 
   // Покинуть текущую игру
+  @override
   Future<void> leaveGame() async {
     await Future.delayed(const Duration(milliseconds: 800));
 

@@ -44,7 +44,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadGameState() async {
-    print('DEBUG: Загрузка состояния игры для gameId=${widget.gameId}');
+    debugPrint('DEBUG: Загрузка состояния игры для gameId=${widget.gameId}');
     try {
       // Регистрируем слушатель перед вызовом loadGameState
       final cubit = context.read<GameplayCubit>();
@@ -52,40 +52,43 @@ class _GameScreenState extends State<GameScreen> {
       // Подписываемся на изменения состояния
       late final StreamSubscription subscription;
       subscription = cubit.stream.listen((state) {
-        print(
+        debugPrint(
           'DEBUG: Получено новое состояние GameplayCubit: ${state.runtimeType}',
         );
 
         if (state is GameStateLoaded) {
-          print('DEBUG: Состояние успешно загружено!');
+          debugPrint('DEBUG: Состояние успешно загружено!');
+          if (!mounted) return; // защитная проверка
           setState(() {
             _gameState = state.gameState;
           });
-          print('DEBUG: Состояние игры: $_gameState');
+          debugPrint('DEBUG: Состояние игры: $_gameState');
 
           // Загружаем основной игровой чат
           if (_gameState['gameChat'] != null) {
-            print('DEBUG: Найден gameChat, загружаем чат с индексом 0');
+            debugPrint('DEBUG: Найден gameChat, загружаем чат с индексом 0');
             _loadChat(0); // Индекс 0 для основного чата
           } else {
-            print('DEBUG: ОШИБКА - gameChat не найден в состоянии игры');
+            debugPrint('DEBUG: ОШИБКА - gameChat не найден в состоянии игры');
           }
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          print('DEBUG: ОШИБКА ЗАГРУЗКИ: ${state.message}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
-          );
+          debugPrint('DEBUG: ОШИБКА ЗАГРУЗКИ: ${state.message}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
+            );
+          }
           subscription.cancel();
         }
       });
 
       // Теперь вызываем загрузку состояния
       await cubit.loadGameState();
-      print('DEBUG: Запрос на загрузку состояния игры отправлен');
+      debugPrint('DEBUG: Запрос на загрузку состояния игры отправлен');
     } catch (e, stacktrace) {
-      print('DEBUG: ИСКЛЮЧЕНИЕ при загрузке состояния игры: $e');
-      print('DEBUG: Стек вызовов: $stacktrace');
+      debugPrint('DEBUG: ИСКЛЮЧЕНИЕ при загрузке состояния игры: $e');
+      debugPrint('DEBUG: Стек вызовов: $stacktrace');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -95,10 +98,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadChat(int chatIndex) async {
-    print('DEBUG: Начинаем загрузку чата с индексом $chatIndex');
+    debugPrint('DEBUG: Начинаем загрузку чата с индексом $chatIndex');
     final chatId = _getChatIdFromIndex(chatIndex);
     if (chatId != null) {
-      print('DEBUG: Получен chatId: $chatId');
+      debugPrint('DEBUG: Получен chatId: $chatId');
 
       // Регистрируем слушатель для получения обновлений состояния
       final cubit = context.read<GameplayCubit>();
@@ -108,12 +111,13 @@ class _GameScreenState extends State<GameScreen> {
 
       // Теперь инициализируем её
       subscription = cubit.stream.listen((state) {
-        print(
+        debugPrint(
           'DEBUG: Получено состояние при загрузке чата: ${state.runtimeType}',
         );
 
         if (state is ChatLoaded) {
-          print('DEBUG: Чат успешно загружен: ${state.chatSegment.chatId}');
+          debugPrint('DEBUG: Чат успешно загружен: ${state.chatSegment.chatId}');
+          if (!mounted) return; // защитная проверка
           setState(() {
             _currentChat = state.chatSegment;
             _selectedTabIndex = chatIndex;
@@ -126,7 +130,7 @@ class _GameScreenState extends State<GameScreen> {
 
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          print('DEBUG: Ошибка загрузки чата: ${state.message}');
+          debugPrint('DEBUG: Ошибка загрузки чата: ${state.message}');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка загрузки чата: ${state.message}')),
@@ -138,9 +142,9 @@ class _GameScreenState extends State<GameScreen> {
 
       // Теперь запрашиваем загрузку чата
       await cubit.loadChat(chatId: chatId);
-      print('DEBUG: Запрос на загрузку чата отправлен');
+      debugPrint('DEBUG: Запрос на загрузку чата отправлен');
     } else {
-      print('DEBUG: Не удалось получить chatId для индекса $chatIndex');
+      debugPrint('DEBUG: Не удалось получить chatId для индекса $chatIndex');
     }
   }
 
@@ -177,10 +181,11 @@ class _GameScreenState extends State<GameScreen> {
     final text = _messageController.text;
     _messageController.clear();
 
-    print(
+    debugPrint(
       'DEBUG: Начинаем отправку сообщения: "$text" в чат ${_currentChat!.chatId}',
     );
 
+    if (!mounted) return; // защита от гонок
     setState(() {
       _isSending = true;
     });
@@ -193,15 +198,15 @@ class _GameScreenState extends State<GameScreen> {
 
       // Затем инициализируем её
       subscription = cubit.stream.listen((state) {
-        print('DEBUG: Получено состояние при отправке: ${state.runtimeType}');
+        debugPrint('DEBUG: Получено состояние при отправке: ${state.runtimeType}');
 
         if (state is MessageSent) {
-          print('DEBUG: Сообщение успешно отправлено: ${state.message.id}');
+          debugPrint('DEBUG: Сообщение успешно отправлено: ${state.message.id}');
           // После успешной отправки загружаем обновленный чат
           _loadChat(_selectedTabIndex);
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          print('DEBUG: Ошибка отправки сообщения: ${state.message}');
+          debugPrint('DEBUG: Ошибка отправки сообщения: ${state.message}');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка отправки: ${state.message}')),
@@ -213,20 +218,22 @@ class _GameScreenState extends State<GameScreen> {
 
       // Отправляем сообщение
       await cubit.sendMessage(chatId: _currentChat!.chatId, text: text);
-      print('DEBUG: Запрос на отправку сообщения выполнен');
+      debugPrint('DEBUG: Запрос на отправку сообщения выполнен');
     } catch (e, stacktrace) {
-      print('DEBUG: ИСКЛЮЧЕНИЕ при отправке сообщения: $e');
-      print('DEBUG: Стек вызовов: $stacktrace');
+      debugPrint('DEBUG: ИСКЛЮЧЕНИЕ при отправке сообщения: $e');
+      debugPrint('DEBUG: Стек вызовов: $stacktrace');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
       }
     } finally {
-      setState(() {
-        _isSending = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 
@@ -307,7 +314,7 @@ class _GameScreenState extends State<GameScreen> {
                     child:
                         _currentChat == null
                             ? Center(
-                              child: Container(
+                              child: SizedBox(
                                 width: 300,
                                 child: AppTheme.neonContainer(
                                   borderColor: AppTheme.neonPurple,

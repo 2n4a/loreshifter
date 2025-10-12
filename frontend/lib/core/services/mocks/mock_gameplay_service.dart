@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '/features/chat/domain/models/chat.dart';
 import '/features/games/domain/models/game.dart';
 import '/features/chat/domain/models/message.dart';
@@ -23,7 +24,7 @@ class MockGameplayService implements GameplayService {
     'adviceChats': [
       {'chatId': 4, 'title': 'Подсказки'},
     ],
-    'game': {'id': 1},
+    'game': {'id': 1, 'hostId': 1},
   };
 
   // Счетчик для генерации ID
@@ -53,7 +54,7 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<dynamic> getGameState() async {
-    print('DEBUG: MockGameplayService.getGameState()');
+    debugPrint('DEBUG: MockGameplayService.getGameState()');
     await Future.delayed(Duration(milliseconds: 300));
     return _gameState;
   }
@@ -65,7 +66,7 @@ class MockGameplayService implements GameplayService {
     int? after,
     int limit = 50,
   }) async {
-    print('DEBUG: MockGameplayService.getChatSegment(chatId: $chatId)');
+    debugPrint('DEBUG: MockGameplayService.getChatSegment(chatId: $chatId, before: $before, after: $after, limit: $limit)');
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -79,7 +80,38 @@ class MockGameplayService implements GameplayService {
       );
     }
 
-    return _chats[chatId]!;
+    final base = _chats[chatId]!;
+    final all = List<Message>.from(base.messages)
+      ..sort((a, b) => a.id.compareTo(b.id));
+
+    List<Message> window;
+    if (before != null) {
+      final older = all.where((m) => m.id < before).toList();
+      window = older.length > limit ? older.sublist(older.length - limit) : older;
+    } else if (after != null) {
+      final newer = all.where((m) => m.id > after).toList();
+      window = newer.length > limit ? newer.sublist(0, limit) : newer;
+    } else {
+      window = all.length > limit ? all.sublist(all.length - limit) : all;
+    }
+
+    int? previousId;
+    int? nextId;
+    if (window.isNotEmpty) {
+      final hasOlder = all.first.id < window.first.id;
+      final hasNewer = all.last.id > window.last.id;
+      previousId = hasOlder ? window.first.id : null;
+      nextId = hasNewer ? window.last.id : null;
+    }
+
+    return ChatSegment(
+      chatId: chatId,
+      messages: window,
+      previousId: previousId,
+      nextId: nextId,
+      suggestions: base.suggestions,
+      interface: base.interface,
+    );
   }
 
   @override
@@ -89,9 +121,7 @@ class MockGameplayService implements GameplayService {
     String? special,
     Map<String, dynamic>? metadata,
   }) async {
-    print(
-      'DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)',
-    );
+    debugPrint('DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)');
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -132,13 +162,15 @@ class MockGameplayService implements GameplayService {
         sentAt: DateTime.now(),
       );
 
-      _chats[chatId]!.messages.add(assistantMessage);
+      if (_chats.containsKey(chatId)) {
+        _chats[chatId]!.messages.add(assistantMessage);
+      }
     });
   }
 
   @override
   Future<Player> kickPlayer(int playerId) async {
-    print('DEBUG: MockGameplayService.kickPlayer(playerId: $playerId)');
+    debugPrint('DEBUG: MockGameplayService.kickPlayer(playerId: $playerId)');
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -152,7 +184,7 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<Player> promotePlayer(int playerId) async {
-    print('DEBUG: MockGameplayService.promotePlayer(playerId: $playerId)');
+    debugPrint('DEBUG: MockGameplayService.promotePlayer(playerId: $playerId)');
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -166,7 +198,7 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<Player> setReady(bool isReady) async {
-    print('DEBUG: MockGameplayService.setReady(isReady: $isReady)');
+    debugPrint('DEBUG: MockGameplayService.setReady(isReady: $isReady)');
 
     await Future.delayed(Duration(milliseconds: 300));
 
@@ -180,7 +212,7 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<Game> startGame({int? gameId, bool force = false}) async {
-    print('DEBUG: MockGameplayService.startGame(force: $force)');
+    debugPrint('DEBUG: MockGameplayService.startGame(force: $force)');
 
     await Future.delayed(Duration(milliseconds: 500));
 
@@ -239,7 +271,7 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<Game> restartGame() async {
-    print('DEBUG: MockGameplayService.restartGame()');
+    debugPrint('DEBUG: MockGameplayService.restartGame()');
 
     await Future.delayed(Duration(milliseconds: 500));
 
