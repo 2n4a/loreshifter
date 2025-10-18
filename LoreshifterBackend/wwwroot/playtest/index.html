@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Language" content="ru" />
+    <title>Loreshifter Multiplayer Debugger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Segoe UI", "Roboto", "Noto Sans", "PT Sans", system-ui, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #080808;
+            color: #f1f1f1;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+            header h1 {
+                margin: 0;
+                font-size: 1.8rem;
+                letter-spacing: 2px;
+            }
+
+            header .status {
+                font-size: 0.95rem;
+                color: #8f9fb8;
+            }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+
+            .grid.two {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+
+        .card {
+            background: rgba(18, 22, 29, 0.92);
+            border: 1px solid rgba(120, 120, 120, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+        }
+
+            .card h2 {
+                margin-top: 0;
+                margin-bottom: 8px;
+                font-size: 1.2rem;
+                color: #c5d6ff;
+            }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: #9ab1d3;
+            margin-bottom: 4px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            background: rgba(20, 26, 35, 0.95);
+            border: 1px solid rgba(120, 120, 120, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.95rem;
+            color: #f1f1f1;
+            margin-bottom: 12px;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #3a7afe, #8740ff);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s ease, filter 0.1s ease;
+        }
+
+            button:hover {
+                filter: brightness(1.1);
+            }
+
+            button:active {
+                transform: scale(0.98);
+            }
+
+        .info-block {
+            background: rgba(10, 14, 20, 0.8);
+            border-left: 3px solid #3a7afe;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            white-space: pre-line;
+        }
+
+        .turn-log {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 360px;
+            overflow-y: auto;
+        }
+
+        .turn-entry {
+            background: rgba(13, 18, 25, 0.9);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid rgba(120, 120, 120, 0.2);
+        }
+
+            .turn-entry h3 {
+                margin: 0 0 6px;
+                font-size: 1.05rem;
+                color: #ffe082;
+            }
+
+            .turn-entry .prompt-title {
+                color: #9ab1d3;
+                font-weight: 600;
+            }
+
+            .turn-entry .prompt-body {
+                white-space: pre-line;
+                font-size: 0.95rem;
+            }
+
+        .pill {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 2px 10px;
+            background: rgba(68, 138, 255, 0.2);
+            color: #90caf9;
+            font-size: 0.75rem;
+            margin-right: 6px;
+        }
+
+        .chat-column {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .log-list {
+            background: rgba(13, 16, 24, 0.95);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid rgba(120, 120, 120, 0.18);
+            min-height: 160px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+            .log-item strong {
+                color: #ffcc80;
+            }
+
+        .error {
+            color: #ff8a80;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <h1>LORESHIFTER &mdash; Playtest Console</h1>
+            <div class="status" id="status-label">No session active</div>
+        </header>
+
+        <section class="grid two">
+            <div class="card">
+                <h2>Создать новую сессию</h2>
+                <label for="create-player-name">Имя ведущего игрока</label>
+                <input id="create-player-name" placeholder="Например, Ардан" />
+                <label for="expected-players">Ожидаемое количество игроков</label>
+                <input id="expected-players" type="number" min="1" placeholder="Необязательно" />
+                <button id="create-session">Создать</button>
+                <div class="error" id="create-error"></div>
+            </div>
+
+            <div class="card">
+                <h2>Присоединиться к сессии</h2>
+                <label for="join-session-id">ID сессии (GUID)</label>
+                <input id="join-session-id" placeholder="00000000-0000-0000-0000-000000000000" />
+                <label for="join-player-name">Имя игрока</label>
+                <input id="join-player-name" placeholder="Ваш псевдоним" />
+                <button id="join-session">Присоединиться</button>
+                <div class="error" id="join-error"></div>
+            </div>
+        </section>
+
+        <section class="grid two" style="margin-top: 16px;">
+            <div class="card">
+                <h2>Настройки персонажа</h2>
+                <label for="player-class">Класс</label>
+                <input id="player-class" placeholder="Например, Маг стихий" />
+                <label for="player-ability">Способность</label>
+                <input id="player-ability" placeholder="Взрыв звездного света" />
+                <label for="player-inventory">Инвентарь (через запятую)</label>
+                <input id="player-inventory" placeholder="Меч, Жезл, Бинт" />
+                <button id="save-setup">Сохранить</button>
+                <button id="ready-button" style="margin-left: 8px;">Готов к битве</button>
+                <div class="error" id="setup-error"></div>
+            </div>
+
+            <div class="card">
+                <h2>Текущее состояние</h2>
+                <div class="info-block" id="session-info">Выберите или создайте игровую сессию.</div>
+                <div class="info-block" id="boss-info"></div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top: 16px;">
+            <h2>Игровые события</h2>
+            <div class="turn-log" id="turn-log"></div>
+        </section>
+
+        <section class="card" style="margin-top: 16px;">
+            <h2>Отправить действие</h2>
+            <label for="action-content">Ваш ход</label>
+            <textarea id="action-content" placeholder="Опишите действия персонажа"></textarea>
+            <button id="send-action">Отправить действие</button>
+            <div class="error" id="action-error"></div>
+        </section>
+
+        <section class="card" style="margin-top: 16px;">
+            <h2>Чаты</h2>
+            <div class="chat-column">
+                <div>
+                    <h3>Вопрос ИИ</h3>
+                    <textarea id="question-content" placeholder="Спросить совет у ИИ"></textarea>
+                    <button id="send-question">Отправить вопрос</button>
+                    <div class="log-list" id="question-log"></div>
+                    <div class="error" id="question-error"></div>
+                </div>
+                <div>
+                    <h3>Чат игроков</h3>
+                    <textarea id="chat-content" placeholder="Напишите сообщение"></textarea>
+                    <button id="send-chat">Отправить сообщение</button>
+                    <div class="log-list" id="player-chat"></div>
+                    <div class="error" id="chat-error"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const state = {
+            sessionId: null,
+            playerId: null,
+            pollHandle: null,
+        };
+
+        function setError(id, message) {
+            document.getElementById(id).textContent = message ?? "";
+        }
+
+        function setStatus(text) {
+            document.getElementById("status-label").textContent = text;
+        }
+
+        function serializeInventory(text) {
+            if (!text) return [];
+            return text.split(",").map((item) => item.trim()).filter(Boolean);
+        }
+
+        async function createSession() {
+            setError("create-error", "");
+            const playerName = document.getElementById("create-player-name").value.trim();
+            const expectedPlayers = document.getElementById("expected-players").value;
+            const payload = { mode: "boss-battle" };
+            if (playerName) payload.playerName = playerName;
+            if (expectedPlayers) payload.expectedPlayers = Number(expectedPlayers);
+
+            try {
+                const response = await fetch("/api/v0/play", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ message: response.statusText }));
+                    throw new Error(error.message || "Не удалось создать сессию");
+                }
+
+                const data = await response.json();
+                state.sessionId = data.id;
+                state.playerId = playerName ? (data.players.find((p) => p.name === playerName)?.id ?? null) : null;
+                setStatus(`Сессия ${data.id}`);
+                renderSession(data);
+                startPolling();
+            } catch (err) {
+                setError("create-error", err.message);
+            }
+        }
+
+        async function joinSession() {
+            setError("join-error", "");
+            const sessionId = document.getElementById("join-session-id").value.trim();
+            const playerName = document.getElementById("join-player-name").value.trim();
+
+            if (!sessionId || !playerName) {
+                setError("join-error", "Введите ID сессии и имя игрока");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${sessionId}/players`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ playerName }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ message: response.statusText }));
+                    throw new Error(error.message || "Не удалось присоединиться");
+                }
+
+                const player = await response.json();
+                state.sessionId = sessionId;
+                state.playerId = player.id;
+                setStatus(`Сессия ${sessionId}`);
+                await refreshSession();
+                startPolling();
+            } catch (err) {
+                setError("join-error", err.message);
+            }
+        }
+
+        async function refreshSession() {
+            if (!state.sessionId) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}`);
+                if (!response.ok) {
+                    throw new Error("Не удалось получить состояние сессии");
+                }
+
+                const data = await response.json();
+                if (!state.playerId && data.players.length === 1) {
+                    state.playerId = data.players[0].id;
+                }
+                renderSession(data);
+            } catch (err) {
+                console.error(err);
+                setStatus("Ошибка обновления сессии");
+            }
+        }
+
+        async function saveSetup() {
+            setError("setup-error", "");
+            if (!state.sessionId || !state.playerId) {
+                setError("setup-error", "Сначала создайте или присоединитесь к сессии");
+                return;
+            }
+
+            const payload = {
+                class: document.getElementById("player-class").value.trim() || null,
+                specialAbility: document.getElementById("player-ability").value.trim() || null,
+                inventory: serializeInventory(document.getElementById("player-inventory").value),
+            };
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}/players/${state.playerId}/setup`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Не удалось сохранить настройки персонажа");
+                }
+
+                await refreshSession();
+            } catch (err) {
+                setError("setup-error", err.message);
+            }
+        }
+
+        async function markReady() {
+            setError("setup-error", "");
+            if (!state.sessionId || !state.playerId) {
+                setError("setup-error", "Нет активной сессии или игрока");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}/players/${state.playerId}/ready`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ready: true }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Не удалось отметить готовность");
+                }
+
+                await refreshSession();
+            } catch (err) {
+                setError("setup-error", err.message);
+            }
+        }
+
+        async function sendAction() {
+            setError("action-error", "");
+            if (!state.sessionId || !state.playerId) {
+                setError("action-error", "Нет активной сессии или игрока");
+                return;
+            }
+
+            const content = document.getElementById("action-content").value.trim();
+            if (!content) {
+                setError("action-error", "Опишите действие персонажа");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}/actions`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ playerId: state.playerId, content }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Не удалось отправить действие");
+                }
+
+                document.getElementById("action-content").value = "";
+                await refreshSession();
+            } catch (err) {
+                setError("action-error", err.message);
+            }
+        }
+
+        async function sendQuestion() {
+            setError("question-error", "");
+            if (!state.sessionId || !state.playerId) {
+                setError("question-error", "Нет активной сессии или игрока");
+                return;
+            }
+
+            const content = document.getElementById("question-content").value.trim();
+            if (!content) {
+                setError("question-error", "Введите вопрос");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}/questions`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ playerId: state.playerId, content }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Не удалось отправить вопрос");
+                }
+
+                document.getElementById("question-content").value = "";
+                await refreshSession();
+            } catch (err) {
+                setError("question-error", err.message);
+            }
+        }
+
+        async function sendChat() {
+            setError("chat-error", "");
+            if (!state.sessionId || !state.playerId) {
+                setError("chat-error", "Нет активной сессии или игрока");
+                return;
+            }
+
+            const content = document.getElementById("chat-content").value.trim();
+            if (!content) {
+                setError("chat-error", "Введите сообщение");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v0/play/${state.sessionId}/chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ playerId: state.playerId, content }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Не удалось отправить сообщение");
+                }
+
+                document.getElementById("chat-content").value = "";
+                await refreshSession();
+            } catch (err) {
+                setError("chat-error", err.message);
+            }
+        }
+
+        function renderSession(data) {
+            const info = [`Режим: ${data.modeId}`, `Фаза: ${data.phase}`, `Код приглашения: ${data.code}`, `Игроков: ${data.players.length}${data.expectedPlayers ? ` / ${data.expectedPlayers}` : ""}`];
+            if (data.outcome) {
+                info.push(`Результат: ${data.outcome}`);
+            }
+            if (data.prologue) {
+                info.push("", data.prologue);
+            }
+            document.getElementById("session-info").textContent = info.join("\n");
+
+            const bossParts = [];
+            if (data.bossOverview) bossParts.push(data.bossOverview);
+            if (data.bossState) {
+                bossParts.push(`Здоровье босса: ${data.bossState.bossHealth}`);
+                bossParts.push(`Ярость: ${data.bossState.rage}%`);
+                bossParts.push(`Текущий ход: ${data.bossState.turn}`);
+            }
+            document.getElementById("boss-info").textContent = bossParts.join("\n");
+
+            const turnLog = document.getElementById("turn-log");
+            turnLog.innerHTML = "";
+            data.turns.forEach((turn) => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "turn-entry";
+
+                const title = document.createElement("h3");
+                title.textContent = `Ход ${turn.turnNumber}`;
+                wrapper.appendChild(title);
+
+                const promptTitle = document.createElement("div");
+                promptTitle.className = "prompt-title";
+                promptTitle.textContent = turn.prompt.title;
+                wrapper.appendChild(promptTitle);
+
+                const promptBody = document.createElement("div");
+                promptBody.className = "prompt-body";
+                promptBody.textContent = turn.prompt.description;
+                wrapper.appendChild(promptBody);
+
+                if (turn.suggestions.length > 0) {
+                    const suggestions = document.createElement("div");
+                    turn.suggestions.forEach((suggestion) => {
+                        const pill = document.createElement("span");
+                        pill.className = "pill";
+                        pill.textContent = suggestion.content;
+                        suggestions.appendChild(pill);
+                    });
+                    wrapper.appendChild(suggestions);
+                }
+
+                if (turn.actions.length > 0) {
+                    const actionsList = document.createElement("div");
+                    actionsList.className = "prompt-body";
+                    actionsList.innerHTML = "<strong>Действия игроков:</strong>\n" + turn.actions.map((a) => `• ${a.playerName}: ${a.content}`).join("\n");
+                    wrapper.appendChild(actionsList);
+                }
+
+                if (turn.resolution) {
+                    const resolutionTitle = document.createElement("div");
+                    resolutionTitle.className = "prompt-title";
+                    resolutionTitle.textContent = turn.resolution.title;
+                    wrapper.appendChild(resolutionTitle);
+
+                    const resolutionBody = document.createElement("div");
+                    resolutionBody.className = "prompt-body";
+                    resolutionBody.textContent = turn.resolution.description;
+                    wrapper.appendChild(resolutionBody);
+                }
+
+                turnLog.appendChild(wrapper);
+            });
+
+            const questionLog = document.getElementById("question-log");
+            questionLog.innerHTML = "";
+            data.questions
+                .filter((q) => !state.playerId || q.playerId === state.playerId)
+                .forEach((question) => {
+                    const item = document.createElement("div");
+                    item.className = "log-item";
+                    item.innerHTML = `<strong>${question.playerName}</strong>: ${question.content}<br/><em>${question.response ?? "(ответ ожидается)"}</em>`;
+                    questionLog.appendChild(item);
+                });
+
+            const playerChat = document.getElementById("player-chat");
+            playerChat.innerHTML = "";
+            data.playerChat.forEach((message) => {
+                const item = document.createElement("div");
+                item.className = "log-item";
+                item.innerHTML = `<strong>${message.playerName}</strong>: ${message.content}`;
+                playerChat.appendChild(item);
+            });
+        }
+
+        function startPolling() {
+            if (state.pollHandle) {
+                clearInterval(state.pollHandle);
+            }
+            state.pollHandle = setInterval(refreshSession, 3500);
+            refreshSession();
+        }
+
+        document.getElementById("create-session").addEventListener("click", createSession);
+        document.getElementById("join-session").addEventListener("click", joinSession);
+        document.getElementById("save-setup").addEventListener("click", saveSetup);
+        document.getElementById("ready-button").addEventListener("click", markReady);
+        document.getElementById("send-action").addEventListener("click", sendAction);
+        document.getElementById("send-question").addEventListener("click", sendQuestion);
+        document.getElementById("send-chat").addEventListener("click", sendChat);
+    </script>
+</body>
+</html>

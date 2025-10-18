@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Loreshifter.Data;
 using Loreshifter.Services;
+using Loreshifter.Game.Modes;
+using Loreshifter.Game.Modes.BossBattle;
+using Loreshifter.Services.Game;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Options;
@@ -34,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
     // Include XML comments for better documentation
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
-    
+
     // Add JWT Authentication
     options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
     {
@@ -48,7 +52,11 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost";
 var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
@@ -74,8 +82,6 @@ builder.Services.AddDataProtection()
             options.XmlRepository = sp.GetRequiredService<PostgresXmlRepository>();
         }));
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHttpClient();
 builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddSession(options =>
@@ -102,6 +108,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddSingleton<IGameMode, BossBattleGameMode>();
+builder.Services.AddSingleton<GameSessionManager>();
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -111,6 +120,7 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
+app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
