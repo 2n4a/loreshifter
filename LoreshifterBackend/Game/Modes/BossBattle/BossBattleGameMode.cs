@@ -1,4 +1,4 @@
-using System;
+п»їusing System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -425,7 +425,7 @@ public class BossBattleGameMode : IGameMode
         builder.AppendLine();
         builder.AppendLine(world.Geography);
         builder.AppendLine();
-        builder.AppendLine($"Последняя надежда городов-купол — герои, решившиеся остановить {boss.Title.ToLower()} по имени {boss.Name}.");
+        builder.AppendLine($"РџРѕСЃР»РµРґРЅСЏСЏ РЅР°РґРµР¶РґР° РіРѕСЂРѕРґРѕРІ-РєСѓРїРѕР» вЂ” РіРµСЂРѕРё, СЂРµС€РёРІС€РёРµСЃСЏ РѕСЃС‚Р°РЅРѕРІРёС‚СЊ {boss.Title.ToLower()} РїРѕ РёРјРµРЅРё {boss.Name}.");
         return builder.ToString();
     }
 
@@ -435,13 +435,13 @@ public class BossBattleGameMode : IGameMode
         builder.AppendLine($"{boss.Name}, {boss.Title}.");
         builder.AppendLine(boss.Backstory);
         builder.AppendLine();
-        builder.AppendLine($"Максимальные очки здоровья: {boss.MaxHealth}. Стартовая ярость: {boss.StartingRage}%.");
-        builder.AppendLine($"Стиль боя: {boss.CombatStyle}");
+        builder.AppendLine($"РњР°РєСЃРёРјР°Р»СЊРЅС‹Рµ РѕС‡РєРё Р·РґРѕСЂРѕРІСЊСЏ: {boss.MaxHealth}. РЎС‚Р°СЂС‚РѕРІР°СЏ СЏСЂРѕСЃС‚СЊ: {boss.StartingRage}%.");
+        builder.AppendLine($"РЎС‚РёР»СЊ Р±РѕСЏ: {boss.CombatStyle}");
 
         if (boss.SignatureEquipment.Any())
         {
             builder.AppendLine();
-            builder.AppendLine("Ключевые артефакты:");
+            builder.AppendLine("РљР»СЋС‡РµРІС‹Рµ Р°СЂС‚РµС„Р°РєС‚С‹:");
             foreach (var item in boss.SignatureEquipment)
             {
                 builder.AppendLine($"- {item}");
@@ -451,10 +451,10 @@ public class BossBattleGameMode : IGameMode
         if (boss.RagePhases.Any())
         {
             builder.AppendLine();
-            builder.AppendLine("Фазы ярости:");
+            builder.AppendLine("Р¤Р°Р·С‹ СЏСЂРѕСЃС‚Рё:");
             foreach (var phase in boss.RagePhases.OrderBy(p => p.RageThreshold))
             {
-                builder.AppendLine($"- От {phase.RageThreshold}%: {phase.Description} {phase.AttackProfile}");
+                builder.AppendLine($"- РћС‚ {phase.RageThreshold}%: {phase.Description} {phase.AttackProfile}");
             }
         }
 
