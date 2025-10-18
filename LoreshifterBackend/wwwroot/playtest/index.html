@@ -19,7 +19,7 @@
         }
 
         .page {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
             padding: 24px;
         }
@@ -48,7 +48,7 @@
         }
 
             .grid.two {
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             }
 
         .card {
@@ -66,6 +66,13 @@
                 color: #c5d6ff;
             }
 
+            .card h3 {
+                margin-top: 16px;
+                margin-bottom: 6px;
+                font-size: 1rem;
+                color: #f5c16c;
+            }
+
         label {
             display: block;
             font-size: 0.85rem;
@@ -73,7 +80,7 @@
             margin-bottom: 4px;
         }
 
-        input, textarea, select {
+        input, textarea {
             width: 100%;
             background: rgba(20, 26, 35, 0.95);
             border: 1px solid rgba(120, 120, 120, 0.2);
@@ -100,6 +107,10 @@
             transition: transform 0.1s ease, filter 0.1s ease;
         }
 
+            button.secondary {
+                background: rgba(60, 78, 110, 0.75);
+            }
+
             button:hover {
                 filter: brightness(1.1);
             }
@@ -107,6 +118,12 @@
             button:active {
                 transform: scale(0.98);
             }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
 
         .info-block {
             background: rgba(10, 14, 20, 0.8);
@@ -116,6 +133,117 @@
             margin-bottom: 12px;
             white-space: pre-line;
         }
+
+        .attribute-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: rgba(13, 18, 25, 0.85);
+            border: 1px solid rgba(120, 120, 120, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+            .stat-card strong {
+                display: block;
+                color: #ffe082;
+                margin-bottom: 4px;
+            }
+
+            .stat-card small {
+                color: #8aa5c8;
+                display: block;
+                font-size: 0.75rem;
+                margin-bottom: 6px;
+            }
+
+        .remaining-points {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: #9ab1d3;
+        }
+
+            .remaining-points.warning {
+                color: #ff8a80;
+            }
+
+        .ability-hint {
+            margin-top: -4px;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: #9ab1d3;
+        }
+
+            .ability-hint.highlight {
+                color: #ffcf99;
+            }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .inventory-item {
+            background: rgba(13, 18, 25, 0.85);
+            border: 1px solid rgba(120, 120, 120, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+            .inventory-item label {
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+                margin: 0;
+            }
+
+            .inventory-item input[type="checkbox"] {
+                margin-top: 4px;
+            }
+
+            .inventory-item .item-name {
+                font-weight: 600;
+                color: #c5d6ff;
+            }
+
+            .inventory-item .item-meta {
+                font-size: 0.8rem;
+                color: #8aa5c8;
+            }
+
+        .item-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .item-card {
+            background: rgba(13, 18, 25, 0.85);
+            border: 1px solid rgba(120, 120, 120, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+            .item-card .item-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 6px;
+            }
+
+            .item-card .tag {
+                font-size: 0.7rem;
+                padding: 2px 8px;
+                border-radius: 999px;
+                background: rgba(58, 122, 254, 0.2);
+                color: #9ec5ff;
+                text-transform: uppercase;
+            }
 
         .turn-log {
             display: flex;
@@ -156,6 +284,7 @@
             color: #90caf9;
             font-size: 0.75rem;
             margin-right: 6px;
+            margin-top: 6px;
         }
 
         .chat-column {
@@ -193,6 +322,11 @@
             header h1 {
                 font-size: 1.4rem;
             }
+
+            .button-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -200,7 +334,7 @@
     <div class="page">
         <header>
             <h1>LORESHIFTER &mdash; Playtest Console</h1>
-            <div class="status" id="status-label">No session active</div>
+            <div class="status" id="status-label">Нет активной сессии</div>
         </header>
 
         <section class="grid two">
@@ -216,8 +350,8 @@
 
             <div class="card">
                 <h2>Присоединиться к сессии</h2>
-                <label for="join-session-id">ID сессии (GUID)</label>
-                <input id="join-session-id" placeholder="00000000-0000-0000-0000-000000000000" />
+                <label for="join-session-code">Код приглашения</label>
+                <input id="join-session-code" placeholder="Например, QW4RTY" maxlength="12" />
                 <label for="join-player-name">Имя игрока</label>
                 <input id="join-player-name" placeholder="Ваш псевдоним" />
                 <button id="join-session">Присоединиться</button>
@@ -227,22 +361,52 @@
 
         <section class="grid two" style="margin-top: 16px;">
             <div class="card">
-                <h2>Настройки персонажа</h2>
-                <label for="player-class">Класс</label>
-                <input id="player-class" placeholder="Например, Маг стихий" />
-                <label for="player-ability">Способность</label>
-                <input id="player-ability" placeholder="Взрыв звездного света" />
-                <label for="player-inventory">Инвентарь (через запятую)</label>
-                <input id="player-inventory" placeholder="Меч, Жезл, Бинт" />
-                <button id="save-setup">Сохранить</button>
-                <button id="ready-button" style="margin-left: 8px;">Готов к битве</button>
+                <h2>Настройка персонажа</h2>
+                <div class="info-block" id="character-guidance">Выберите сессию, чтобы увидеть правила распределения очков.</div>
+                <div class="attribute-grid" id="attribute-grid"></div>
+                <div class="remaining-points" id="attribute-remaining"></div>
+
+                <label for="character-name">Имя персонажа</label>
+                <input id="character-name" placeholder="Имя героя" />
+
+                <label for="character-concept">Концепция персонажа</label>
+                <input id="character-concept" placeholder="Например, Страж осколков" />
+
+                <label for="character-backstory">Предыстория</label>
+                <textarea id="character-backstory" placeholder="Краткая история персонажа и связь с миром"></textarea>
+
+                <label for="special-ability-name">Название спецспособности</label>
+                <input id="special-ability-name" placeholder="Появляется, если навык 5+" />
+
+                <label for="special-ability-description">Описание спецспособности</label>
+                <textarea id="special-ability-description" placeholder="Опишите, как способность отражает сильные стороны героя"></textarea>
+
+                <div class="ability-hint" id="ability-hint"></div>
+
+                <h3>Инвентарь</h3>
+                <div class="inventory-grid" id="inventory-options"></div>
+
+                <div class="button-row">
+                    <button class="secondary" id="generate-character">Сгенерировать образ</button>
+                    <button id="save-setup">Сохранить настройки</button>
+                    <button id="ready-button">Готов к битве</button>
+                </div>
                 <div class="error" id="setup-error"></div>
             </div>
 
             <div class="card">
-                <h2>Текущее состояние</h2>
+                <h2>Состояние сессии</h2>
                 <div class="info-block" id="session-info">Выберите или создайте игровую сессию.</div>
                 <div class="info-block" id="boss-info"></div>
+
+                <h3>Справочник мира</h3>
+                <div class="info-block" id="world-lore"></div>
+
+                <h3>Правила создания персонажа</h3>
+                <div class="info-block" id="character-rules"></div>
+
+                <h3>Каталог предметов</h3>
+                <div class="item-list" id="item-catalog"></div>
             </div>
         </section>
 
@@ -281,11 +445,59 @@
     </div>
 
     <script>
+        const CATEGORY_LABELS = {
+            Attack: "Атака",
+            Defense: "Защита",
+            Healing: "Лечение"
+        };
+
+        const abilityTemplates = {
+            vitality: {
+                name: "Сердцебиение Иллариона",
+                description: "Герой восполняет здоровье союзников, когда его собственная стойкость достигает пика."
+            },
+            might: {
+                name: "Раскол звёздной стали",
+                description: "Мощный удар, расщепляющий обсидиановые пластины титана и открывающий уязвимости."
+            },
+            arcana: {
+                name: "Астральный резонанс",
+                description: "Вызывает вспышку космической энергии, которая усиливает заклинания союзников."
+            },
+            aid: {
+                name: "Стяг целителей",
+                description: "Создаёт поле восстановления, стабилизирующее павших героев и гасящее кровопотери."
+            }
+        };
+
+        const nameFragments = {
+            first: ["Астра", "Лиор", "Кассар", "Мирай", "Элион", "Тарин", "Вейла", "Нив", "Риан", "Сайра"],
+            second: ["Скай", "Рен", "Сор", "Ар", "Люн", "Тер", "Фей", "Вор", "Дал", "Кан"],
+            titles: ["Страж Осколков", "Хранитель Пепельной Зари", "Певец Звёздного Пламени", "Целитель Расколотых", "Клинок Провидцев"]
+        };
+
         const state = {
             sessionId: null,
+            sessionCode: null,
             playerId: null,
             pollHandle: null,
+            characterRules: null,
+            attributeValues: {},
+            inventorySelection: new Set(),
+            inventorySelectionDirty: false,
+            pendingSetupSync: false,
+            sessionData: null,
+            characterDraft: null,
+            characterDraftDirty: false
         };
+
+        const CHARACTER_FIELD_IDS = [
+            "character-name",
+            "character-concept",
+            "character-backstory",
+            "special-ability-name",
+            "special-ability-description"
+        ];
 
         function setError(id, message) {
             document.getElementById(id).textContent = message ?? "";
@@ -295,9 +507,43 @@
             document.getElementById("status-label").textContent = text;
         }
 
-        function serializeInventory(text) {
-            if (!text) return [];
-            return text.split(",").map((item) => item.trim()).filter(Boolean);
+        function sanitizeCode(value) {
+            return (value || "").trim().toUpperCase();
+        }
+
+        function setInputValue(id, value, force = false) {
+            const element = document.getElementById(id);
+            if (!element) return;
+            if (!force && document.activeElement === element) {
+                return;
+            }
+            element.value = value ?? "";
+        }
+
+        function readCharacterDraft() {
+            return {
+                name: document.getElementById("character-name").value,
+                concept: document.getElementById("character-concept").value,
+                backstory: document.getElementById("character-backstory").value,
+                specialAbilityName: document.getElementById("special-ability-name").value,
+                specialAbilityDescription: document.getElementById("special-ability-description").value
+            };
+        }
+
+        function applyCharacterDraft(draft, force = false) {
+            if (!draft) {
+                return;
+            }
+
+            setInputValue("character-name", draft.name ?? "", force);
+            setInputValue("character-concept", draft.concept ?? "", force);
+            setInputValue("character-backstory", draft.backstory ?? "", force);
+            setInputValue("special-ability-name", draft.specialAbilityName ?? "", force);
+            setInputValue("special-ability-description", draft.specialAbilityDescription ?? "", force);
+        }
+
+        function getSelectedInventory() {
+            return Array.from(state.inventorySelection.values());
         }
 
         async function createSession() {
@@ -312,7 +558,7 @@
                 const response = await fetch("/api/v0/play", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
@@ -322,8 +568,15 @@
 
                 const data = await response.json();
                 state.sessionId = data.id;
+                state.sessionCode = data.code;
                 state.playerId = playerName ? (data.players.find((p) => p.name === playerName)?.id ?? null) : null;
-                setStatus(`Сессия ${data.id}`);
+                state.attributeValues = {};
+                state.inventorySelection = new Set();
+                state.inventorySelectionDirty = false;
+                state.pendingSetupSync = true;
+                state.characterDraft = null;
+                state.characterDraftDirty = false;
+                setStatus(`Сессия ${data.code} (${data.id})`);
                 renderSession(data);
                 startPolling();
             } catch (err) {
@@ -333,31 +586,44 @@
 
         async function joinSession() {
             setError("join-error", "");
-            const sessionId = document.getElementById("join-session-id").value.trim();
+            const code = sanitizeCode(document.getElementById("join-session-code").value);
             const playerName = document.getElementById("join-player-name").value.trim();
 
-            if (!sessionId || !playerName) {
-                setError("join-error", "Введите ID сессии и имя игрока");
+            if (!code || !playerName) {
+                setError("join-error", "Введите код приглашения и имя игрока");
                 return;
             }
 
             try {
-                const response = await fetch(`/api/v0/play/${sessionId}/players`, {
+                const joinResponse = await fetch(`/api/v0/play/code/${code}/players`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ playerName }),
+                    body: JSON.stringify({ playerName })
                 });
 
-                if (!response.ok) {
-                    const error = await response.json().catch(() => ({ message: response.statusText }));
+                if (!joinResponse.ok) {
+                    const error = await joinResponse.json().catch(() => ({ message: joinResponse.statusText }));
                     throw new Error(error.message || "Не удалось присоединиться");
                 }
 
-                const player = await response.json();
-                state.sessionId = sessionId;
+                const player = await joinResponse.json();
+                const sessionResponse = await fetch(`/api/v0/play/code/${code}`);
+                if (!sessionResponse.ok) {
+                    throw new Error("Не удалось загрузить сессию по коду");
+                }
+
+                const sessionData = await sessionResponse.json();
+                state.sessionId = sessionData.id;
+                state.sessionCode = sessionData.code;
                 state.playerId = player.id;
-                setStatus(`Сессия ${sessionId}`);
-                await refreshSession();
+                state.attributeValues = {};
+                state.inventorySelection = new Set();
+                state.inventorySelectionDirty = false;
+                state.pendingSetupSync = true;
+                state.characterDraft = null;
+                state.characterDraftDirty = false;
+                setStatus(`Сессия ${sessionData.code} (${sessionData.id})`);
+                renderSession(sessionData);
                 startPolling();
             } catch (err) {
                 setError("join-error", err.message);
@@ -365,20 +631,27 @@
         }
 
         async function refreshSession() {
-            if (!state.sessionId) {
+            if (!state.sessionId && !state.sessionCode) {
                 return;
             }
 
+            const endpoint = state.sessionId
+                ? `/api/v0/play/${state.sessionId}`
+                : `/api/v0/play/code/${state.sessionCode}`;
+
             try {
-                const response = await fetch(`/api/v0/play/${state.sessionId}`);
+                const response = await fetch(endpoint);
                 if (!response.ok) {
                     throw new Error("Не удалось получить состояние сессии");
                 }
 
                 const data = await response.json();
+                state.sessionId = data.id;
+                state.sessionCode = data.code;
                 if (!state.playerId && data.players.length === 1) {
                     state.playerId = data.players[0].id;
                 }
+                setStatus(`Сессия ${data.code} (${data.id})`);
                 renderSession(data);
             } catch (err) {
                 console.error(err);
@@ -393,23 +666,39 @@
                 return;
             }
 
+            if (state.characterRules && state.characterRules.totalAssignablePoints) {
+                const total = Object.values(state.attributeValues).reduce((sum, value) => sum + value, 0);
+                if (total > state.characterRules.totalAssignablePoints) {
+                    setError("setup-error", "Сумма очков превышает доступный лимит");
+                    return;
+                }
+            }
+
             const payload = {
-                class: document.getElementById("player-class").value.trim() || null,
-                specialAbility: document.getElementById("player-ability").value.trim() || null,
-                inventory: serializeInventory(document.getElementById("player-inventory").value),
+                attributes: state.attributeValues,
+                inventory: getSelectedInventory(),
+                characterName: document.getElementById("character-name").value.trim() || null,
+                characterConcept: document.getElementById("character-concept").value.trim() || null,
+                backstory: document.getElementById("character-backstory").value.trim() || null,
+                specialAbilityName: document.getElementById("special-ability-name").value.trim() || null,
+                specialAbilityDescription: document.getElementById("special-ability-description").value.trim() || null
             };
 
             try {
                 const response = await fetch(`/api/v0/play/${state.sessionId}/players/${state.playerId}/setup`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     throw new Error("Не удалось сохранить настройки персонажа");
                 }
 
+                state.pendingSetupSync = true;
+                state.inventorySelectionDirty = false;
+                state.characterDraft = null;
+                state.characterDraftDirty = false;
                 await refreshSession();
             } catch (err) {
                 setError("setup-error", err.message);
@@ -427,7 +716,7 @@
                 const response = await fetch(`/api/v0/play/${state.sessionId}/players/${state.playerId}/ready`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ready: true }),
+                    body: JSON.stringify({ ready: true })
                 });
 
                 if (!response.ok) {
@@ -443,13 +732,13 @@
         async function sendAction() {
             setError("action-error", "");
             if (!state.sessionId || !state.playerId) {
-                setError("action-error", "Нет активной сессии или игрока");
+                setError("action-error", "Нет активной сессии");
                 return;
             }
 
             const content = document.getElementById("action-content").value.trim();
             if (!content) {
-                setError("action-error", "Опишите действие персонажа");
+                setError("action-error", "Опишите действие героя");
                 return;
             }
 
@@ -457,7 +746,7 @@
                 const response = await fetch(`/api/v0/play/${state.sessionId}/actions`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ playerId: state.playerId, content }),
+                    body: JSON.stringify({ playerId: state.playerId, content })
                 });
 
                 if (!response.ok) {
@@ -474,13 +763,13 @@
         async function sendQuestion() {
             setError("question-error", "");
             if (!state.sessionId || !state.playerId) {
-                setError("question-error", "Нет активной сессии или игрока");
+                setError("question-error", "Нет активной сессии");
                 return;
             }
 
             const content = document.getElementById("question-content").value.trim();
             if (!content) {
-                setError("question-error", "Введите вопрос");
+                setError("question-error", "Введите текст вопроса");
                 return;
             }
 
@@ -488,7 +777,7 @@
                 const response = await fetch(`/api/v0/play/${state.sessionId}/questions`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ playerId: state.playerId, content }),
+                    body: JSON.stringify({ playerId: state.playerId, content })
                 });
 
                 if (!response.ok) {
@@ -505,7 +794,7 @@
         async function sendChat() {
             setError("chat-error", "");
             if (!state.sessionId || !state.playerId) {
-                setError("chat-error", "Нет активной сессии или игрока");
+                setError("chat-error", "Нет активной сессии");
                 return;
             }
 
@@ -519,7 +808,7 @@
                 const response = await fetch(`/api/v0/play/${state.sessionId}/chat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ playerId: state.playerId, content }),
+                    body: JSON.stringify({ playerId: state.playerId, content })
                 });
 
                 if (!response.ok) {
@@ -534,7 +823,15 @@
         }
 
         function renderSession(data) {
-            const info = [`Режим: ${data.modeId}`, `Фаза: ${data.phase}`, `Код приглашения: ${data.code}`, `Игроков: ${data.players.length}${data.expectedPlayers ? ` / ${data.expectedPlayers}` : ""}`];
+            state.sessionData = data;
+            state.characterRules = data.characterCreation;
+
+            const info = [
+                `Режим: ${data.modeId}`,
+                `Фаза: ${data.phase}`,
+                `Код приглашения: ${data.code}`,
+                `Игроков: ${data.players.length}${data.expectedPlayers ? ` / ${data.expectedPlayers}` : ""}`
+            ];
             if (data.outcome) {
                 info.push(`Результат: ${data.outcome}`);
             }
@@ -544,17 +841,317 @@
             document.getElementById("session-info").textContent = info.join("\n");
 
             const bossParts = [];
-            if (data.bossOverview) bossParts.push(data.bossOverview);
+            if (data.bossProfile) {
+                bossParts.push(`${data.bossProfile.name} — ${data.bossProfile.title}`);
+                bossParts.push(data.bossProfile.backstory);
+                bossParts.push(`Максимум здоровья: ${data.bossProfile.maxHealth}, стартовая ярость: ${data.bossProfile.startingRage}%`);
+            }
             if (data.bossState) {
-                bossParts.push(`Здоровье босса: ${data.bossState.bossHealth}`);
+                bossParts.push(`Текущее здоровье босса: ${data.bossState.bossHealth}`);
                 bossParts.push(`Ярость: ${data.bossState.rage}%`);
                 bossParts.push(`Текущий ход: ${data.bossState.turn}`);
             }
             document.getElementById("boss-info").textContent = bossParts.join("\n");
 
+            renderWorldData(data);
+
+            const currentPlayer = data.players.find((p) => p.id === state.playerId) ?? null;
+            renderAttributeControls(currentPlayer);
+            renderInventoryOptions(currentPlayer);
+            updateCharacterFields(currentPlayer);
+            renderTurns(data.turns);
+            renderQuestions(data.questions);
+            renderPlayerChat(data.playerChat);
+        }
+
+        function renderWorldData(data) {
+            if (data.worldLore) {
+                const worldText = [
+                    data.worldLore.overview,
+                    data.worldLore.geography,
+                    data.worldLore.magicSystem,
+                    data.worldLore.culture
+                ].filter(Boolean).join("\n\n");
+                document.getElementById("world-lore").textContent = worldText;
+            }
+
+            if (data.characterCreation) {
+                const rules = data.characterCreation;
+                const lines = [`Доступно очков: ${rules.totalAssignablePoints}.`, rules.guidance, ""];
+                rules.attributes.forEach((attribute) => {
+                    lines.push(`• ${attribute.name}: минимум ${attribute.minValue}, максимум ${attribute.maxValue}. ${attribute.description}`);
+                });
+                document.getElementById("character-rules").textContent = lines.join("\n");
+            }
+
+            const catalogContainer = document.getElementById("item-catalog");
+            catalogContainer.innerHTML = "";
+            (data.itemCatalog ?? []).forEach((item) => {
+                const card = document.createElement("div");
+                card.className = "item-card";
+
+                const header = document.createElement("div");
+                header.className = "item-header";
+                const name = document.createElement("strong");
+                name.textContent = item.name;
+                const tag = document.createElement("span");
+                tag.className = "tag";
+                tag.textContent = CATEGORY_LABELS[item.category] ?? item.category;
+                header.appendChild(name);
+                header.appendChild(tag);
+
+                const description = document.createElement("div");
+                description.textContent = item.description;
+
+                const requirements = document.createElement("div");
+                requirements.className = "item-meta";
+                if (item.requirements.length > 0) {
+                    const parts = item.requirements.map((req) => {
+                        const attr = state.characterRules?.attributes.find((a) => a.id === req.attributeId);
+                        const attrName = attr ? attr.name : req.attributeId;
+                        return `${attrName}: ${req.requiredPoints}`;
+                    });
+                    requirements.textContent = `Требования: ${parts.join(", ")}`;
+                } else {
+                    requirements.textContent = "Требования: нет";
+                }
+
+                const effects = document.createElement("div");
+                effects.className = "item-meta";
+                if (item.effects.length > 0) {
+                    effects.textContent = item.effects
+                        .map((effect) => `${effect.description} (базово ${effect.baseValue} ${effect.unit}${effect.scalingAttributeId ? `, масштабируется от ${effect.scalingAttributeId} × ${effect.scalingPerPoint}` : ""})`)
+                        .join("; ");
+                }
+
+                const consumable = document.createElement("div");
+                consumable.className = "item-meta";
+                consumable.textContent = item.consumedOnUse ? "Расходуется при использовании" : "Многоразовый предмет";
+
+                card.appendChild(header);
+                card.appendChild(description);
+                card.appendChild(requirements);
+                card.appendChild(effects);
+                card.appendChild(consumable);
+                catalogContainer.appendChild(card);
+            });
+        }
+        function renderAttributeControls(currentPlayer) {
+            const container = document.getElementById("attribute-grid");
+            container.innerHTML = "";
+
+            if (!state.characterRules || !state.characterRules.attributes.length) {
+                document.getElementById("character-guidance").textContent = "Правила распределения появятся после подключения к сессии.";
+                document.getElementById("attribute-remaining").textContent = "";
+                updateAbilityHint();
+                return;
+            }
+
+            document.getElementById("character-guidance").textContent = state.characterRules.guidance;
+
+            const shouldSync = state.pendingSetupSync || Object.keys(state.attributeValues).length === 0;
+            const serverAttributes = currentPlayer?.setup.character.attributes ?? {};
+            const newValues = { ...state.attributeValues };
+
+            state.characterRules.attributes.forEach((attribute) => {
+                if (shouldSync || !(attribute.id in newValues)) {
+                    const value = serverAttributes[attribute.id] ?? attribute.minValue;
+                    newValues[attribute.id] = value;
+                }
+
+                const card = document.createElement("div");
+                card.className = "stat-card";
+
+                const title = document.createElement("strong");
+                title.textContent = attribute.name;
+                const description = document.createElement("small");
+                description.textContent = attribute.description;
+
+                const input = document.createElement("input");
+                input.type = "number";
+                input.min = attribute.minValue;
+                input.max = attribute.maxValue;
+                input.value = newValues[attribute.id];
+                input.dataset.attributeInput = attribute.id;
+                input.addEventListener("change", (event) => {
+                    const value = Number(event.target.value);
+                    handleAttributeChange(attribute.id, value, attribute);
+                });
+                input.addEventListener("blur", (event) => {
+                    const value = Number(event.target.value);
+                    handleAttributeChange(attribute.id, value, attribute);
+                });
+
+                card.appendChild(title);
+                card.appendChild(description);
+                card.appendChild(input);
+                container.appendChild(card);
+            });
+
+            state.attributeValues = newValues;
+            state.pendingSetupSync = false;
+            recalcRemainingPoints();
+            updateAbilityHint();
+        }
+
+        function handleAttributeChange(attributeId, rawValue, definition) {
+            if (!state.characterRules) {
+                return;
+            }
+
+            const safeValue = Number.isFinite(rawValue) ? rawValue : definition.minValue;
+            const clamped = Math.max(definition.minValue, Math.min(definition.maxValue, Math.floor(safeValue)));
+
+            const otherSum = Object.entries(state.attributeValues)
+                .filter(([key]) => key !== attributeId)
+                .reduce((sum, [, value]) => sum + value, 0);
+
+            const maxAllowed = state.characterRules.totalAssignablePoints
+                ? Math.min(definition.maxValue, state.characterRules.totalAssignablePoints - otherSum)
+                : definition.maxValue;
+
+            const finalValue = Math.max(definition.minValue, Math.min(maxAllowed, clamped));
+            state.attributeValues = { ...state.attributeValues, [attributeId]: finalValue };
+
+            const input = document.querySelector(`[data-attribute-input="${attributeId}"]`);
+            if (input) {
+                input.value = finalValue;
+            }
+
+            recalcRemainingPoints();
+            updateAbilityHint();
+        }
+
+        function recalcRemainingPoints() {
+            if (!state.characterRules) {
+                document.getElementById("attribute-remaining").textContent = "";
+                return;
+            }
+
+            const total = Object.values(state.attributeValues).reduce((sum, value) => sum + value, 0);
+            const remaining = state.characterRules.totalAssignablePoints - total;
+            const label = document.getElementById("attribute-remaining");
+            label.textContent = `Осталось очков: ${remaining}`;
+            label.classList.toggle("warning", remaining < 0);
+        }
+
+        function updateAbilityHint() {
+            const hint = document.getElementById("ability-hint");
+            if (!state.characterRules) {
+                hint.textContent = "";
+                hint.classList.remove("highlight");
+                return;
+            }
+
+            const highlighted = state.characterRules.attributes
+                .filter((attribute) => (state.attributeValues[attribute.id] ?? attribute.minValue) >= 5);
+
+            if (highlighted.length === 0) {
+                hint.textContent = "Спецспособность станет доступна при значении навыка 5 и выше.";
+                hint.classList.remove("highlight");
+                return;
+            }
+
+            const skillNames = highlighted.map((attribute) => attribute.name).join(", ");
+            hint.textContent = `Навыки ${skillNames} раскрывают уникальную способность. Опишите её, чтобы ИИ смог опереться на сюжет.`;
+            hint.classList.add("highlight");
+        }
+
+        function renderInventoryOptions(currentPlayer) {
+            const container = document.getElementById("inventory-options");
+            container.innerHTML = "";
+
+            const currentInventory = new Set(currentPlayer?.setup.inventory ?? []);
+            const shouldSyncInventory =
+                state.pendingSetupSync || !state.inventorySelectionDirty || state.playerId == null || !currentPlayer;
+
+            if (shouldSyncInventory) {
+                state.inventorySelection = new Set(currentInventory);
+                state.inventorySelectionDirty = false;
+            }
+
+            (state.sessionData?.itemCatalog ?? []).forEach((item) => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "inventory-item";
+
+                const label = document.createElement("label");
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = item.id;
+                checkbox.checked = state.inventorySelection.has(item.id);
+                checkbox.addEventListener("change", (event) => {
+                    if (event.target.checked) {
+                        state.inventorySelection.add(item.id);
+                    } else {
+                        state.inventorySelection.delete(item.id);
+                    }
+                    state.inventorySelectionDirty = true;
+                });
+
+                const textWrapper = document.createElement("div");
+                const name = document.createElement("div");
+                name.className = "item-name";
+                name.textContent = item.name;
+
+                const meta = document.createElement("div");
+                meta.className = "item-meta";
+                const requirements = item.requirements.length
+                    ? item.requirements.map((req) => {
+                        const attr = state.characterRules?.attributes.find((a) => a.id === req.attributeId);
+                        return `${attr ? attr.name : req.attributeId}: ${req.requiredPoints}`;
+                    }).join(", ")
+                    : "нет";
+                meta.textContent = `Категория: ${CATEGORY_LABELS[item.category] ?? item.category}. Требования: ${requirements}.`;
+
+                textWrapper.appendChild(name);
+                textWrapper.appendChild(meta);
+
+                label.appendChild(checkbox);
+                label.appendChild(textWrapper);
+                wrapper.appendChild(label);
+                container.appendChild(wrapper);
+            });
+
+            if (state.pendingSetupSync) {
+                state.pendingSetupSync = false;
+            }
+        }
+
+        function updateCharacterFields(currentPlayer) {
+            if (state.characterDraftDirty && state.characterDraft) {
+                applyCharacterDraft(state.characterDraft);
+                return;
+            }
+
+            const character = currentPlayer?.setup.character;
+            if (!character) {
+                state.characterDraftDirty = false;
+                state.characterDraft = null;
+                applyCharacterDraft({
+                    name: "",
+                    concept: "",
+                    backstory: "",
+                    specialAbilityName: "",
+                    specialAbilityDescription: ""
+                });
+                return;
+            }
+
+            state.characterDraft = {
+                name: character.name ?? "",
+                concept: character.concept ?? "",
+                backstory: character.backstory ?? "",
+                specialAbilityName: character.specialAbilityName ?? "",
+                specialAbilityDescription: character.specialAbilityDescription ?? ""
+            };
+            state.characterDraftDirty = false;
+            applyCharacterDraft(state.characterDraft);
+        }
+
+        function renderTurns(turns) {
             const turnLog = document.getElementById("turn-log");
             turnLog.innerHTML = "";
-            data.turns.forEach((turn) => {
+            turns.forEach((turn) => {
                 const wrapper = document.createElement("div");
                 wrapper.className = "turn-entry";
 
@@ -604,26 +1201,90 @@
 
                 turnLog.appendChild(wrapper);
             });
+        }
 
+        function renderQuestions(questions) {
             const questionLog = document.getElementById("question-log");
             questionLog.innerHTML = "";
-            data.questions
+            questions
                 .filter((q) => !state.playerId || q.playerId === state.playerId)
                 .forEach((question) => {
                     const item = document.createElement("div");
                     item.className = "log-item";
-                    item.innerHTML = `<strong>${question.playerName}</strong>: ${question.content}<br/><em>${question.response ?? "(ответ ожидается)"}</em>`;
+                    const responseText = question.response ? question.response : "(ответ ожидается)";
+                    item.innerHTML = `<strong>${question.playerName}</strong>: ${question.content}<br/><em>${responseText}</em>`;
                     questionLog.appendChild(item);
                 });
+        }
 
+        function renderPlayerChat(messages) {
             const playerChat = document.getElementById("player-chat");
             playerChat.innerHTML = "";
-            data.playerChat.forEach((message) => {
+            messages.forEach((message) => {
                 const item = document.createElement("div");
                 item.className = "log-item";
                 item.innerHTML = `<strong>${message.playerName}</strong>: ${message.content}`;
                 playerChat.appendChild(item);
             });
+        }
+        function generateCharacterIdea() {
+            if (!state.characterRules) {
+                return;
+            }
+
+            const attributes = state.characterRules.attributes.map((attribute) => ({
+                id: attribute.id,
+                name: attribute.name,
+                value: state.attributeValues[attribute.id] ?? attribute.minValue
+            }));
+
+            const dominant = attributes.reduce((prev, current) => (current.value > prev.value ? current : prev), attributes[0]);
+            const highSkills = attributes.filter((attr) => attr.value >= 5);
+
+            const name = `${randomChoice(nameFragments.first)}${randomChoice(nameFragments.second)}`;
+            const title = randomChoice(nameFragments.titles);
+
+            const world = state.sessionData?.worldLore;
+            const location = world?.geography ?? "ареной обсидианового кратера";
+            const magic = world?.magicSystem ?? "энергией расколотых звёзд";
+            const inventoryNames = getSelectedInventory()
+                .map((id) => state.sessionData?.itemCatalog.find((item) => item.id === id)?.name)
+                .filter(Boolean);
+
+            const concept = `${title}, ведомый ${magic.toLowerCase()}`;
+            const backstoryPieces = [
+                `${name} вырос рядом с ${location.toLowerCase()}, наблюдая за тем, как герои сдерживают ярость титана.`,
+                `Подготовка к битве началась задолго до штурма — ${inventoryNames.length ? `герой отточил мастерство с предметами: ${inventoryNames.join(", ")}.` : "герой полагался на импровизацию и дух команды."}`,
+                `Теперь ${name} стремится закончить войну, пока космические бури не разрушили последние города.`
+            ];
+
+            let abilityName = "";
+            let abilityDescription = "";
+            if (highSkills.length > 0) {
+                const focus = highSkills[0];
+                const template = abilityTemplates[focus.id] ?? abilityTemplates[dominant.id];
+                if (template) {
+                    abilityName = template.name;
+                    abilityDescription = template.description.replace("герой", name);
+                }
+            }
+
+            const draft = {
+                name: `${name} ${dominant.name}`,
+                concept,
+                backstory: backstoryPieces.join(" \n"),
+                specialAbilityName: abilityName,
+                specialAbilityDescription: abilityDescription
+            };
+
+            applyCharacterDraft(draft, true);
+            state.characterDraft = draft;
+            state.characterDraftDirty = true;
+            updateAbilityHint();
+        }
+
+        function randomChoice(array) {
+            return array[Math.floor(Math.random() * array.length)];
         }
 
         function startPolling() {
@@ -634,10 +1295,23 @@
             refreshSession();
         }
 
+        CHARACTER_FIELD_IDS.forEach((id) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                return;
+            }
+
+            element.addEventListener("input", () => {
+                state.characterDraftDirty = true;
+                state.characterDraft = readCharacterDraft();
+            });
+        });
+
         document.getElementById("create-session").addEventListener("click", createSession);
         document.getElementById("join-session").addEventListener("click", joinSession);
         document.getElementById("save-setup").addEventListener("click", saveSetup);
         document.getElementById("ready-button").addEventListener("click", markReady);
+        document.getElementById("generate-character").addEventListener("click", generateCharacterIdea);
         document.getElementById("send-action").addEventListener("click", sendAction);
         document.getElementById("send-question").addEventListener("click", sendQuestion);
         document.getElementById("send-chat").addEventListener("click", sendChat);

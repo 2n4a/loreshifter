@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Loreshifter.Game.Modes;
 using Loreshifter.Game.Sessions;
@@ -68,6 +69,17 @@ public class GameSessionManager
     public GamePlayer Join(Guid sessionId, string playerName)
     {
         var session = GetSession(sessionId);
+        return JoinInternal(session, playerName);
+    }
+
+    public GamePlayer Join(string code, string playerName)
+    {
+        var session = GetSession(code);
+        return JoinInternal(session, playerName);
+    }
+
+    private GamePlayer JoinInternal(GameSession session, string playerName)
+    {
         lock (session.SyncRoot)
         {
             if (session.Phase != SessionPhase.AwaitingPlayerSetup)
@@ -92,9 +104,10 @@ public class GameSessionManager
         lock (session.SyncRoot)
         {
             var player = session.FindPlayer(playerId) ?? throw new KeyNotFoundException("Player not found in session.");
-            player.Setup.Class = setup.Class;
-            player.Setup.SpecialAbility = setup.SpecialAbility;
-            player.Setup.Inventory = setup.Inventory?.ToList() ?? new List<string>();
+            var rules = session.CharacterCreation ?? new CharacterCreationRules();
+
+            player.Setup.Inventory = FilterInventory(session, setup.Inventory);
+            UpdateCharacterSheet(player.Setup.Character, setup.Character, rules);
         }
     }
 
@@ -181,6 +194,94 @@ public class GameSessionManager
     {
         var alivePlayers = session.Players.Where(p => p.IsAlive).ToList();
         return alivePlayers.All(player => turn.HasActionFrom(player.Id));
+    }
+
+    private List<string> FilterInventory(GameSession session, IEnumerable<string>? requested)
+    {
+        if (requested is null)
+        {
+            return new List<string>();
+        }
+
+        var catalog = session.ItemCatalog
+            .Select(item => item.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return requested
+            .Where(itemId => catalog.Contains(itemId))
+            .Select(itemId => session.ItemCatalog.First(item => string.Equals(item.Id, itemId, StringComparison.OrdinalIgnoreCase)).Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void UpdateCharacterSheet(CharacterSheet target, CharacterSheet source, CharacterCreationRules rules)
+    {
+        if (source is null)
+        {
+            return;
+        }
+
+        target.Name = source.Name;
+        target.Concept = source.Concept;
+        target.Backstory = source.Backstory;
+        target.SpecialAbilityName = source.SpecialAbilityName;
+        target.SpecialAbilityDescription = source.SpecialAbilityDescription;
+
+        var normalized = NormalizeAttributes(rules, source.Attributes);
+        target.Attributes = normalized;
+    }
+
+    private Dictionary<string, int> NormalizeAttributes(CharacterCreationRules rules, Dictionary<string, int>? requested)
+    {
+        var normalized = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var definition in rules.Attributes ?? Array.Empty<CharacterAttributeDefinition>())
+        {
+            var value = definition.MinValue;
+            if (requested is not null && requested.TryGetValue(definition.Id, out var proposed))
+            {
+                value = Math.Max(definition.MinValue, Math.Min(definition.MaxValue, proposed));
+            }
+
+            normalized[definition.Id] = value;
+        }
+
+        if (rules.TotalAssignablePoints <= 0 || normalized.Count == 0)
+        {
+            return normalized;
+        }
+
+        var total = normalized.Values.Sum();
+        if (total <= rules.TotalAssignablePoints)
+        {
+            return normalized;
+        }
+
+        var overflow = total - rules.TotalAssignablePoints;
+        var ordered = rules.Attributes
+            .OrderByDescending(def => normalized.TryGetValue(def.Id, out var val) ? val - def.MinValue : 0)
+            .ToList();
+
+        foreach (var definition in ordered)
+        {
+            if (overflow <= 0)
+            {
+                break;
+            }
+
+            var current = normalized[definition.Id];
+            var reducible = current - definition.MinValue;
+            if (reducible <= 0)
+            {
+                continue;
+            }
+
+            var deduction = Math.Min(reducible, overflow);
+            normalized[definition.Id] = current - deduction;
+            overflow -= deduction;
+        }
+
+        return normalized;
     }
 
     private void ResolveTurn(GameSession session, GameTurn turn)

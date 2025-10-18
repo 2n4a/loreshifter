@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +10,12 @@ public record BossBattleState(int BossHealth, int Rage, int Turn) : GameModeStat
 
 public class BossBattleGameMode : IGameMode
 {
-    private static readonly string[] DefaultInventory = ["Magic Wand", "Steel Sword", "Field Bandage"];
+    private static readonly string[] DefaultInventory =
+    [
+        "weapon.staff",
+        "weapon.sword",
+        "consumable.bandage"
+    ];
     private readonly Random _random = new();
 
     public string Id => "boss-battle";
@@ -17,19 +23,27 @@ public class BossBattleGameMode : IGameMode
 
     public GameSession CreateSession(CreateSessionOptions options)
     {
+        var bossProfile = CloneBossProfile(BossBattleReferenceData.BossProfile);
+        var worldLore = CloneWorldLore(BossBattleReferenceData.WorldLore);
+        var characterRules = CloneCharacterRules(BossBattleReferenceData.CharacterRules);
         var session = new GameSession
         {
             Id = Guid.NewGuid(),
             Code = GenerateCode(),
             ModeId = Id,
             Title = "Siege of the Obsidian Titan",
-            Prologue = BuildPrologue(),
-            BossOverview = BuildBossOverview(),
+            Prologue = BuildPrologue(worldLore, bossProfile),
+            BossOverview = BuildBossOverview(bossProfile),
             CreatedAt = DateTime.UtcNow,
             Phase = SessionPhase.AwaitingPlayerSetup,
             ExpectedPlayers = options.ExpectedPlayers,
-            ModeState = new BossBattleState(BossHealth: 120, Rage: 10, Turn: 0)
+            ModeState = new BossBattleState(bossProfile.MaxHealth, bossProfile.StartingRage, 0),
+            WorldLore = worldLore,
+            CharacterCreation = characterRules,
+            BossProfile = bossProfile
         };
+
+        session.SetItemCatalog(BossBattleReferenceData.Items.Select(CloneItemDefinition));
 
         if (!string.IsNullOrWhiteSpace(options.HostPlayerName))
         {
@@ -62,7 +76,7 @@ public class BossBattleGameMode : IGameMode
             }
         };
 
-        turn.SetSuggestions(BuildSuggestions());
+        turn.SetSuggestions(BuildSuggestions(session));
         return turn;
     }
 
@@ -78,7 +92,7 @@ public class BossBattleGameMode : IGameMode
         var newRage = Math.Min(100, state.Rage + 10 + turn.Actions.Count * 3);
         var nextTurnNumber = state.Turn + 1;
 
-        var resolutionNarrative = BuildResolutionNarrative(turn.Actions, newHealth, newRage);
+        var resolutionNarrative = BuildResolutionNarrative(session.BossProfile, turn.Actions, newHealth, newRage);
         var resolution = new GameEvent
         {
             Title = "Clash Resolution",
@@ -94,19 +108,22 @@ public class BossBattleGameMode : IGameMode
             nextPrompt = new GameEvent
             {
                 Title = $"Boss counter-surge (Turn {nextTurnNumber})",
-                Description = BuildNextPromptNarrative(newHealth, newRage),
+                Description = BuildNextPromptNarrative(session.BossProfile, newHealth, newRage),
                 CreatedAt = DateTime.UtcNow
             };
         }
 
         session.ModeState = new BossBattleState(newHealth, newRage, nextTurnNumber);
 
-        var suggestions = BuildSuggestions().ToList();
+        var suggestions = BuildSuggestions(session).ToList();
         return new GameTurnResolution(resolution, nextPrompt, suggestions, outcome);
     }
 
-    private IEnumerable<ActionSuggestion> BuildSuggestions()
+    private IEnumerable<ActionSuggestion> BuildSuggestions(GameSession session)
     {
+        var shield = session.ItemCatalog.FirstOrDefault(item => item.Id == "armor.shield");
+        var bandage = session.ItemCatalog.FirstOrDefault(item => item.Id == "consumable.bandage");
+
         yield return new ActionSuggestion
         {
             Source = "guide",
@@ -115,8 +132,19 @@ public class BossBattleGameMode : IGameMode
         yield return new ActionSuggestion
         {
             Source = "guide",
-            Content = "Use defensive or disruption abilities to shield the team from the impending firestorm."
+            Content = shield is null
+                ? "Use defensive or disruption abilities to shield the team from the impending firestorm."
+                : $"Deploy {shield.Name} or similar defenses to deflect the titan's area blasts while allies strike."
         };
+
+        if (bandage is not null)
+        {
+            yield return new ActionSuggestion
+            {
+                Source = "guide",
+                Content = $"Reserve {bandage.Name} for emergency stabilization when a hero drops below half vitality."
+            };
+        }
     }
 
     private static int EstimateImpact(IReadOnlyCollection<PlayerAction> actions)
@@ -146,7 +174,7 @@ public class BossBattleGameMode : IGameMode
         return GameOutcome.Ongoing;
     }
 
-    private string BuildResolutionNarrative(IEnumerable<PlayerAction> actions, int bossHealth, int rage)
+    private string BuildResolutionNarrative(BossProfile profile, IEnumerable<PlayerAction> actions, int bossHealth, int rage)
     {
         if (!actions.Any())
         {
@@ -165,29 +193,155 @@ public class BossBattleGameMode : IGameMode
             ? "A resonant crack splits the titan's core as it collapses, scattering obsidian shards across the ruined arena. Victory!"
             : $"The titan staggers, molten cracks spiderwebbing its frame. Remaining vitality: {bossHealth}. Its fury now seethes at {rage}%.");
 
+        var phase = profile.RagePhases
+            .OrderByDescending(p => p.RageThreshold)
+            .FirstOrDefault(p => rage >= p.RageThreshold);
+
+        if (phase is not null && bossHealth > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine($"Rage phase response Ч {phase.Description} {phase.AttackProfile}");
+        }
+
         return builder.ToString();
     }
 
-    private string BuildNextPromptNarrative(int bossHealth, int rage)
+    private string BuildNextPromptNarrative(BossProfile profile, int bossHealth, int rage)
     {
-        var behaviour = rage switch
-        {
-            >= 80 => "The titan howls and prepares a catastrophic meteor storm, seeking to annihilate anyone standing.",
-            >= 50 => "The titan gathers a tidal wave of molten glass, ready to sweep across the arena.",
-            _ => "The titan braces, shards swirling defensively as it seeks an opening."
-        };
+        var phase = profile.RagePhases
+            .OrderByDescending(p => p.RageThreshold)
+            .FirstOrDefault(p => rage >= p.RageThreshold);
+
+        var behaviour = phase is null
+            ? "The titan studies the battlefield, gauging your resolve."
+            : phase.AttackProfile;
 
         return $"The obsidian titan reels with {bossHealth} vitality remaining. {behaviour} Plan your next decisive actions.";
     }
 
-    private string BuildPrologue()
+    private string BuildPrologue(WorldDescription world, BossProfile boss)
     {
-        return "For weeks the continent has shuddered under the wake of an obsidian colossus forged from dead stars. The heroes finally corner the titan at the heart of a shattered citadel, knowing this battle will decide the fate of the realm.";
+        var builder = new StringBuilder();
+        builder.AppendLine(world.Overview);
+        builder.AppendLine();
+        builder.AppendLine(world.Geography);
+        builder.AppendLine();
+        builder.AppendLine($"ѕоследн€€ надежда городов-купол Ч герои, решившиес€ остановить {boss.Title.ToLower()} по имени {boss.Name}.");
+        return builder.ToString();
     }
 
-    private string BuildBossOverview()
+    private string BuildBossOverview(BossProfile boss)
     {
-        return "Obsidian Titan Ч a colossal construct harnessing stellar embers. Strengths: devastating area attacks, resilient armor. Weaknesses: destabilizes when interrupted mid-channel, vulnerable joints at the shoulders and chest.";
+        var builder = new StringBuilder();
+        builder.AppendLine($"{boss.Name}, {boss.Title}.");
+        builder.AppendLine(boss.Backstory);
+        builder.AppendLine();
+        builder.AppendLine($"ћаксимальные очки здоровь€: {boss.MaxHealth}. —тартова€ €рость: {boss.StartingRage}%.");
+        builder.AppendLine($"—тиль бо€: {boss.CombatStyle}");
+
+        if (boss.SignatureEquipment.Any())
+        {
+            builder.AppendLine();
+            builder.AppendLine(" лючевые артефакты:");
+            foreach (var item in boss.SignatureEquipment)
+            {
+                builder.AppendLine($"- {item}");
+            }
+        }
+
+        if (boss.RagePhases.Any())
+        {
+            builder.AppendLine();
+            builder.AppendLine("‘азы €рости:");
+            foreach (var phase in boss.RagePhases.OrderBy(p => p.RageThreshold))
+            {
+                builder.AppendLine($"- ќт {phase.RageThreshold}%: {phase.Description} {phase.AttackProfile}");
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static WorldDescription CloneWorldLore(WorldDescription source)
+    {
+        return new WorldDescription
+        {
+            Overview = source.Overview,
+            Geography = source.Geography,
+            MagicSystem = source.MagicSystem,
+            Culture = source.Culture
+        };
+    }
+
+    private static CharacterCreationRules CloneCharacterRules(CharacterCreationRules source)
+    {
+        return new CharacterCreationRules
+        {
+            TotalAssignablePoints = source.TotalAssignablePoints,
+            Guidance = source.Guidance,
+            Attributes = source.Attributes
+                .Select(attribute => new CharacterAttributeDefinition
+                {
+                    Id = attribute.Id,
+                    Name = attribute.Name,
+                    Description = attribute.Description,
+                    MinValue = attribute.MinValue,
+                    MaxValue = attribute.MaxValue
+                })
+                .ToList()
+        };
+    }
+
+    private static ItemDefinition CloneItemDefinition(ItemDefinition source)
+    {
+        return new ItemDefinition
+        {
+            Id = source.Id,
+            Name = source.Name,
+            Category = source.Category,
+            Description = source.Description,
+            ConsumedOnUse = source.ConsumedOnUse,
+            Requirements = source.Requirements
+                .Select(req => new ItemRequirement
+                {
+                    AttributeId = req.AttributeId,
+                    RequiredPoints = req.RequiredPoints
+                })
+                .ToList(),
+            Effects = source.Effects
+                .Select(effect => new ItemEffect
+                {
+                    StatId = effect.StatId,
+                    Description = effect.Description,
+                    BaseValue = effect.BaseValue,
+                    ScalingAttributeId = effect.ScalingAttributeId,
+                    ScalingPerPoint = effect.ScalingPerPoint,
+                    Unit = effect.Unit
+                })
+                .ToList()
+        };
+    }
+
+    private static BossProfile CloneBossProfile(BossProfile source)
+    {
+        return new BossProfile
+        {
+            Name = source.Name,
+            Title = source.Title,
+            Backstory = source.Backstory,
+            CombatStyle = source.CombatStyle,
+            MaxHealth = source.MaxHealth,
+            StartingRage = source.StartingRage,
+            SignatureEquipment = source.SignatureEquipment.ToList(),
+            RagePhases = source.RagePhases
+                .Select(phase => new BossRagePhase
+                {
+                    RageThreshold = phase.RageThreshold,
+                    Description = phase.Description,
+                    AttackProfile = phase.AttackProfile
+                })
+                .ToList()
+        };
     }
 
     private string GenerateCode()

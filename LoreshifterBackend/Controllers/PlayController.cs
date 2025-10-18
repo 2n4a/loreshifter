@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Loreshifter.Game.Modes;
 using Loreshifter.Game.Sessions;
 using Loreshifter.Models.Play;
@@ -92,6 +94,29 @@ public class PlayController : ControllerBase
         }
     }
 
+    [HttpPost("code/{code}/players")]
+    public ActionResult<GamePlayerResponse> JoinByCode(string code, [FromBody] JoinSessionRequest? request)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.PlayerName))
+        {
+            return BadRequest(new { message = "Player name is required." });
+        }
+
+        try
+        {
+            var player = _sessionManager.Join(code, request.PlayerName);
+            return Ok(PlaySessionMapper.ToPlayerResponse(player));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Session not found." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("{sessionId:guid}/players/{playerId:guid}/setup")]
     public IActionResult ConfigurePlayer(Guid sessionId, Guid playerId, [FromBody] PlayerSetupRequest? request)
     {
@@ -104,9 +129,18 @@ public class PlayController : ControllerBase
         {
             var setup = new PlayerSetup
             {
-                Class = request.Class,
-                SpecialAbility = request.SpecialAbility,
-                Inventory = request.Inventory ?? new List<string>()
+                Inventory = request.Inventory?.ToList() ?? new List<string>(),
+                Character = new CharacterSheet
+                {
+                    Name = request.CharacterName,
+                    Concept = request.CharacterConcept,
+                    Backstory = request.Backstory,
+                    SpecialAbilityName = request.SpecialAbilityName,
+                    SpecialAbilityDescription = request.SpecialAbilityDescription,
+                    Attributes = request.Attributes is null
+                        ? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                        : new Dictionary<string, int>(request.Attributes, StringComparer.OrdinalIgnoreCase)
+                }
             };
             _sessionManager.UpdatePlayerSetup(sessionId, playerId, setup);
             return NoContent();

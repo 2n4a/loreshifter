@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Loreshifter.Models.Play;
 
 public record CreatePlaySessionRequest
@@ -16,10 +18,13 @@ public record JoinSessionRequest
 
 public record PlayerSetupRequest
 {
-    public string? Class { get; init; }
-    public string? SpecialAbility { get; init; }
-    public List<string>? Inventory { get; init; }
-        = new();
+    public Dictionary<string, int>? Attributes { get; init; }
+    public List<string>? Inventory { get; init; } = new();
+    public string? CharacterName { get; init; }
+    public string? CharacterConcept { get; init; }
+    public string? Backstory { get; init; }
+    public string? SpecialAbilityName { get; init; }
+    public string? SpecialAbilityDescription { get; init; }
 }
 
 public record PlayerReadyRequest
