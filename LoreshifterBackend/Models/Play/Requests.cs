@@ -9,6 +9,8 @@ public record CreatePlaySessionRequest
         = null;
     public int? ExpectedPlayers { get; init; }
         = null;
+    public bool BossWinsScenario { get; init; }
+        = false;
 }
 
 public record JoinSessionRequest

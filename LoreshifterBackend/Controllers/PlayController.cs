@@ -31,7 +31,7 @@ public class PlayController : ControllerBase
 
         try
         {
-            var options = new CreateSessionOptions(request.PlayerName, request.ExpectedPlayers);
+            var options = new CreateSessionOptions(request.PlayerName, request.ExpectedPlayers, request.BossWinsScenario);
             var session = _sessionManager.CreateSession(request.Mode, options);
             var response = PlaySessionMapper.ToResponse(session);
             return CreatedAtAction(nameof(GetById), new { sessionId = response.Id }, response);

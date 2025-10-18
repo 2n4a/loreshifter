@@ -6,7 +6,21 @@ using Loreshifter.Game.Sessions;
 
 namespace Loreshifter.Game.Modes.BossBattle;
 
-public record BossBattleState(int BossHealth, int Rage, int Turn) : GameModeState;
+public enum BossBattleScenario
+{
+    PlayersTriumph,
+    BossTriumph
+}
+
+public record BossBattleState(
+    int BossHealth,
+    int Rage,
+    int Turn,
+    BossBattleScenario Scenario,
+    Guid? MarkedForDeathPlayerId,
+    int BossAssaultsEndured,
+    int BossAssaultsRequired,
+    bool DeathSequenceCompleted) : GameModeState;
 
 public class BossBattleGameMode : IGameMode
 {
@@ -17,6 +31,16 @@ public class BossBattleGameMode : IGameMode
         "consumable.bandage"
     ];
     private readonly Random _random = new();
+    private record ScenarioUpdate(
+    int BossHealth,
+    int Rage,
+    Guid? MarkedForDeathPlayerId,
+    int BossAssaultsEndured,
+    int BossAssaultsRequired,
+    bool DeathSequenceCompleted,
+    List<string> Narrative,
+    bool PlayersDefeated,
+    string? PromptHint);
 
     public string Id => "boss-battle";
     public string Name => "Obsidian Titan Siege";
@@ -26,6 +50,9 @@ public class BossBattleGameMode : IGameMode
         var bossProfile = CloneBossProfile(BossBattleReferenceData.BossProfile);
         var worldLore = CloneWorldLore(BossBattleReferenceData.WorldLore);
         var characterRules = CloneCharacterRules(BossBattleReferenceData.CharacterRules);
+        var scenario = options.BossWinsScenario
+            ? BossBattleScenario.BossTriumph
+            : BossBattleScenario.PlayersTriumph;
         var session = new GameSession
         {
             Id = Guid.NewGuid(),
@@ -37,7 +64,15 @@ public class BossBattleGameMode : IGameMode
             CreatedAt = DateTime.UtcNow,
             Phase = SessionPhase.AwaitingPlayerSetup,
             ExpectedPlayers = options.ExpectedPlayers,
-            ModeState = new BossBattleState(bossProfile.MaxHealth, bossProfile.StartingRage, 0),
+            ModeState = new BossBattleState(
+                bossProfile.MaxHealth,
+                bossProfile.StartingRage,
+                0,
+                scenario,
+                null,
+                0,
+                0,
+                scenario == BossBattleScenario.BossTriumph),
             WorldLore = worldLore,
             CharacterCreation = characterRules,
             BossProfile = bossProfile
@@ -88,11 +123,20 @@ public class BossBattleGameMode : IGameMode
         }
 
         var impact = EstimateImpact(turn.Actions);
-        var newHealth = Math.Max(0, state.BossHealth - impact);
-        var newRage = Math.Min(100, state.Rage + 10 + turn.Actions.Count * 3);
+        var adjustedHealth = Math.Max(0, state.BossHealth - impact);
+        var adjustedRage = Math.Min(100, state.Rage + 10 + turn.Actions.Count * 3);
         var nextTurnNumber = state.Turn + 1;
 
-        var resolutionNarrative = BuildResolutionNarrative(session.BossProfile, turn.Actions, newHealth, newRage);
+        var scenarioUpdate = ApplyScenarioEffects(session, state, adjustedHealth, adjustedRage);
+        adjustedHealth = scenarioUpdate.BossHealth;
+        adjustedRage = scenarioUpdate.Rage;
+
+        var resolutionNarrative = BuildResolutionNarrative(
+            session.BossProfile,
+            turn.Actions,
+            adjustedHealth,
+            adjustedRage,
+            scenarioUpdate.Narrative);
         var resolution = new GameEvent
         {
             Title = "Clash Resolution",
@@ -100,7 +144,9 @@ public class BossBattleGameMode : IGameMode
             CreatedAt = DateTime.UtcNow
         };
 
-        var outcome = DetermineOutcome(session, newHealth);
+        var outcome = scenarioUpdate.PlayersDefeated
+            ? GameOutcome.PlayersDefeated
+            : DetermineOutcome(session, adjustedHealth);
         GameEvent? nextPrompt = null;
 
         if (outcome == GameOutcome.Ongoing)
@@ -108,15 +154,145 @@ public class BossBattleGameMode : IGameMode
             nextPrompt = new GameEvent
             {
                 Title = $"Boss counter-surge (Turn {nextTurnNumber})",
-                Description = BuildNextPromptNarrative(session.BossProfile, newHealth, newRage),
+                Description = BuildNextPromptNarrative(session.BossProfile, adjustedHealth, adjustedRage, scenarioUpdate.PromptHint),
                 CreatedAt = DateTime.UtcNow
             };
         }
 
-        session.ModeState = new BossBattleState(newHealth, newRage, nextTurnNumber);
+        session.ModeState = new BossBattleState(
+            adjustedHealth,
+            adjustedRage,
+            nextTurnNumber,
+            state.Scenario,
+            scenarioUpdate.MarkedForDeathPlayerId,
+            scenarioUpdate.BossAssaultsEndured,
+            scenarioUpdate.BossAssaultsRequired,
+            scenarioUpdate.DeathSequenceCompleted);
 
         var suggestions = BuildSuggestions(session).ToList();
         return new GameTurnResolution(resolution, nextPrompt, suggestions, outcome);
+    }
+
+    private ScenarioUpdate ApplyScenarioEffects(GameSession session, BossBattleState state, int bossHealth, int rage)
+    {
+        var narrative = new List<string>();
+        var marked = state.MarkedForDeathPlayerId;
+        var endured = state.BossAssaultsEndured;
+        var required = state.BossAssaultsRequired;
+        var deathCompleted = state.DeathSequenceCompleted;
+        var playersDefeated = false;
+        string? promptHint = null;
+
+        switch (state.Scenario)
+        {
+            case BossBattleScenario.PlayersTriumph:
+                if (!deathCompleted)
+                {
+                    if (!session.Players.Any())
+                    {
+                        break;
+                    }
+
+                    var alivePlayers = session.Players.Where(p => p.IsAlive).ToList();
+                    if (alivePlayers.Count == 0)
+                    {
+                        deathCompleted = true;
+                        break;
+                    }
+
+                    if (marked is null || alivePlayers.All(p => p.Id != marked))
+                    {
+                        var victim = alivePlayers[_random.Next(alivePlayers.Count)];
+                        marked = victim.Id;
+                        endured = 0;
+                        required = _random.Next(2, 4);
+                        narrative.Add($"The titan singles out {victim.Name}, hammering at their defenses turn after turn.");
+                    }
+
+                    if (marked is Guid targetId)
+                    {
+                        var target = session.Players.FirstOrDefault(p => p.Id == targetId);
+                        if (target is null || !target.IsAlive)
+                        {
+                            deathCompleted = true;
+                            marked = null;
+                            endured = 0;
+                            required = 0;
+                        }
+                        else
+                        {
+                            if (required <= 0)
+                            {
+                                required = _random.Next(2, 4);
+                            }
+
+                            endured += 1;
+
+                            if (endured < required)
+                            {
+                                narrative.Add($"Obsidian strikes slam into {target.Name}. The hero clings to life ({endured}/{required}).");
+                                promptHint = $"{target.Name} is reeling under the titan's assault ({endured}/{required}).";
+                            }
+                            else
+                            {
+                                target.IsAlive = false;
+                                narrative.Add($"The final cascade of cosmic fire overwhelms {target.Name}. Their sacrifice buys the party a path to victory.");
+                                deathCompleted = true;
+                                marked = null;
+                                endured = 0;
+                                required = 0;
+                            }
+                        }
+                    }
+                }
+
+                if (!deathCompleted && bossHealth <= 0)
+                {
+                    bossHealth = Math.Max(1, bossHealth);
+                    narrative.Add("Shattered but not yet defeated, the titan clings to a core of burning rage. The duel continues.");
+                }
+                break;
+
+            case BossBattleScenario.BossTriumph:
+                var survivors = session.Players.Where(p => p.IsAlive).ToList();
+                if (survivors.Count > 0)
+                {
+                    var victim = survivors[_random.Next(survivors.Count)];
+                    victim.IsAlive = false;
+                    narrative.Add($"The titan crushes {victim.Name}, leaving scorched glass where they stood.");
+                    survivors = session.Players.Where(p => p.IsAlive).ToList();
+
+                    if (survivors.Count == 0)
+                    {
+                        narrative.Add("With no defenders remaining, the obsidian titan stands triumphant among the ruins.");
+                        playersDefeated = true;
+                    }
+                    else
+                    {
+                        narrative.Add("The remaining heroes falter as the titan methodically dismantles their last defenses.");
+                        promptHint = "The titan is dismantling the party. Survival is slipping away.";
+                    }
+                }
+                else
+                {
+                    playersDefeated = true;
+                }
+
+                bossHealth = Math.Max(bossHealth, state.BossHealth);
+                rage = Math.Min(100, Math.Max(rage, state.Rage + 15));
+                break;
+        }
+
+        return new ScenarioUpdate(
+            bossHealth,
+            rage,
+            marked,
+            endured,
+            required,
+            deathCompleted,
+            narrative,
+            playersDefeated,
+            promptHint);
     }
 
     private IEnumerable<ActionSuggestion> BuildSuggestions(GameSession session)
@@ -174,24 +350,28 @@ public class BossBattleGameMode : IGameMode
         return GameOutcome.Ongoing;
     }
 
-    private string BuildResolutionNarrative(BossProfile profile, IEnumerable<PlayerAction> actions, int bossHealth, int rage)
+    private string BuildResolutionNarrative(BossProfile profile, IEnumerable<PlayerAction> actions, int bossHealth, int rage, IReadOnlyCollection<string> scenarioLines)
     {
         if (!actions.Any())
         {
-            return "The party hesitates, granting the titan an opportunity to reinforce its molten armor. The danger escalates.";
+            var builder = new StringBuilder("The party hesitates, granting the titan an opportunity to reinforce its molten armor. The danger escalates.");
+            AppendScenarioLines(builder, scenarioLines);
+            return builder.ToString();
         }
 
-        var builder = new StringBuilder();
-        builder.AppendLine("The battlefield erupts as the heroes act in unison:");
+        var result = new StringBuilder();
+        result.AppendLine("The battlefield erupts as the heroes act in unison:");
         foreach (var action in actions)
         {
-            builder.AppendLine($"- {action.PlayerName}: {action.Content}");
+            result.AppendLine($"- {action.PlayerName}: {action.Content}");
         }
 
-        builder.AppendLine();
-        builder.AppendLine(bossHealth <= 0
+        result.AppendLine();
+        result.AppendLine(bossHealth <= 0
             ? "A resonant crack splits the titan's core as it collapses, scattering obsidian shards across the ruined arena. Victory!"
             : $"The titan staggers, molten cracks spiderwebbing its frame. Remaining vitality: {bossHealth}. Its fury now seethes at {rage}%.");
+
+        AppendScenarioLines(result, scenarioLines);
 
         var phase = profile.RagePhases
             .OrderByDescending(p => p.RageThreshold)
@@ -199,14 +379,27 @@ public class BossBattleGameMode : IGameMode
 
         if (phase is not null && bossHealth > 0)
         {
-            builder.AppendLine();
-            builder.AppendLine($"Rage phase response — {phase.Description} {phase.AttackProfile}");
+            result.AppendLine();
+            result.AppendLine($"Rage phase response  {phase.Description} {phase.AttackProfile}");
         }
 
-        return builder.ToString();
+        return result.ToString();
     }
 
-    private string BuildNextPromptNarrative(BossProfile profile, int bossHealth, int rage)
+    private static void AppendScenarioLines(StringBuilder builder, IReadOnlyCollection<string> scenarioLines)
+    {
+        if (scenarioLines is null || scenarioLines.Count == 0)
+        {
+            return;
+        }
+        builder.AppendLine();
+        foreach (var line in scenarioLines)
+        {
+            builder.AppendLine(line);
+        }
+    }
+
+    private string BuildNextPromptNarrative(BossProfile profile, int bossHealth, int rage, string? scenarioHint)
     {
         var phase = profile.RagePhases
             .OrderByDescending(p => p.RageThreshold)
@@ -216,7 +409,13 @@ public class BossBattleGameMode : IGameMode
             ? "The titan studies the battlefield, gauging your resolve."
             : phase.AttackProfile;
 
-        return $"The obsidian titan reels with {bossHealth} vitality remaining. {behaviour} Plan your next decisive actions.";
+        var baseLine = $"The obsidian titan reels with {bossHealth} vitality remaining. {behaviour} Plan your next decisive actions.";
+        if (!string.IsNullOrWhiteSpace(scenarioHint))
+        {
+            baseLine += $" {scenarioHint}";
+        }
+
+        return baseLine;
     }
 
     private string BuildPrologue(WorldDescription world, BossProfile boss)

@@ -91,6 +91,26 @@
             margin-bottom: 12px;
         }
 
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #9ab1d3;
+            margin-bottom: 8px;
+        }
+
+            .checkbox-row input[type="checkbox"] {
+                width: auto;
+                accent-color: #3a7afe;
+            }
+
+        .checkbox-hint {
+            font-size: 0.75rem;
+            color: #7f92b6;
+            margin-bottom: 12px;
+        }
+
         textarea {
             min-height: 80px;
             resize: vertical;
@@ -344,6 +364,11 @@
                 <input id="create-player-name" placeholder="Например, Ардан" />
                 <label for="expected-players">Ожидаемое количество игроков</label>
                 <input id="expected-players" type="number" min="1" placeholder="Необязательно" />
+                <label class="checkbox-row">
+                    <input id="scenario-boss-wins" type="checkbox" />
+                    <span>Смоделировать победу титана (игроки проигрывают)</span>
+                </label>
+                <div class="checkbox-hint">Снимите флажок, чтобы воспроизвести сценарий победы героев.</div>
                 <button id="create-session">Создать</button>
                 <div class="error" id="create-error"></div>
             </div>
@@ -550,9 +575,11 @@
             setError("create-error", "");
             const playerName = document.getElementById("create-player-name").value.trim();
             const expectedPlayers = document.getElementById("expected-players").value;
+            const bossWinsScenario = document.getElementById("scenario-boss-wins").checked;
             const payload = { mode: "boss-battle" };
             if (playerName) payload.playerName = playerName;
             if (expectedPlayers) payload.expectedPlayers = Number(expectedPlayers);
+            payload.bossWinsScenario = bossWinsScenario;
 
             try {
                 const response = await fetch("/api/v0/play", {

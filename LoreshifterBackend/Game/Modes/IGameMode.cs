@@ -4,7 +4,7 @@ namespace Loreshifter.Game.Modes;
 
 public abstract record GameModeState;
 
-public record CreateSessionOptions(string? HostPlayerName, int? ExpectedPlayers);
+public record CreateSessionOptions(string? HostPlayerName, int? ExpectedPlayers, bool BossWinsScenario = false);
 
 public enum GameOutcome
 {
