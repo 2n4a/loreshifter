@@ -40,7 +40,7 @@ services:
       - DB_NAME=${DB_NAME:-loreshifter}
       - DB_USER=${DB_USER:-postgres}
       - ASPNETCORE_URLS=http://0.0.0.0:8000
-      - OAUTH2_GITHUB_REDIRECT_URI=http://localhost:15002/api/v0/auth/callback/github
+      - OAUTH2_GITHUB_REDIRECT_URI=https://ls.elteammate.space/api/v0/login/callback/github/
     ports:
       - "15002:8000"
     depends_on:
