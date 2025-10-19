@@ -103,7 +103,7 @@ jobs:
         uses: dawidd6/action-ansible-playbook@v2
         with:
           directory: deploy
-          playbook: deploy-ansible-playbook.yaml
+          playbook: ansible-playbook.yaml
           options: |
             -i "${{ vars.DEPLOY_SERVER_HOST }},"
             -e "github_actor=${{ vars.GHCR_USERNAME }}"
