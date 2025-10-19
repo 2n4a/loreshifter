@@ -2,3 +2,9 @@
 .idea
 .env
 Folder.DotSettings.user
+frontend/.dart_tool
+frontend/android
+frontend/build
+frontend/web
+.flutter-plugins-dependencies
+devtools_options.yaml
