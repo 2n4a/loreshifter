@@ -10,7 +10,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - postgres_wal:/var/lib/postgresql/wal
     ports:
-      - "5432:5432"
+      - "15001:5432"
     secrets:
       - db-password
     healthcheck:
@@ -35,8 +35,9 @@ services:
       - DB_NAME=${DB_NAME:-loreshifter}
       - DB_USER=${DB_USER:-postgres}
       - ASPNETCORE_URLS=http://0.0.0.0:8000
+      - OAUTH2_GITHUB_REDIRECT_URI=https://ls.elteammate.space/api/v0/auth/callback/github
     ports:
-      - "8000:8000"
+      - "15002:8000"
     depends_on:
       db:
         condition: service_healthy

@@ -38,6 +38,8 @@ docker volume rm db_devdb_data
 dotnet run --project LoreshifterBackend/LoreshifterBackend.csproj
 ```
 
+Не забудьте проставить необходимые переменные окружения.
+
 ### Frontend
 
 TODO

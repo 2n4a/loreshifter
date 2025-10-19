@@ -1,5 +1,7 @@
 **/.idea
 **/.vscode
+.git/
+.github/
 deploy/**
 docs/**
 LoreshifterBackend/bin

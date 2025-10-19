@@ -3,11 +3,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore as distinct layers
-COPY ["LoreshifterBackend.csproj", "./"]
+COPY LoreshifterBackend/LoreshifterBackend.csproj ./
 RUN dotnet restore "LoreshifterBackend.csproj"
 
 # Copy everything else and build
-COPY . .
+COPY LoreshifterBackend/ .
 RUN dotnet build "LoreshifterBackend.csproj" -c Release -o /app/build
 
 # Publish the app

@@ -2,7 +2,7 @@ FROM postgres:16-alpine
 
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_DB=loreshifter
-ENV POSTGRES_INITDB_ARGS=--data-checksums
+ENV POSTGRES_INITDB_ARGS="--encoding=UTF8 --lc-collate=C --lc-ctype=C --data-checksums"
 ENV POSTGRES_INITDB_WALDIR=/var/lib/postgresql/wal
 
 RUN mkdir -p /var/lib/postgresql/wal && \

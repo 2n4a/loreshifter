@@ -10,6 +10,11 @@
     app_dir: /opt/loreshifter
     compose_filename: compose.yaml
     ghcr_registry: ghcr.io
+    external_secrets:
+      db-password: "{{ db_password }}"
+      oauth2-github-client-id: "{{ oauth2_github_client_id }}"
+      oauth2-github-client-secret: "{{ oauth2_github_client_secret }}"
+      gen-api-key: "{{ gen_api_key }}"
 
   tasks:
     - name: Ensure Docker is installed
@@ -50,8 +55,16 @@
         group: root
         mode: "0600"
         no_log: true
-      loop: "{{ secrets | dict2items }}"
-      when: item.value is defined and item.value | length > 0
+      loop: "{{ external_secrets | dict2items }}"
+
+    # temporary, until proper migration framework is established
+    - name: Remove old database state
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        files:
+          - "{{ compose_filename }}"
+        state: absent
+        remove_volumes: true
 
     - name: Copy production compose file to server
       ansible.builtin.copy:
@@ -100,6 +113,6 @@
     - name: Prune old docker images
       community.docker.docker_prune:
         images: yes
-        containers: no
-        networks: no
-        volumes: no
+        containers: yes
+        networks: yes
+        volumes: yes
