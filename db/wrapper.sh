@@ -7,4 +7,4 @@ if [ -f /run/secrets/db-password ]; then
     export POSTGRES_PASSWORD_FILE=/tmp/db-password
 fi
 
-exec docker-entrypoint.sh postgres
+exec su-exec postgres docker-entrypoint.sh postgres

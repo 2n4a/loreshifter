@@ -47,6 +47,4 @@ RUN { \
 
 ENTRYPOINT ["/usr/local/bin/wrapper.sh"]
 
-USER postgres
-
 EXPOSE 5432
