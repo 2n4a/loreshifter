@@ -188,17 +188,18 @@ public class AuthController : ControllerBase
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
         var response = await httpClient.PostAsync("https://github.com/login/oauth/access_token", content);
+        var responseContent = await response.Content.ReadAsStringAsync();
+
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException($"GitHub API request failed with status code {response.StatusCode}");
+            throw new HttpRequestException($"GitHub API request failed with status code {response.StatusCode}: {responseContent}");
         }
 
-        var responseContent = await response.Content.ReadAsStringAsync();
         var tokenResponse = JsonSerializer.Deserialize<GitHubTokenResponse>(responseContent);
 
         if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.access_token))
         {
-            throw new InvalidOperationException("Failed to retrieve access token from GitHub");
+            throw new InvalidOperationException($"Failed to retrieve access token from GitHub: {responseContent}");
         }
 
         return tokenResponse;
@@ -216,7 +217,7 @@ public class AuthController : ControllerBase
 
         if (user == null)
         {
-            throw new InvalidOperationException("Failed to retrieve user information from GitHub");
+            throw new InvalidOperationException($"Failed to retrieve user information from GitHub. Response: {userResponse}");
         }
 
         // Get user email if not available in the profile
