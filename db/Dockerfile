@@ -11,9 +11,11 @@ RUN mkdir -p /var/lib/postgresql/wal && \
 
 COPY db/migrations /migrations
 COPY db/migrate.sh /docker-entrypoint-initdb.d/
+COPY db/wrapper.sh /usr/local/bin/wrapper.sh
 
 RUN chmod +x /docker-entrypoint-initdb.d/migrate.sh && \
-    chown -R postgres:postgres /docker-entrypoint-initdb.d/
+    chown -R postgres:postgres /docker-entrypoint-initdb.d/ && \
+    chmod +x /usr/local/bin/wrapper.sh
 
 # Healthcheck configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -42,6 +44,8 @@ RUN { \
     echo "lock_timeout = '30s'"; \
     echo "listen_addresses = '*'"; \
 } > /usr/local/share/postgresql/postgresql.conf.sample
+
+ENTRYPOINT ["/usr/local/bin/wrapper.sh"]
 
 USER postgres
 

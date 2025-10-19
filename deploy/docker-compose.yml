@@ -8,7 +8,6 @@ services:
     environment:
       - POSTGRES_DB=${DB_NAME:-loreshifter}
       - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
