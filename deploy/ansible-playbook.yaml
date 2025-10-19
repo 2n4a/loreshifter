@@ -54,7 +54,6 @@
         owner: root
         group: root
         mode: "0600"
-        no_log: true
       loop: "{{ external_secrets | dict2items }}"
 
     # temporary, until proper migration framework is established
