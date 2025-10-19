@@ -64,6 +64,7 @@
           - "{{ compose_filename }}"
         state: absent
         remove_volumes: true
+      when: "{{ app_dir }}/{{ compose_filename }}" exists
 
     - name: Copy production compose file to server
       ansible.builtin.copy:
