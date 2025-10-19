@@ -74,7 +74,7 @@
 
     - name: Copy production compose file to server
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/docker-compose.yaml"
+        src: "{{ playbook_dir }}/docker-compose-production.yml"
         dest: "{{ app_dir }}/{{ compose_filename }}"
         owner: root
         group: root
