@@ -57,6 +57,12 @@
       loop: "{{ external_secrets | dict2items }}"
 
     # temporary, until proper migration framework is established
+    - name: Check if compose file exists
+      ansible.builtin.stat:
+        path: "{{ app_dir }}/{{ compose_filename }}"
+      register: compose_file_stat
+      changed_when: false
+
     - name: Remove old database state
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
@@ -64,7 +70,7 @@
           - "{{ compose_filename }}"
         state: absent
         remove_volumes: true
-      when: "{{ app_dir }}/{{ compose_filename }}" exists
+      when: compose_file_stat.stat.exists
 
     - name: Copy production compose file to server
       ansible.builtin.copy:
