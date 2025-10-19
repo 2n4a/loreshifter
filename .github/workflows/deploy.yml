@@ -108,6 +108,9 @@ jobs:
             -i "${{ vars.DEPLOY_SERVER_HOST }},"
             -e "github_actor=${{ vars.GHCR_USERNAME }}"
             -e "github_token=${{ secrets.GHCR_TOKEN }}"
+            -e "db_password=${{ secrets.DB_PASSWORD }}"
+            -e "oauth2_github_client_id=${{ secrets.OAUTH2_GITHUB_CLIENT_ID }}"
+            -e "oauth2_github_client_secret=${{ secrets.OAUTH2_GITHUB_CLIENT_SECRET }}"
             -e "gen_api_key=${{ secrets.GEN_API_KEY }}"
             -u "${{ vars.DEPLOY_SERVER_USER }}"
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
