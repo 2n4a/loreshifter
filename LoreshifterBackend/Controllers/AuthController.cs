@@ -168,7 +168,6 @@ public class AuthController : ControllerBase
             throw new InvalidOperationException("GitHub OAuth credentials are not properly configured");
         }
 
-        var redirectUri = $"{Request.Scheme}://{Request.Host}/api/v0/login/callback/{GitHubProvider}";
         var httpClient = _httpClientFactory.CreateClient();
 
         var requestBody = new
@@ -176,7 +175,7 @@ public class AuthController : ControllerBase
             client_id = clientId,
             client_secret = clientSecret,
             code,
-            redirect_uri = redirectUri
+            redirect_uri = Environment.GetEnvironmentVariable("OAUTH2_GITHUB_REDIRECT_URI") ?? "http://localhost:8000/api/v0/login/callback/github"
         };
 
         var content = new StringContent(
