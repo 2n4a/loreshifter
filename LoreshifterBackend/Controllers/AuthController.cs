@@ -145,7 +145,8 @@ public class AuthController : ControllerBase
                 new ClaimsPrincipal(claimsIdentity),
                 authProperties);
 
-            return Redirect("/");
+            var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:8080";
+            return Redirect($"{frontendUrl}/auth-callback"); // потом поправим на норм адрес
         }
         catch (Exception ex)
         {
