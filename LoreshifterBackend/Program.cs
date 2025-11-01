@@ -28,6 +28,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<ISecretManager, SecretManager>();
+builder.Services.AddHttpClient();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v0", new OpenApiInfo
@@ -91,7 +92,7 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = "session";
     options.Cookie.IsEssential = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SameSite = SameSiteMode.None;
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -100,7 +101,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SameSite = SameSiteMode.None;
         options.LoginPath = "/api/v0/login";
         options.LogoutPath = "/api/v0/logout";
         options.ExpireTimeSpan = TimeSpan.FromDays(30);
@@ -108,6 +109,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:8080";
+        policy.WithOrigins(frontendUrl)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
 
 builder.Services.AddSingleton<IGameMode, BossBattleGameMode>();
 builder.Services.AddSingleton<GameSessionManager>();
@@ -123,6 +136,7 @@ app.UseSwaggerUI(options =>
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseCors();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
