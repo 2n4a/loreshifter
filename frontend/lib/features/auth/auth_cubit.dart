@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '/features/auth/domain/models/user.dart';
 import '/core/services/interfaces/auth_service_interface.dart';
+import 'dart:developer' as developer;
 
 // Состояния аутентификации
 abstract class AuthState extends Equatable {
@@ -43,46 +44,96 @@ class AuthCubit extends Cubit<AuthState> {
 
   // Проверить аутентификацию
   Future<void> checkAuth() async {
+    // ignore: avoid_print
+    print('🔑 AuthCubit: Начало проверки авторизации');
+    developer.log('AuthCubit: Начало проверки авторизации');
     emit(AuthLoading());
     try {
+      // ignore: avoid_print
+      print('🔑 AuthCubit: Вызов isAuthenticated()');
+      developer.log('AuthCubit: Вызов isAuthenticated()');
       final isAuth = await _authService.isAuthenticated();
+      // ignore: avoid_print
+      print('🔑 AuthCubit: isAuthenticated() = $isAuth');
+      developer.log('AuthCubit: isAuthenticated() = $isAuth');
+
       if (isAuth) {
+        // ignore: avoid_print
+        print('🔑 AuthCubit: Получение данных пользователя');
+        developer.log('AuthCubit: Получение данных пользователя');
         final user = await _authService.getCurrentUser();
+        // ignore: avoid_print
+        print(
+          '✅ AuthCubit: Пользователь получен - id: ${user.id}, name: ${user.name}',
+        );
+        developer.log(
+          'AuthCubit: Пользователь получен - id: ${user.id}, name: ${user.name}',
+        );
         emit(Authenticated(user));
       } else {
+        // ignore: avoid_print
+        print('⚠️ AuthCubit: Пользователь не авторизован');
+        developer.log('AuthCubit: Пользователь не авторизован');
         emit(Unauthenticated());
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // ignore: avoid_print
+      print('❌ AuthCubit: Ошибка при проверке авторизации: $e');
+      developer.log(
+        'AuthCubit: Ошибка при проверке авторизации',
+        error: e,
+        stackTrace: stackTrace,
+      );
       emit(AuthFailure(e.toString()));
     }
   }
 
   // Получить URL для входа
   String getLoginUrl() {
-    return _authService.getLoginUrl();
+    final url = _authService.getLoginUrl();
+    // ignore: avoid_print
+    print('🔗 AuthCubit: URL для входа: $url');
+    developer.log('AuthCubit: URL для входа: $url');
+    return url;
   }
 
   // Выход из аккаунта
   Future<void> logout() async {
+    // ignore: avoid_print
+    print('👋 AuthCubit: Выход из системы');
+    developer.log('AuthCubit: Выход из системы');
     emit(AuthLoading());
     try {
-      // Здесь должен быть вызов _authService.logout(), но в MVP он не реализован
+      await _authService.logout();
+      // ignore: avoid_print
+      print('✅ AuthCubit: Выход успешен');
+      developer.log('AuthCubit: Выход успешен');
       emit(Unauthenticated());
     } catch (e) {
+      // ignore: avoid_print
+      print('❌ AuthCubit: Ошибка при выходе: $e');
+      developer.log('AuthCubit: Ошибка при выходе', error: e);
       emit(AuthFailure(e.toString()));
     }
   }
 
   // Обновить данные пользователя
   Future<void> updateUserName(String name) async {
+    // ignore: avoid_print
+    print('📝 AuthCubit: Обновление имени пользователя на: $name');
+    developer.log('AuthCubit: Обновление имени пользователя на: $name');
     final currentState = state;
     if (currentState is Authenticated) {
       try {
         final updatedUser = await _authService.updateUser(name);
+        // ignore: avoid_print
+        print('✅ AuthCubit: Имя пользователя обновлено');
+        developer.log('AuthCubit: Имя пользователя обновлено');
         emit(Authenticated(updatedUser));
       } catch (e) {
-        // В случае ошибки возвращаемся к предыдущему состоянию
-        emit(currentState);
+        // ignore: avoid_print
+        print('❌ AuthCubit: Ошибка при обновлении имени: $e');
+        developer.log('AuthCubit: Ошибка при обновлении имени', error: e);
         emit(AuthFailure(e.toString()));
       }
     }

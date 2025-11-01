@@ -418,14 +418,14 @@ class _GameScreenState extends State<GameScreen> {
               text: 'НАЧАТЬ ИГРУ',
               onPressed: _startGame,
               color: AppTheme.neonGreen,
-              width: 140,
+              width: 140.0,
             ),
           if (status == 'finished' && _isPlayerHost())
             AppTheme.neonButton(
               text: 'НАЧАТЬ ЗАНОВО',
               onPressed: _restartGame,
               color: AppTheme.neonGreen,
-              width: 160,
+              width: 160.0,
             ),
         ],
       ),

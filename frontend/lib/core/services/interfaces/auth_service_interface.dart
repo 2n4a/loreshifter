@@ -16,4 +16,7 @@ abstract class AuthService {
 
   /// URL для авторизации
   String getLoginUrl();
+
+  /// Выход из системы
+  Future<void> logout();
 }

@@ -50,4 +50,11 @@ class MockAuthService extends BaseService implements AuthService {
   String getLoginUrl() {
     return "${apiClient.baseUrl}/login";
   }
+
+  // Выход из системы
+  @override
+  Future<void> logout() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    // Заглушка - ничего не делаем
+  }
 }

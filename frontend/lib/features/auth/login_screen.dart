@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:web/web.dart' as web;
 import '/features/auth/auth_cubit.dart';
 import '/core/theme/app_theme.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
+
+  Future<void> _handleLogin(BuildContext context) async {
+    final loginUrl = context.read<AuthCubit>().getLoginUrl();
+
+    if (kIsWeb) {
+      // Для веб-приложения просто перенаправляем на URL авторизации
+      web.window.location.href = loginUrl;
+    } else {
+      // Для мобильных приложений можно использовать url_launcher
+      // Пока просто показываем сообщение
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Авторизация доступна только в веб-версии'),
+            backgroundColor: AppTheme.neonPink,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,24 +108,10 @@ class LoginScreen extends StatelessWidget {
                   else
                     Column(
                       children: [
-                        // Анимированная неоновая кнопка для входа
+                        // Анимированная неоновая кнопка для входа через GitHub
                         AppTheme.animatedNeonButton(
-                          text: 'ВОЙТИ ЧЕРЕЗ GOOGLE',
-                          onPressed: () {
-                            // В MVP открываем URL для авторизации
-                            final loginUrl =
-                                context.read<AuthCubit>().getLoginUrl();
-                            // В реальном приложении надо бы настроить OAuth2
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Перенаправление на $loginUrl'),
-                                backgroundColor: AppTheme.darkAccent,
-                              ),
-                            );
-
-                            // Для MVP просто имитируем успешную авторизацию
-                            context.read<AuthCubit>().checkAuth();
-                          },
+                          text: 'ВОЙТИ ЧЕРЕЗ GITHUB',
+                          onPressed: () => _handleLogin(context),
                           color: AppTheme.neonBlue,
                         ),
 

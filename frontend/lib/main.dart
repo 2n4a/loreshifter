@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/core/api/api_client.dart';
 import '/core/router/app_router.dart';
-import '/core/services/mocks/mock_auth_service.dart';
+import '/core/services/auth_service_impl.dart';
 import '/core/services/mocks/mock_game_service.dart';
 import '/core/services/mocks/mock_gameplay_service.dart';
 import '/core/services/mocks/mock_world_service.dart';
@@ -24,16 +24,16 @@ void main() {
 class MyApp extends StatelessWidget {
   MyApp({super.key});
 
-  // Создаем ApiClient (хотя на самом деле он не будет использоваться для запросов)
-  final apiClient = ApiClient(baseUrl: 'https://ls.elteammate.space/api/v0');
+  // Создаем ApiClient с локальным URL бекенда для разработки
+  final apiClient = ApiClient(baseUrl: 'http://localhost:8000/api/v0');
 
   @override
   Widget build(BuildContext context) {
-    // Создаем МОКОВЫЕ сервисы вместо реальных
-    final authService = MockAuthService(apiClient: apiClient);
+    // Создаем РЕАЛЬНЫЙ сервис авторизации и моковые для остального
+    final authService = AuthServiceImpl(apiClient: apiClient);
     final worldService = MockWorldService(apiClient: apiClient);
     final gameService = MockGameService(apiClient: apiClient);
-    final gameplayService = MockGameplayService(); // Убираю параметр apiClient
+    final gameplayService = MockGameplayService();
 
     // Создаем кубиты
     final authCubit = AuthCubit(authService: authService);
@@ -66,10 +66,10 @@ class MyApp extends StatelessWidget {
         ],
         child: MaterialApp.router(
           title: 'Loreshifter',
-          theme: AppTheme.darkTheme,
-          // Применяем киберпанк-тему
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system, // Автоматически выбирает тему по системным настройкам
           routerConfig: appRouter.router,
-          // Добавляем обязательный параметр конфигурации роутера
           debugShowCheckedModeBanner: false,
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '/features/auth/auth_cubit.dart';
 import '/features/auth/login_screen.dart';
+import '/features/auth/auth_callback_screen.dart';
 import '/features/games/create_game_screen.dart';
 import '/features/games/game_detail_screen.dart';
 import '/features/games/game_screen.dart';
@@ -101,6 +102,10 @@ class AppRouter {
           final gameId = int.parse(state.pathParameters['gameId']!);
           return GameScreen(gameId: gameId);
         },
+      ),
+      GoRoute(
+        path: '/auth-callback',
+        builder: (context, state) => const AuthCallbackScreen(),
       ),
     ],
     redirect: (context, state) async {

@@ -1,163 +1,118 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Основные цвета киберпанк-тематики (акцентные)
-  static const Color neonPink = Color(0xFFFF2A6D);
-  static const Color neonBlue = Color(0xFF00F9FF);
-  static const Color neonPurple = Color(0xFF9A5AF2);
-  static const Color neonGreen = Color(0xFF05FFA1);
-  static const Color neonOrange = Color(0xFFFF6B35);
+  // Material You палитра: коричнево-песочно-зеленая (Google Pixel)
+  static const Color primaryGreen = Color(0xFF6B8E23); // Оливково-зеленый
+  static const Color primarySand = Color(0xFFD4A574); // Песочный
+  static const Color primaryBrown = Color(0xFF8B7355); // Коричневый
 
-  // Нейтральные темные поверхности (менее насыщенные)
-  static const Color darkBackground = Color(0xFF0D0F12);
-  static const Color darkSurface = Color(0xFF141821);
-  static const Color darkAccent = Color(0xFF1B2330);
-  static const Color darkCard = Color(0xFF1E2836);
+  // Светлые оттенки
+  static const Color lightGreen = Color(0xFF9CAF88);
+  static const Color lightSand = Color(0xFFE8D4B8);
+  static const Color lightBrown = Color(0xFFC4A384);
 
-  // Доп. цвета
-  static const Color surfaceContainer = Color(0xFF1A2130);
-  static const Color surfaceContainerHigh = Color(0xFF202A3A);
-  static const Color outline = Color(0xFF3E4A5C);
-  static const Color outlineVariant = Color(0xFF2C3646);
+  // Темные оттенки
+  static const Color darkGreen = Color(0xFF556B2F);
+  static const Color darkSand = Color(0xFFB8956A);
+  static const Color darkBrown = Color(0xFF6B5D4F);
 
-  // Современные градиенты
-  static const LinearGradient neonGradient = LinearGradient(
-    colors: [neonBlue, neonPurple, neonPink],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  // Нейтральные цвета (мягкие)
+  static const Color background = Color(0xFFFAF8F5); // Теплый белый
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceVariant = Color(0xFFF5F3F0);
+  static const Color outline = Color(0xFFCAC4BF);
+  static const Color outlineVariant = Color(0xFFE5E1DC);
 
-  static const LinearGradient greenToBlueGradient = LinearGradient(
-    colors: [neonGreen, neonBlue],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  // Темная тема
+  static const Color darkBackground = Color(0xFF1C1B1A);
+  static const Color darkSurface = Color(0xFF28261F);
+  static const Color darkSurfaceVariant = Color(0xFF3A3831);
+  static const Color darkOutline = Color(0xFF534F47);
+  static const Color darkOutlineVariant = Color(0xFF3E3B35);
 
-  static const LinearGradient purpleToPinkGradient = LinearGradient(
-    colors: [neonPurple, neonPink],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  // Текстовые цвета
+  static const Color onBackground = Color(0xFF1F1E1C);
+  static const Color onSurface = Color(0xFF1F1E1C);
+  static const Color onSurfaceVariant = Color(0xFF4D4A45);
 
-  static const LinearGradient subtleGradient = LinearGradient(
-    colors: [darkSurface, darkCard],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  static const Color onDarkBackground = Color(0xFFE8E2DB);
+  static const Color onDarkSurface = Color(0xFFE8E2DB);
+  static const Color onDarkSurfaceVariant = Color(0xFFCFC9C1);
 
-  static LinearGradient pulsingGradient(Animation<double> animation) {
-    return LinearGradient(
-      colors: [
-        Color.lerp(neonBlue, neonPurple, animation.value)!,
-        Color.lerp(neonPurple, neonPink, animation.value)!,
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-  }
-
-  // Мягкое неоновое свечение по умолчанию
-  static List<BoxShadow> neonShadow(Color color, {double intensity = 0.5}) {
-    return [
-      BoxShadow(
-        color: color.withAlpha((90 * intensity).round()),
-        blurRadius: 6.0 * intensity,
-        spreadRadius: 0.5 * intensity,
-      ),
-      BoxShadow(
-        color: color.withAlpha((50 * intensity).round()),
-        blurRadius: 12.0 * intensity,
-        spreadRadius: 1.0 * intensity,
-      ),
-    ];
-  }
+  // Акцентные цвета
+  static const Color error = Color(0xFFB3261E);
+  static const Color success = Color(0xFF6B8E23);
+  static const Color warning = Color(0xFFD4A574);
 
   // Мягкие тени для карточек
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withAlpha(64),
-      blurRadius: 14.0,
+      color: Colors.black.withOpacity(0.08),
+      blurRadius: 16.0,
+      offset: const Offset(0, 4),
+    ),
+  ];
+
+  // Мягкие тени для поднятых элементов
+  static List<BoxShadow> get elevatedShadow => [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.12),
+      blurRadius: 20.0,
       offset: const Offset(0, 6),
     ),
   ];
 
-  // Стиль неон-текста — точечно
-  static TextStyle neonTextStyle({
-    required Color color,
-    double fontSize = 16.0,
-    FontWeight fontWeight = FontWeight.w600,
-    double intensity = 0.2,
-  }) {
-    return TextStyle(
-      color: color,
-      fontSize: fontSize,
-      fontWeight: fontWeight,
-      letterSpacing: 0.25,
-      shadows: [
-        Shadow(
-          blurRadius: 6.0 * intensity,
-          color: color.withAlpha((120 * intensity).round()),
-          offset: const Offset(0, 0),
-        ),
-      ],
-    );
-  }
-
-  // Основная тема приложения
-  static ThemeData darkTheme = ThemeData.dark().copyWith(
-    scaffoldBackgroundColor: darkBackground,
-    colorScheme: const ColorScheme.dark().copyWith(
-      primary: neonBlue,
-      onPrimary: Colors.black,
-      primaryContainer: Color(0x3300F9FF),
-      onPrimaryContainer: neonBlue,
-      secondary: neonPurple,
-      onSecondary: Colors.white,
-      secondaryContainer: Color(0x339A5AF2),
-      onSecondaryContainer: neonPurple,
-      tertiary: neonPink,
+  // Светлая тема
+  static ThemeData lightTheme = ThemeData.light().copyWith(
+    scaffoldBackgroundColor: background,
+    colorScheme: ColorScheme.light(
+      primary: primaryGreen,
+      onPrimary: Colors.white,
+      primaryContainer: lightGreen,
+      onPrimaryContainer: darkGreen,
+      secondary: primarySand,
+      onSecondary: onBackground,
+      secondaryContainer: lightSand,
+      onSecondaryContainer: darkSand,
+      tertiary: primaryBrown,
       onTertiary: Colors.white,
-      tertiaryContainer: Color(0x33FF2A6D),
-      onTertiaryContainer: neonPink,
-      surface: darkBackground,
-      surfaceContainerHighest: darkSurface,
-      surfaceContainer: surfaceContainer,
-      surfaceContainerHigh: surfaceContainerHigh,
-      onSurface: Colors.white,
-      onSurfaceVariant: Colors.white70,
+      tertiaryContainer: lightBrown,
+      onTertiaryContainer: darkBrown,
+      surface: surface,
+      onSurface: onSurface,
+      surfaceContainerHighest: surfaceVariant,
+      onSurfaceVariant: onSurfaceVariant,
       outline: outline,
       outlineVariant: outlineVariant,
-      error: neonOrange,
-      onError: Colors.black,
-      errorContainer: Color(0x33FF6B35),
-      onErrorContainer: neonOrange,
+      error: error,
+      onError: Colors.white,
     ),
 
     appBarTheme: AppBarTheme(
-      backgroundColor: darkBackground,
+      backgroundColor: surface,
       surfaceTintColor: Colors.transparent,
-      foregroundColor: Colors.white,
+      foregroundColor: onSurface,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: neonTextStyle(
-        color: Colors.white,
+      titleTextStyle: TextStyle(
+        color: onSurface,
         fontSize: 22.0,
         fontWeight: FontWeight.w600,
-        intensity: 0.12,
+        letterSpacing: 0,
       ),
-      iconTheme: const IconThemeData(color: Colors.white70),
-      actionsIconTheme: IconThemeData(color: neonBlue.withAlpha(220)),
+      iconTheme: IconThemeData(color: onSurfaceVariant),
+      actionsIconTheme: IconThemeData(color: primaryGreen),
     ),
 
     cardTheme: CardThemeData(
-      color: darkCard,
+      color: surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shadowColor: Colors.transparent,
+      shadowColor: Colors.black.withOpacity(0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
-        side: BorderSide(color: outline.withAlpha(90), width: 1),
+        side: BorderSide(color: outlineVariant, width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
@@ -165,95 +120,73 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: Colors.white,
-        backgroundColor: darkAccent,
-        disabledForegroundColor: Colors.white38,
-        disabledBackgroundColor: Colors.white12,
-        elevation: 0,
-        shadowColor: Colors.transparent,
+        backgroundColor: primaryGreen,
+        disabledForegroundColor: onSurfaceVariant.withOpacity(0.38),
+        disabledBackgroundColor: onSurface.withOpacity(0.12),
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.15),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.0),
+          borderRadius: BorderRadius.circular(24.0),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 20.0),
-        minimumSize: const Size(64, 44),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
         textStyle: const TextStyle(
           fontSize: 14.0,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
-      ).copyWith(
-        overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.pressed)) {
-            return neonBlue.withAlpha(40);
-          }
-          if (states.contains(WidgetState.hovered) ||
-              states.contains(WidgetState.focused)) {
-            return Colors.white.withAlpha(20);
-          }
-          return null;
-        }),
       ),
     ),
 
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        foregroundColor: Colors.black,
-        backgroundColor: neonBlue,
-        disabledForegroundColor: Colors.white38,
-        disabledBackgroundColor: Colors.white12,
+        foregroundColor: Colors.white,
+        backgroundColor: primaryGreen,
+        disabledForegroundColor: onSurfaceVariant.withOpacity(0.38),
+        disabledBackgroundColor: onSurface.withOpacity(0.12),
         elevation: 0,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.0),
+          borderRadius: BorderRadius.circular(24.0),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 20.0),
-        minimumSize: const Size(64, 44),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
         textStyle: const TextStyle(
           fontSize: 14.0,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
-      ).copyWith(overlayColor: WidgetStateProperty.all(neonPink.withAlpha(26))),
+      ),
     ),
 
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        disabledForegroundColor: Colors.white38,
+        foregroundColor: primaryGreen,
+        disabledForegroundColor: onSurface.withOpacity(0.38),
         backgroundColor: Colors.transparent,
-        side: BorderSide(color: outline, width: 1.25),
+        side: BorderSide(color: outline, width: 1),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14.0),
+          borderRadius: BorderRadius.circular(24.0),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 20.0),
-        minimumSize: const Size(64, 44),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
         textStyle: const TextStyle(
           fontSize: 14.0,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
-      ).copyWith(
-        side: WidgetStateProperty.resolveWith<BorderSide?>((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return BorderSide(color: Colors.white24, width: 1.25);
-          }
-          if (states.contains(WidgetState.pressed) ||
-              states.contains(WidgetState.focused)) {
-            return BorderSide(color: neonBlue, width: 1.5);
-          }
-          return BorderSide(color: outline, width: 1.25);
-        }),
       ),
     ),
 
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: neonGreen.withAlpha(230),
-        disabledForegroundColor: Colors.white38,
+        foregroundColor: primaryGreen,
+        disabledForegroundColor: onSurface.withOpacity(0.38),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(20.0),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 14.0),
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
         minimumSize: const Size(64, 40),
         textStyle: const TextStyle(
           fontSize: 14.0,
@@ -265,171 +198,432 @@ class AppTheme {
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: darkCard,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      fillColor: surfaceVariant,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-        borderSide: BorderSide(color: outline, width: 1.0),
-        borderRadius: BorderRadius.circular(14.0),
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12.0),
       ),
       enabledBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: outline, width: 1.0),
-        borderRadius: BorderRadius.circular(14.0),
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12.0),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: neonBlue, width: 1.5),
-        borderRadius: BorderRadius.circular(14.0),
+        borderSide: BorderSide(color: primaryGreen, width: 2),
+        borderRadius: BorderRadius.circular(12.0),
       ),
       errorBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: neonOrange, width: 1.0),
-        borderRadius: BorderRadius.circular(14.0),
+        borderSide: BorderSide(color: error, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14.0),
-        borderSide: BorderSide(color: neonOrange, width: 1.5),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: error, width: 2),
       ),
-      labelStyle: const TextStyle(color: Colors.white70, fontSize: 14),
-      hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
-      errorStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-      helperStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+      labelStyle: TextStyle(color: onSurfaceVariant, fontSize: 14),
+      hintStyle: TextStyle(color: onSurfaceVariant.withOpacity(0.6), fontSize: 14),
+      errorStyle: TextStyle(color: error, fontSize: 12),
+      helperStyle: TextStyle(color: onSurfaceVariant, fontSize: 12),
     ),
 
     dialogTheme: DialogThemeData(
-      backgroundColor: darkSurface,
-      elevation: 16,
-      shadowColor: Colors.black54,
+      backgroundColor: surface,
+      elevation: 24,
+      shadowColor: Colors.black.withOpacity(0.2),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-        side: BorderSide(color: outlineVariant),
+        borderRadius: BorderRadius.circular(28.0),
       ),
-      titleTextStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 22,
+      titleTextStyle: TextStyle(
+        color: onSurface,
+        fontSize: 24,
         fontWeight: FontWeight.w600,
+        letterSpacing: 0,
       ),
-      contentTextStyle: const TextStyle(
-        color: Colors.white70,
+      contentTextStyle: TextStyle(
+        color: onSurfaceVariant,
+        fontSize: 14,
         letterSpacing: 0.25,
       ),
     ),
 
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: surfaceContainerHigh,
-      contentTextStyle: const TextStyle(color: Colors.white),
-      actionTextColor: neonBlue,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        side: BorderSide(color: outlineVariant),
-      ),
-      elevation: 6,
-    ),
-
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: darkSurface,
-      modalBackgroundColor: darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
-      ),
-    ),
-
-    dividerColor: outline.withAlpha(80),
-    dividerTheme: DividerThemeData(color: outline.withAlpha(80), space: 1),
-
-    chipTheme: ChipThemeData(
-      backgroundColor: surfaceContainer,
-      disabledColor: surfaceContainer.withAlpha(127),
-      selectedColor: neonBlue.withAlpha(50),
-      secondarySelectedColor: neonBlue.withAlpha(80),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      labelStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
-      secondaryLabelStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
-      brightness: Brightness.dark,
-      side: BorderSide(color: outline.withAlpha(90)),
-    ),
-
-    listTileTheme: ListTileThemeData(
-      tileColor: Colors.transparent,
-      selectedTileColor: neonBlue.withAlpha(24),
-      iconColor: Colors.white70,
-      textColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+    dividerTheme: DividerThemeData(
+      color: outlineVariant,
+      thickness: 1,
+      space: 1,
     ),
 
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+      thumbColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return neonBlue;
+          return Colors.white;
         }
-        return Colors.white;
+        return outline;
       }),
-      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+      trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return neonBlue.withAlpha(110);
+          return primaryGreen;
         }
-        return Colors.white24;
+        return surfaceVariant;
       }),
-    ),
-
-    checkboxTheme: CheckboxThemeData(
-      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+      trackOutlineColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return neonBlue;
-        }
-        return Colors.transparent;
-      }),
-      side: BorderSide(color: outline, width: 1.5),
-    ),
-
-    radioTheme: RadioThemeData(
-      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
-        if (states.contains(WidgetState.selected)) {
-          return neonBlue;
+          return Colors.transparent;
         }
         return outline;
       }),
     ),
+
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return primaryGreen;
+        }
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: BorderSide(color: outline, width: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: primarySand,
+      foregroundColor: onBackground,
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: surface,
+      selectedItemColor: primaryGreen,
+      unselectedItemColor: onSurfaceVariant,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
+    ),
   );
 
-  // Анимации
+  // Темная тема
+  static ThemeData darkTheme = ThemeData.dark().copyWith(
+    scaffoldBackgroundColor: darkBackground,
+    colorScheme: ColorScheme.dark(
+      primary: lightGreen,
+      onPrimary: darkGreen,
+      primaryContainer: darkGreen,
+      onPrimaryContainer: lightGreen,
+      secondary: lightSand,
+      onSecondary: darkSand,
+      secondaryContainer: darkSand,
+      onSecondaryContainer: lightSand,
+      tertiary: lightBrown,
+      onTertiary: darkBrown,
+      tertiaryContainer: darkBrown,
+      onTertiaryContainer: lightBrown,
+      surface: darkSurface,
+      onSurface: onDarkSurface,
+      surfaceContainerHighest: darkSurfaceVariant,
+      onSurfaceVariant: onDarkSurfaceVariant,
+      outline: darkOutline,
+      outlineVariant: darkOutlineVariant,
+      error: Color(0xFFFFB4AB),
+      onError: Color(0xFF690005),
+    ),
+
+    appBarTheme: AppBarTheme(
+      backgroundColor: darkSurface,
+      surfaceTintColor: Colors.transparent,
+      foregroundColor: onDarkSurface,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: onDarkSurface,
+        fontSize: 22.0,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+      ),
+      iconTheme: IconThemeData(color: onDarkSurfaceVariant),
+      actionsIconTheme: IconThemeData(color: lightGreen),
+    ),
+
+    cardTheme: CardThemeData(
+      color: darkSurface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.0),
+        side: BorderSide(color: darkOutlineVariant, width: 1),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: darkGreen,
+        backgroundColor: lightGreen,
+        disabledForegroundColor: onDarkSurfaceVariant.withOpacity(0.38),
+        disabledBackgroundColor: onDarkSurface.withOpacity(0.12),
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.3),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
+        textStyle: const TextStyle(
+          fontSize: 14.0,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      ),
+    ),
+
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        foregroundColor: darkGreen,
+        backgroundColor: lightGreen,
+        disabledForegroundColor: onDarkSurfaceVariant.withOpacity(0.38),
+        disabledBackgroundColor: onDarkSurface.withOpacity(0.12),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
+        textStyle: const TextStyle(
+          fontSize: 14.0,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      ),
+    ),
+
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: lightGreen,
+        disabledForegroundColor: onDarkSurface.withOpacity(0.38),
+        backgroundColor: Colors.transparent,
+        side: BorderSide(color: darkOutline, width: 1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        minimumSize: const Size(64, 48),
+        textStyle: const TextStyle(
+          fontSize: 14.0,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      ),
+    ),
+
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: lightGreen,
+        disabledForegroundColor: onDarkSurface.withOpacity(0.38),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        minimumSize: const Size(64, 40),
+        textStyle: const TextStyle(
+          fontSize: 14.0,
+          letterSpacing: 0.1,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: darkSurfaceVariant,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: lightGreen, width: 2),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFFFB4AB), width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: Color(0xFFFFB4AB), width: 2),
+      ),
+      labelStyle: TextStyle(color: onDarkSurfaceVariant, fontSize: 14),
+      hintStyle: TextStyle(color: onDarkSurfaceVariant.withOpacity(0.6), fontSize: 14),
+      errorStyle: TextStyle(color: Color(0xFFFFB4AB), fontSize: 12),
+      helperStyle: TextStyle(color: onDarkSurfaceVariant, fontSize: 12),
+    ),
+
+    dialogTheme: DialogThemeData(
+      backgroundColor: darkSurface,
+      elevation: 24,
+      shadowColor: Colors.black.withOpacity(0.5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28.0),
+      ),
+      titleTextStyle: TextStyle(
+        color: onDarkSurface,
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+      ),
+      contentTextStyle: TextStyle(
+        color: onDarkSurfaceVariant,
+        fontSize: 14,
+        letterSpacing: 0.25,
+      ),
+    ),
+
+    dividerTheme: DividerThemeData(
+      color: darkOutlineVariant,
+      thickness: 1,
+      space: 1,
+    ),
+
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return darkGreen;
+        }
+        return darkOutline;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return lightGreen;
+        }
+        return darkSurfaceVariant;
+      }),
+      trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return Colors.transparent;
+        }
+        return darkOutline;
+      }),
+    ),
+
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return lightGreen;
+        }
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStateProperty.all(darkGreen),
+      side: BorderSide(color: darkOutline, width: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: lightSand,
+      foregroundColor: darkSand,
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: darkSurface,
+      selectedItemColor: lightGreen,
+      unselectedItemColor: onDarkSurfaceVariant,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
+    ),
+  );
+
+  // =============================================================================
+  // ОБРАТНАЯ СОВМЕСТИМОСТЬ: Устаревшие киберпанк-компоненты
+  // =============================================================================
+
+  // Старые неоновые цвета (маппим на новые)
+  static const Color neonPink = error;
+  static const Color neonBlue = primaryGreen;
+  static const Color neonPurple = primaryBrown;
+  static const Color neonGreen = success;
+  static const Color neonOrange = warning;
+
+  // Старые цвета поверхностей (маппим на новые)
+  static const Color darkAccent = darkSurfaceVariant;
+  static const Color darkCard = darkSurface;
+  static const Color surfaceContainer = darkSurfaceVariant;
+  static const Color surfaceContainerHigh = darkSurface;
+
+  // Старые градиенты (заменяем на простые цвета)
+  static const LinearGradient neonGradient = LinearGradient(
+    colors: [primaryGreen, primarySand],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient greenToBlueGradient = LinearGradient(
+    colors: [primaryGreen, primarySand],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient purpleToPinkGradient = LinearGradient(
+    colors: [primaryBrown, primarySand],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient subtleGradient = LinearGradient(
+    colors: [darkSurface, darkSurfaceVariant],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Старые константы анимации
+  static const Duration slowAnimation = Duration(milliseconds: 800);
+  static const Duration normalAnimation = Duration(milliseconds: 400);
   static const Duration fastAnimation = Duration(milliseconds: 200);
-  static const Duration normalAnimation = Duration(milliseconds: 300);
-  static const Duration slowAnimation = Duration(milliseconds: 500);
 
-  static const Curve defaultCurve = Curves.easeInOutCubic;
+  static const Curve defaultCurve = Curves.easeInOut;
+  static const Curve fastCurve = Curves.easeOut;
   static const Curve bounceCurve = Curves.elasticOut;
-  static const Curve fastCurve = Curves.easeOutQuart;
 
-  // Недостающие компоненты UI
+  // Старые тени (используем новые)
+  static List<BoxShadow> neonShadow(Color color, {double intensity = 0.5}) {
+    return cardShadow;
+  }
+
+  // Старые стили текста
+  static TextStyle neonTextStyle({
+    required Color color,
+    double fontSize = 16.0,
+    FontWeight fontWeight = FontWeight.w600,
+    double intensity = 0.2,
+  }) {
+    return TextStyle(
+      color: color,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      letterSpacing: 0.25,
+    );
+  }
+
+  // Градиентный текст (теперь просто обычный текст)
   static Widget gradientText({
     required String text,
     required Gradient gradient,
     double fontSize = 16.0,
-    FontWeight fontWeight = FontWeight.normal,
-    TextAlign? textAlign,
+    FontWeight fontWeight = FontWeight.w600,
   }) {
-    return ShaderMask(
-      shaderCallback:
-          (bounds) => gradient.createShader(
-            Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-          ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: Colors.white,
-          letterSpacing: 1.0,
-        ),
-        textAlign: textAlign,
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: primaryGreen,
       ),
     );
   }
@@ -438,41 +632,30 @@ class AppTheme {
   static Widget neonContainer({
     required Widget child,
     required Color borderColor,
-    EdgeInsetsGeometry? padding,
-    EdgeInsetsGeometry? margin,
-    double borderWidth = 2.0,
-    Color? backgroundColor,
+    EdgeInsets padding = const EdgeInsets.all(16),
   }) {
     return Container(
-      margin: margin,
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? darkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: borderWidth),
-        boxShadow: neonShadow(borderColor, intensity: 0.3),
+        color: darkSurfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor.withAlpha(100), width: 1),
       ),
       child: child,
     );
   }
 
-  // Неоновый прогресс индикатор
+  // Неоновый прогресс-индикатор
   static Widget neonProgressIndicator({
     required Color color,
     double size = 40.0,
-    double strokeWidth = 4.0,
   }) {
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: neonShadow(color, intensity: 0.5),
-      ),
       child: CircularProgressIndicator(
-        strokeWidth: strokeWidth,
         color: color,
-        backgroundColor: color.withAlpha(51),
+        strokeWidth: 3,
       ),
     );
   }
@@ -482,62 +665,27 @@ class AppTheme {
     required String text,
     required VoidCallback onPressed,
     required Color color,
-    IconData? icon,
-    double? width,
   }) {
-    return Container(
-      width: width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: neonShadow(color, intensity: 0.4),
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        minimumSize: Size(double.infinity, 56),
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              text,
-              style: neonTextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                intensity: 0.3,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: Text(text),
     );
   }
 
   // Неоновый разделитель
   static Widget neonDivider({
     required Color color,
-    double height = 1.0,
-    double? indent,
-    double? endIndent,
+    double indent = 0,
+    double endIndent = 0,
   }) {
-    return Container(
-      margin: EdgeInsets.only(left: indent ?? 0, right: endIndent ?? 0),
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        boxShadow: neonShadow(color, intensity: 0.6),
-      ),
+    return Divider(
+      color: color.withAlpha(100),
+      indent: indent,
+      endIndent: endIndent,
     );
   }
 
@@ -545,45 +693,32 @@ class AppTheme {
   static Widget neonButton({
     required String text,
     required VoidCallback onPressed,
-    Color? color,
+    required Color color,
     IconData? icon,
     double? width,
   }) {
-    final buttonColor = color ?? neonPurple;
-    return Container(
+    final buttonStyle = FilledButton.styleFrom(
+      backgroundColor: color,
+      minimumSize: Size(width ?? 120, 48),
+    );
+
+    if (icon != null) {
+      return SizedBox(
+        width: width,
+        child: FilledButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(text),
+          style: buttonStyle,
+        ),
+      );
+    }
+    return SizedBox(
       width: width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: neonShadow(buttonColor, intensity: 0.3),
-      ),
-      child: ElevatedButton(
+      child: FilledButton(
         onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: buttonColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
+        style: buttonStyle,
+        child: Text(text),
       ),
     );
   }
@@ -591,49 +726,54 @@ class AppTheme {
   // Неоновая карточка
   static Widget neonCard({
     required Widget child,
-    String? title,
     Color? borderColor,
-    EdgeInsetsGeometry? padding,
-    EdgeInsetsGeometry? margin,
+    EdgeInsets? padding,
     VoidCallback? onTap,
+    String? title,
   }) {
-    final cardBorderColor = borderColor ?? neonBlue;
-    return Container(
-      margin: margin ?? const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: darkSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cardBorderColor, width: 1),
-        boxShadow: neonShadow(cardBorderColor, intensity: 0.2),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: padding ?? const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title != null) ...[
-                  Text(
-                    title,
-                    style: neonTextStyle(
-                      color: cardBorderColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      intensity: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                child,
-              ],
+    Widget content = child;
+
+    // Если есть заголовок, добавляем его
+    if (title != null) {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: borderColor ?? primaryGreen,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          SizedBox(height: 12),
+          child,
+        ],
+      );
+    }
+
+    final card = Container(
+      padding: padding ?? EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: darkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: (borderColor ?? primaryGreen).withAlpha(100),
+          width: 1,
         ),
       ),
+      child: content,
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: card,
+      );
+    }
+
+    return card;
   }
 }
