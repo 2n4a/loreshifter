@@ -8,7 +8,7 @@ import '/features/chat/domain/models/message.dart';
 import '/features/auth/auth_cubit.dart';
 import '/features/chat/gameplay_cubit.dart';
 import '/features/games/games_cubit.dart';
-import '/core/theme/app_theme.dart';
+import '/core/widgets/neon_button.dart';
 
 class GameScreen extends StatefulWidget {
   final int gameId;
@@ -44,36 +44,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadGameState() async {
-    debugPrint('DEBUG: Загрузка состояния игры для gameId=${widget.gameId}');
     try {
-      // Регистрируем слушатель перед вызовом loadGameState
       final cubit = context.read<GameplayCubit>();
-
-      // Подписываемся на изменения состояния
       late final StreamSubscription subscription;
       subscription = cubit.stream.listen((state) {
-        debugPrint(
-          'DEBUG: Получено новое состояние GameplayCubit: ${state.runtimeType}',
-        );
-
         if (state is GameStateLoaded) {
-          debugPrint('DEBUG: Состояние успешно загружено!');
-          if (!mounted) return; // защитная проверка
+          if (!mounted) return;
           setState(() {
             _gameState = state.gameState;
           });
-          debugPrint('DEBUG: Состояние игры: $_gameState');
-
-          // Загружаем основной игровой чат
           if (_gameState['gameChat'] != null) {
-            debugPrint('DEBUG: Найден gameChat, загружаем чат с индексом 0');
-            _loadChat(0); // Индекс 0 для основного чата
-          } else {
-            debugPrint('DEBUG: ОШИБКА - gameChat не найден в состоянии игры');
+            _loadChat(0);
           }
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          debugPrint('DEBUG: ОШИБКА ЗАГРУЗКИ: ${state.message}');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
@@ -82,13 +66,8 @@ class _GameScreenState extends State<GameScreen> {
           subscription.cancel();
         }
       });
-
-      // Теперь вызываем загрузку состояния
       await cubit.loadGameState();
-      debugPrint('DEBUG: Запрос на загрузку состояния игры отправлен');
-    } catch (e, stacktrace) {
-      debugPrint('DEBUG: ИСКЛЮЧЕНИЕ при загрузке состояния игры: $e');
-      debugPrint('DEBUG: Стек вызовов: $stacktrace');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -98,39 +77,22 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadChat(int chatIndex) async {
-    debugPrint('DEBUG: Начинаем загрузку чата с индексом $chatIndex');
     final chatId = _getChatIdFromIndex(chatIndex);
     if (chatId != null) {
-      debugPrint('DEBUG: Получен chatId: $chatId');
-
-      // Регистрируем слушатель для получения обновлений состояния
       final cubit = context.read<GameplayCubit>();
-
-      // Создаем переменную для подписки без инициализации
       late final StreamSubscription subscription;
-
-      // Теперь инициализируем её
       subscription = cubit.stream.listen((state) {
-        debugPrint(
-          'DEBUG: Получено состояние при загрузке чата: ${state.runtimeType}',
-        );
-
         if (state is ChatLoaded) {
-          debugPrint('DEBUG: Чат успешно загружен: ${state.chatSegment.chatId}');
-          if (!mounted) return; // защитная проверка
+          if (!mounted) return;
           setState(() {
             _currentChat = state.chatSegment;
             _selectedTabIndex = chatIndex;
           });
-
-          // Прокручиваем чат вниз, чтобы видеть последние сообщения
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
-
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _scrollToBottom(),
+          );
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          debugPrint('DEBUG: Ошибка загрузки чата: ${state.message}');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка загрузки чата: ${state.message}')),
@@ -139,28 +101,18 @@ class _GameScreenState extends State<GameScreen> {
           subscription.cancel();
         }
       });
-
-      // Теперь запрашиваем загрузку чата
       await cubit.loadChat(chatId: chatId);
-      debugPrint('DEBUG: Запрос на загрузку чата отправлен');
-    } else {
-      debugPrint('DEBUG: Не удалось получить chatId для индекса $chatIndex');
     }
   }
 
-  // Метод для получения ID чата по индексу вкладки
   int? _getChatIdFromIndex(int index) {
     if (_gameState == null) return null;
-
     if (index == 0) {
-      // Общий игровой чат
       return _gameState['gameChat']?['chatId'];
     } else if (_gameState['playerChats'] != null &&
         index - 1 < (_gameState['playerChats'] as List).length) {
-      // Индивидуальные чаты игроков
       return _gameState['playerChats']?[index - 1]?['chatId'];
     } else if (_gameState['adviceChats'] != null) {
-      // Чаты для советов
       final playerChatsCount =
           (_gameState['playerChats'] as List?)?.length ?? 0;
       if (index - 1 - playerChatsCount <
@@ -170,43 +122,23 @@ class _GameScreenState extends State<GameScreen> {
             playerChatsCount]?['chatId'];
       }
     }
-
     return null;
   }
 
-  // Отправить сообщение
   Future<void> _sendMessage() async {
     if (_messageController.text.isEmpty || _currentChat == null) return;
-
     final text = _messageController.text;
     _messageController.clear();
-
-    debugPrint(
-      'DEBUG: Начинаем отправку сообщения: "$text" в чат ${_currentChat!.chatId}',
-    );
-
-    if (!mounted) return; // защита от гонок
-    setState(() {
-      _isSending = true;
-    });
-
+    if (!mounted) return;
+    setState(() => _isSending = true);
     try {
       final cubit = context.read<GameplayCubit>();
-
-      // Объявляем переменную с ключевым словом late
       late final StreamSubscription subscription;
-
-      // Затем инициализируем её
       subscription = cubit.stream.listen((state) {
-        debugPrint('DEBUG: Получено состояние при отправке: ${state.runtimeType}');
-
         if (state is MessageSent) {
-          debugPrint('DEBUG: Сообщение успешно отправлено: ${state.message.id}');
-          // После успешной отправки загружаем обновленный чат
           _loadChat(_selectedTabIndex);
           subscription.cancel();
         } else if (state is GameplayFailure) {
-          debugPrint('DEBUG: Ошибка отправки сообщения: ${state.message}');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка отправки: ${state.message}')),
@@ -215,13 +147,8 @@ class _GameScreenState extends State<GameScreen> {
           subscription.cancel();
         }
       });
-
-      // Отправляем сообщение
       await cubit.sendMessage(chatId: _currentChat!.chatId, text: text);
-      debugPrint('DEBUG: Запрос на отправку сообщения выполнен');
-    } catch (e, stacktrace) {
-      debugPrint('DEBUG: ИСКЛЮЧЕНИЕ при отправке сообщения: $e');
-      debugPrint('DEBUG: Стек вызовов: $stacktrace');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -229,9 +156,7 @@ class _GameScreenState extends State<GameScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
+        setState(() => _isSending = false);
         _scrollToBottom();
       }
     }
@@ -247,12 +172,10 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // Выбрать подсказку из предложенных вариантов
   void _selectSuggestion(String suggestion) {
     _messageController.text = suggestion;
   }
 
-  // Выход из игры
   Future<void> _leaveGame() async {
     await context.read<GamesCubit>().leaveGame();
     if (!mounted) return;
@@ -268,86 +191,36 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
       appBar: AppBar(
-        backgroundColor: AppTheme.darkAccent,
-        title: AppTheme.gradientText(
-          text: 'ИГРА',
-          gradient: AppTheme.purpleToPinkGradient,
-          fontSize: 22.0,
-        ),
-        elevation: 0,
+        title: const Text('Игра'),
         actions: [
-          Container(
-            margin: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.neonShadow(AppTheme.neonPink),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.exit_to_app, color: AppTheme.neonPink),
-              onPressed: _leaveGame,
-              tooltip: 'Выйти из игры',
-            ),
+          IconButton(
+            icon: const Icon(Icons.exit_to_app),
+            onPressed: _leaveGame,
+            tooltip: 'Выйти из игры',
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildGameStatusBar(),
+          _buildGameStatusBar(cs),
           if (_gameState == null)
-            Expanded(
-              child: Center(
-                child: AppTheme.neonProgressIndicator(
-                  color: AppTheme.neonBlue,
-                  size: 60.0,
-                ),
-              ),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else
             Expanded(
               child: Column(
                 children: [
-                  _buildChatTabs(),
+                  _buildChatTabs(cs),
                   Expanded(
                     child:
                         _currentChat == null
-                            ? Center(
-                              child: SizedBox(
-                                width: 300,
-                                child: AppTheme.neonContainer(
-                                  borderColor: AppTheme.neonPurple,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.chat_bubble_outline,
-                                        size: 48,
-                                        color: AppTheme.neonPurple.withAlpha(
-                                          153,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'ВЫБЕРИТЕ ЧАТ',
-                                        textAlign: TextAlign.center,
-                                        style: AppTheme.neonTextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          intensity: 0.1,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )
-                            : _buildChatMessages(),
+                            ? _buildEmptyChat(cs)
+                            : _buildChatMessages(cs),
                   ),
-                  if (_currentChat != null) _buildSuggestions(),
-                  _buildMessageInput(),
+                  if (_currentChat != null) _buildSuggestions(cs),
+                  _buildMessageInput(cs),
                 ],
               ),
             ),
@@ -356,91 +229,91 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // Строка состояния игры
-  Widget _buildGameStatusBar() {
+  Widget _buildGameStatusBar(ColorScheme cs) {
     if (_gameState == null) return const SizedBox.shrink();
-
     final status = _gameState['status'] as String? ?? 'waiting';
     String statusText;
     Color statusColor;
-
     switch (status) {
       case 'waiting':
-        statusText = 'ОЖИДАНИЕ ИГРОКОВ';
-        statusColor = AppTheme.neonBlue;
+        statusText = 'Ожидание игроков';
+        statusColor = Colors.blue;
         break;
       case 'playing':
-        statusText = 'ИГРА ИДЕТ';
-        statusColor = AppTheme.neonGreen;
+        statusText = 'Игра идет';
+        statusColor = Colors.green;
         break;
       case 'finished':
-        statusText = 'ИГРА ЗАВЕРШЕНА';
-        statusColor = AppTheme.neonPurple;
+        statusText = 'Игра завершена';
+        statusColor = Colors.orange;
         break;
       default:
-        statusText = 'СТАТУС НЕИЗВЕСТЕН';
-        statusColor = Colors.grey;
+        statusText = 'Статус неизвестен';
+        statusColor = cs.onSurfaceVariant;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
-        border: Border(bottom: BorderSide(color: statusColor, width: 1.5)),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withAlpha(40),
-            blurRadius: 8.0,
-            spreadRadius: 1.0,
-            offset: const Offset(0, 4),
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: statusColor.withValues(alpha: 0.5),
+            width: 1,
           ),
-        ],
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 12,
-            height: 12,
+            width: 10,
+            height: 10,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
               color: statusColor,
-              boxShadow: AppTheme.neonShadow(statusColor),
+              shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 12),
           Text(
             statusText,
-            style: AppTheme.neonTextStyle(color: statusColor, fontSize: 14.0),
+            style: TextStyle(
+              color: cs.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const Spacer(),
           if (status == 'waiting' && _isPlayerHost())
-            AppTheme.neonButton(
-              text: 'НАЧАТЬ ИГРУ',
-              onPressed: _startGame,
-              color: AppTheme.neonGreen,
-              width: 140.0,
+            SizedBox(
+              width: 148,
+              child: NeonButton(
+                text: 'Начать игру',
+                onPressed: _startGame,
+                style: NeonButtonStyle.filled,
+                color: Colors.green,
+              ),
             ),
           if (status == 'finished' && _isPlayerHost())
-            AppTheme.neonButton(
-              text: 'НАЧАТЬ ЗАНОВО',
-              onPressed: _restartGame,
-              color: AppTheme.neonGreen,
-              width: 160.0,
+            SizedBox(
+              width: 168,
+              child: NeonButton(
+                text: 'Начать заново',
+                onPressed: _restartGame,
+                style: NeonButtonStyle.filled,
+                color: Colors.green,
+              ),
             ),
         ],
       ),
     );
   }
 
-  // Проверка, является ли текущий игрок хостом
   bool _isPlayerHost() {
     if (_gameState == null || _currentUserId == null) return false;
-
     final hostId = _gameState['game']?['hostId'];
     return hostId == _currentUserId;
   }
 
-  // Начать игру
   Future<void> _startGame() async {
     try {
       await context.read<GameplayCubit>().startGame();
@@ -454,7 +327,6 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // Перезапустить игру
   Future<void> _restartGame() async {
     try {
       await context.read<GameplayCubit>().restartGame();
@@ -468,150 +340,146 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // Вкладки для разных чатов
-  Widget _buildChatTabs() {
+  Widget _buildChatTabs(ColorScheme cs) {
     if (_gameState == null) return const SizedBox.shrink();
 
     final tabs = <Widget>[];
-    final tabColors = [
-      AppTheme.neonBlue,
-      AppTheme.neonGreen,
-      AppTheme.neonPurple,
-      AppTheme.neonPink,
-    ];
+    tabs.add(_buildTabItem('Общий', 0, cs));
 
-    // Добавляем вкладку общего чата
-    tabs.add(_buildTabItem('ОБЩИЙ', 0, tabColors[0]));
-
-    // Добавляем вкладки для индивидуальных чатов игроков
     final playerChats = _gameState['playerChats'] as List?;
     if (playerChats != null) {
       for (int i = 0; i < playerChats.length; i++) {
         final playerChat = playerChats[i];
         final playerName =
             playerChat['playerName'] as String? ?? 'Игрок ${i + 1}';
-        tabs.add(
-          _buildTabItem(
-            playerName.toUpperCase(),
-            i + 1,
-            tabColors[(i + 1) % tabColors.length],
-          ),
-        );
+        tabs.add(_buildTabItem(playerName, i + 1, cs));
       }
     }
 
-    // Добавляем вкладки для чатов советов
     final adviceChats = _gameState['adviceChats'] as List?;
     if (adviceChats != null) {
       final playerChatsCount = playerChats?.length ?? 0;
       for (int i = 0; i < adviceChats.length; i++) {
         final adviceChat = adviceChats[i];
         final adviceTitle = adviceChat['title'] as String? ?? 'Совет ${i + 1}';
-        tabs.add(
-          _buildTabItem(
-            adviceTitle.toUpperCase(),
-            i + 1 + playerChatsCount,
-            tabColors[(i + 1 + playerChatsCount) % tabColors.length],
-          ),
-        );
+        tabs.add(_buildTabItem(adviceTitle, i + 1 + playerChatsCount, cs));
       }
     }
 
     return Container(
-      color: AppTheme.darkAccent,
-      height: 50,
+      color: cs.surface,
+      height: 48,
       child: ListView(scrollDirection: Axis.horizontal, children: tabs),
     );
   }
 
-  Widget _buildTabItem(String text, int index, Color color) {
+  Widget _buildTabItem(String text, int index, ColorScheme cs) {
     final isSelected = _selectedTabIndex == index;
+    final bg = isSelected ? cs.primary : Colors.transparent;
+    final border = isSelected ? Colors.transparent : cs.outlineVariant;
+    final fg = isSelected ? Colors.white : cs.onSurfaceVariant;
 
     return GestureDetector(
       onTap: () => _loadChat(index),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient:
-              isSelected
-                  ? LinearGradient(
-                    colors: [color, color.withAlpha(100)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                  : null,
-          border: Border.all(
-            color: isSelected ? color : color.withAlpha(100),
-            width: 1.5,
-          ),
-          boxShadow: isSelected ? AppTheme.neonShadow(color) : null,
+          borderRadius: BorderRadius.circular(18),
+          color: bg,
+          border: Border.all(color: border, width: 1),
         ),
         alignment: Alignment.center,
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Colors.white : color,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+            color: fg,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
           ),
         ),
       ),
     );
   }
 
-  // Сообщения чата
-  Widget _buildChatMessages() {
-    if (_currentChat == null) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.black87,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        itemCount: _currentChat!.messages.length,
-        itemBuilder: (context, index) {
-          final message = _currentChat!.messages[index];
-          return _buildMessageBubble(message);
-        },
+  Widget _buildEmptyChat(ColorScheme cs) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 40,
+              color: cs.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text('Выберите чат', style: TextStyle(color: cs.onSurfaceVariant)),
+          ],
+        ),
       ),
     );
   }
 
-  // Отдельный пузырь сообщения
-  Widget _buildMessageBubble(Message message) {
+  Widget _buildChatMessages(ColorScheme cs) {
+    if (_currentChat == null) return const SizedBox.shrink();
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      itemCount: _currentChat!.messages.length,
+      itemBuilder: (context, index) {
+        final message = _currentChat!.messages[index];
+        return _buildMessageBubble(message, cs);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(Message message, ColorScheme cs) {
     final isCurrentUser = message.senderId == _currentUserId;
 
     Color bubbleColor;
     BorderRadius borderRadius;
+    Color borderColor = Colors.transparent;
+    Color textColor = cs.onSurface;
+    TextStyle nameStyle = TextStyle(
+      color: cs.onSurfaceVariant,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
 
     if (message.sender.type == 'system') {
-      // Системное сообщение
-      bubbleColor = AppTheme.darkAccent;
-      borderRadius = BorderRadius.circular(10);
+      bubbleColor = cs.surfaceContainerHighest;
+      borderRadius = BorderRadius.circular(12);
+      textColor = cs.onSurfaceVariant;
+      borderColor = cs.outlineVariant;
     } else if (message.sender.type == 'assistant') {
-      // Сообщение от ИИ ассистента
-      bubbleColor = AppTheme.neonPurple.withAlpha(40);
+      bubbleColor = cs.secondaryContainer;
       borderRadius = BorderRadius.circular(16);
+      textColor = cs.onSecondaryContainer;
     } else if (isCurrentUser) {
-      // Сообщение текущего пользователя
-      bubbleColor = AppTheme.neonBlue.withAlpha(40);
+      bubbleColor = cs.primaryContainer;
       borderRadius = const BorderRadius.only(
         topLeft: Radius.circular(16),
-        topRight: Radius.circular(4),
+        topRight: Radius.circular(6),
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
+      textColor = cs.onPrimaryContainer;
     } else {
-      // Сообщение другого игрока
-      bubbleColor = AppTheme.neonGreen.withAlpha(40);
+      bubbleColor = cs.tertiaryContainer;
       borderRadius = const BorderRadius.only(
-        topLeft: Radius.circular(4),
+        topLeft: Radius.circular(6),
         topRight: Radius.circular(16),
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
+      textColor = cs.onTertiaryContainer;
     }
 
     return Padding(
@@ -622,45 +490,19 @@ class _GameScreenState extends State<GameScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isCurrentUser && message.sender.type == 'user')
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.darkSurface,
-                boxShadow: AppTheme.neonShadow(AppTheme.neonGreen),
-              ),
-              child: Center(
-                child: Text(
-                  message.sender.name.substring(0, 1).toUpperCase(),
-                  style: TextStyle(
-                    color: AppTheme.neonGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: cs.primaryContainer,
+              child: Text(
+                message.sender.name.substring(0, 1).toUpperCase(),
+                style: TextStyle(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-
-          if (message.sender.type == 'assistant')
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.darkSurface,
-                boxShadow: AppTheme.neonShadow(AppTheme.neonPurple),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.smart_toy,
-                  size: 16,
-                  color: AppTheme.neonPurple,
-                ),
-              ),
-            ),
-
+          if (!isCurrentUser && message.sender.type != 'system')
+            const SizedBox(width: 8),
           Flexible(
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -668,15 +510,8 @@ class _GameScreenState extends State<GameScreen> {
                 color: bubbleColor,
                 borderRadius: borderRadius,
                 border: Border.all(
-                  color:
-                      message.sender.type == 'system'
-                          ? Colors.grey
-                          : message.sender.type == 'assistant'
-                          ? AppTheme.neonPurple
-                          : isCurrentUser
-                          ? AppTheme.neonBlue
-                          : AppTheme.neonGreen,
-                  width: 1,
+                  color: borderColor,
+                  width: borderColor == Colors.transparent ? 0 : 1,
                 ),
               ),
               child: Column(
@@ -686,89 +521,57 @@ class _GameScreenState extends State<GameScreen> {
                       message.sender.type == 'system')
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        message.sender.name,
-                        style: TextStyle(
-                          color:
-                              message.sender.type == 'system'
-                                  ? Colors.grey
-                                  : AppTheme.neonGreen,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: Text(message.sender.name, style: nameStyle),
                     ),
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color:
-                          message.sender.type == 'system'
-                              ? Colors.grey
-                              : Colors.white,
-                    ),
-                  ),
+                  Text(message.text, style: TextStyle(color: textColor)),
                 ],
               ),
             ),
           ),
-
-          if (isCurrentUser)
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.darkSurface,
-                boxShadow: AppTheme.neonShadow(AppTheme.neonBlue),
-              ),
-              child: Center(
-                child: Text(
-                  message.sender.name.substring(0, 1).toUpperCase(),
-                  style: TextStyle(
-                    color: AppTheme.neonBlue,
-                    fontWeight: FontWeight.bold,
-                  ),
+          if (isCurrentUser) ...[
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: cs.primaryContainer,
+              child: Text(
+                message.sender.name.substring(0, 1).toUpperCase(),
+                style: TextStyle(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
   }
 
-  // Блок с подсказками
-  Widget _buildSuggestions() {
+  Widget _buildSuggestions(ColorScheme cs) {
     final suggestions = _currentChat?.suggestions ?? [];
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      color: AppTheme.darkSurface,
+      color: cs.surface,
       padding: const EdgeInsets.all(8),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children:
-            suggestions.map((suggestion) {
+            suggestions.map((s) {
               return GestureDetector(
-                onTap: () => _selectSuggestion(suggestion),
+                onTap: () => _selectSuggestion(s),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkAccent,
+                    color: cs.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.neonGreen, width: 1),
-                    boxShadow: AppTheme.neonShadow(
-                      AppTheme.neonGreen.withAlpha(100),
-                    ),
+                    border: Border.all(color: cs.outlineVariant),
                   ),
-                  child: Text(
-                    suggestion,
-                    style: TextStyle(color: AppTheme.neonGreen),
-                  ),
+                  child: Text(s, style: TextStyle(color: cs.onSurface)),
                 ),
               );
             }).toList(),
@@ -776,63 +579,34 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // Поле ввода сообщения
-  Widget _buildMessageInput() {
+  Widget _buildMessageInput(ColorScheme cs) {
     return Container(
-      color: AppTheme.darkSurface,
+      color: cs.surface,
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.neonBlue, width: 1.5),
-                boxShadow: AppTheme.neonShadow(AppTheme.neonBlue.withAlpha(80)),
-                color: Colors.black45,
+            child: TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(
+                hintText: 'Введите сообщение...',
               ),
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Введите сообщение...',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                style: const TextStyle(color: Colors.white),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
-              ),
+              maxLines: null,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
             ),
           ),
-          const SizedBox(width: 12),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.neonShadow(AppTheme.neonGreen),
-            ),
-            child:
-                _isSending
-                    ? const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: AppTheme.neonGreen,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    )
-                    : IconButton(
-                      icon: Icon(Icons.send, color: AppTheme.neonGreen),
-                      onPressed: _sendMessage,
-                    ),
-          ),
+          const SizedBox(width: 8),
+          _isSending
+              ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : IconButton(
+                icon: Icon(Icons.send, color: cs.primary),
+                onPressed: _sendMessage,
+              ),
         ],
       ),
     );

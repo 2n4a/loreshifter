@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '/core/theme/app_theme.dart';
 
-class ModernCard extends StatefulWidget {
+class ModernCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? padding;
@@ -26,111 +25,37 @@ class ModernCard extends StatefulWidget {
   });
 
   @override
-  State<ModernCard> createState() => _ModernCardState();
-}
-
-class _ModernCardState extends State<ModernCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _glowAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: AppTheme.normalAnimation,
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.98,
-    ).animate(CurvedAnimation(parent: _controller, curve: AppTheme.fastCurve));
-
-    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: AppTheme.defaultCurve),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails details) {
-    if (widget.withAnimation) {
-      _controller.forward();
-    }
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    if (widget.withAnimation) {
-      _controller.reverse();
-    }
-  }
-
-  void _onTapCancel() {
-    if (widget.withAnimation) {
-      _controller.reverse();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Container(
-            margin:
-                widget.margin ??
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: widget.borderRadius ?? BorderRadius.circular(20),
-              gradient: widget.gradient ?? AppTheme.subtleGradient,
-              color:
-                  widget.gradient == null
-                      ? (widget.color ?? AppTheme.darkSurface)
-                      : null,
-              border: Border.all(
-                color: AppTheme.outline.withAlpha(
-                  widget.withGlow
-                      ? (76 + (51 * _glowAnimation.value)).round()
-                      : 76,
-                ),
-                width: 1,
-              ),
-              boxShadow: [
-                if (widget.withGlow) ...[
-                  ...AppTheme.neonShadow(
-                    AppTheme.neonPurple,
-                    intensity: 0.3 * _glowAnimation.value,
-                  ),
-                ] else ...[
-                  ...AppTheme.cardShadow,
-                ],
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: widget.onTap,
-                onTapDown: _onTapDown,
-                onTapUp: _onTapUp,
-                onTapCancel: _onTapCancel,
-                borderRadius: widget.borderRadius ?? BorderRadius.circular(20),
-                child: Container(
-                  padding: widget.padding ?? const EdgeInsets.all(20),
-                  child: widget.child,
-                ),
-              ),
-            ),
+    final theme = Theme.of(context);
+    final radius = borderRadius ?? BorderRadius.circular(16);
+
+    return Container(
+      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        gradient: gradient,
+        color: gradient == null ? (color ?? theme.colorScheme.surface) : null,
+        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-        );
-      },
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Padding(
+            padding: padding ?? const EdgeInsets.all(16),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

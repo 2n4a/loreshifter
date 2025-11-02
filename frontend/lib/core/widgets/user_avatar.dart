@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '/core/theme/app_theme.dart';
 
 class UserAvatar extends StatefulWidget {
   final String name;
@@ -34,13 +33,14 @@ class _UserAvatarState extends State<UserAvatar>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: AppTheme.normalAnimation,
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: AppTheme.bounceCurve),
-    );
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
   }
 
   @override
@@ -58,10 +58,11 @@ class _UserAvatarState extends State<UserAvatar>
     return (words[0].substring(0, 1) + words[1].substring(0, 1)).toUpperCase();
   }
 
-  Color get _glowColor => widget.glowColor ?? AppTheme.neonBlue;
-
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = widget.glowColor ?? cs.primary;
+
     return GestureDetector(
       onTap: () {
         if (widget.onTap != null) {
@@ -81,18 +82,21 @@ class _UserAvatarState extends State<UserAvatar>
                 shape: BoxShape.circle,
                 border:
                     widget.withBorder
-                        ? Border.all(color: _glowColor, width: 2)
+                        ? Border.all(
+                          color: accent.withValues(alpha: 0.7),
+                          width: 1.5,
+                        )
                         : null,
-                boxShadow:
-                    widget.withGlow
-                        ? AppTheme.neonShadow(_glowColor, intensity: 0.5)
-                        : [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(76),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        widget.withGlow
+                            ? accent.withValues(alpha: 0.25)
+                            : Colors.black.withValues(alpha: 0.06),
+                    blurRadius: widget.withGlow ? 14 : 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: ClipOval(
                 child:
@@ -101,10 +105,10 @@ class _UserAvatarState extends State<UserAvatar>
                           widget.imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return _buildFallbackAvatar();
+                            return _buildFallbackAvatar(accent, cs);
                           },
                         )
-                        : _buildFallbackAvatar(),
+                        : _buildFallbackAvatar(accent, cs),
               ),
             ),
           );
@@ -113,11 +117,14 @@ class _UserAvatarState extends State<UserAvatar>
     );
   }
 
-  Widget _buildFallbackAvatar() {
+  Widget _buildFallbackAvatar(Color accent, ColorScheme cs) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_glowColor.withAlpha(127), _glowColor.withAlpha(76)],
+          colors: [
+            accent.withValues(alpha: 0.35),
+            accent.withValues(alpha: 0.2),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -125,11 +132,10 @@ class _UserAvatarState extends State<UserAvatar>
       child: Center(
         child: Text(
           _initials,
-          style: AppTheme.neonTextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: widget.size * 0.4,
-            fontWeight: FontWeight.bold,
-            intensity: 0.3,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

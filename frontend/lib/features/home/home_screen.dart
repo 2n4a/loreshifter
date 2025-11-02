@@ -6,7 +6,8 @@ import '/features/worlds/domain/models/world.dart';
 import '/features/auth/auth_cubit.dart';
 import '/features/games/games_cubit.dart';
 import '/features/worlds/worlds_cubit.dart';
-import '/core/theme/app_theme.dart';
+import '/core/widgets/modern_card.dart';
+import '/core/widgets/neon_button.dart';
 import '/features/games/presentation/widgets/game_status_chip.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,28 +25,18 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    // Попробуем прочитать параметр tab из URI, если он указан — используем как начальную вкладку
     final uri = Uri.base;
     final tabParam = uri.queryParameters['tab'];
     _initialTabIndex = int.tryParse(tabParam ?? '') ?? 0;
-
-    // Гарантируем корректный диапазон
     if (_initialTabIndex < 0 || _initialTabIndex > 2) _initialTabIndex = 0;
 
     _tabController = TabController(length: 3, vsync: this, initialIndex: _initialTabIndex);
-
-    // Загружаем данные при инициализации экрана
     _loadInitialData();
   }
 
   void _loadInitialData() {
-    // Загружаем список активных игр
     context.read<GamesCubit>().loadGames();
-
-    // Загружаем популярные миры для витрины
     context.read<WorldsCubit>().loadPopularWorlds();
-
-    // Если пользователь авторизован, загружаем его миры
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
@@ -60,30 +51,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
       appBar: AppBar(
-        backgroundColor: AppTheme.darkAccent,
-        title: AppTheme.gradientText(
-          text: 'LORESHIFTER',
-          gradient: AppTheme.neonGradient,
-          fontSize: 22.0,
-        ),
-        elevation: 0,
+        title: const Text('Loreshifter'),
         actions: [_buildHistoryButton(), _buildProfileButton()],
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
-            gradient: AppTheme.greenToBlueGradient,
+            color: cs.primary,
             borderRadius: BorderRadius.circular(10.0),
           ),
-          labelColor: AppTheme.neonGreen,
-          unselectedLabelColor: Colors.white60,
+          labelColor: Colors.white,
+          unselectedLabelColor: cs.onSurfaceVariant,
           tabs: const [
-            Tab(text: 'КОМНАТЫ'),
-            Tab(text: 'МОИ МИРЫ'),
-            Tab(text: 'ВИТРИНА'),
+            Tab(text: 'Комнаты'),
+            Tab(text: 'Мои миры'),
+            Tab(text: 'Витрина'),
           ],
         ),
       ),
@@ -95,75 +80,44 @@ class _HomeScreenState extends State<HomeScreen>
           _buildWorldsShowcase(),
         ],
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: AppTheme.neonShadow(AppTheme.neonPink),
-        ),
-        child: FloatingActionButton(
-          backgroundColor: AppTheme.darkSurface,
-          onPressed: () => context.push('/worlds/create'),
-          tooltip: 'Создать мир',
-          child: Icon(Icons.add, color: AppTheme.neonPink, size: 30),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/worlds/create'),
+        tooltip: 'Создать мир',
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildProfileButton() {
+    final cs = Theme.of(context).colorScheme;
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
         if (state is Authenticated) {
-          return Container(
-            margin: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.neonShadow(AppTheme.neonBlue),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.account_circle, color: AppTheme.neonBlue),
-              onPressed: () => context.push('/profile'),
-            ),
+          return IconButton(
+            icon: const Icon(Icons.account_circle),
+            color: cs.primary,
+            onPressed: () => context.push('/profile'),
           );
         }
-
-        return Container(
-          margin: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: AppTheme.neonShadow(AppTheme.neonGreen),
-          ),
-          child: TextButton(
-            onPressed: () => context.push('/login'),
-            child: Text(
-              'ВОЙТИ',
-              style: AppTheme.neonTextStyle(
-                color: AppTheme.neonGreen,
-                fontSize: 14.0,
-              ),
-            ),
-          ),
+        return TextButton(
+          onPressed: () => context.push('/login'),
+          child: const Text('Войти'),
         );
       },
     );
   }
 
   Widget _buildHistoryButton() {
+    final cs = Theme.of(context).colorScheme;
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
         if (state is Authenticated) {
           final userId = state.user.id;
-          return Container(
-            margin: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.neonShadow(AppTheme.neonPurple),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.history, color: AppTheme.neonPurple),
-              tooltip: 'История игр',
-              onPressed: () => context.push('/history/$userId'),
-            ),
+          return IconButton(
+            icon: const Icon(Icons.history),
+            color: cs.secondary,
+            tooltip: 'История игр',
+            onPressed: () => context.push('/history/$userId'),
           );
         }
         return const SizedBox.shrink();
@@ -171,40 +125,33 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Вкладка "Доступные комнаты" показывает список активных игр
+  Widget _loading() => const Center(child: CircularProgressIndicator());
+
+  Widget _emptyCard(String text) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: ModernCard(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+
+  // Вкладка "Доступные комнаты"
   Widget _buildAvailableRooms() {
     return BlocBuilder<GamesCubit, GamesState>(
       builder: (context, state) {
-        if (state is GamesLoading) {
-          return Center(
-            child: AppTheme.neonProgressIndicator(
-              color: AppTheme.neonBlue,
-              size: 50.0,
-            ),
-          );
-        }
+        if (state is GamesLoading) return _loading();
 
         if (state is GamesLoaded) {
           final games = state.games;
-
-          if (games.isEmpty) {
-            return Center(
-              child: SizedBox(
-                width: 300,
-                child: AppTheme.neonContainer(
-                  borderColor: AppTheme.neonPurple,
-                  child: const Text(
-                    'АКТИВНЫХ КОМНАТ НЕ НАЙДЕНО',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            );
-          }
+          if (games.isEmpty) return _emptyCard('Активных комнат не найдено');
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             itemCount: games.length,
             itemBuilder: (context, index) {
               final game = games[index];
@@ -214,81 +161,59 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         if (state is GamesFailure) {
-          return Center(
-            child: SizedBox(
-              width: 300,
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonPink,
-                child: Text(
-                  'ОШИБКА: ${state.message}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.neonPink),
-                ),
-              ),
-            ),
-          );
+          return _emptyCard('Ошибка: ${state.message}');
         }
 
-        return Center(
-          child: SizedBox(
-            width: 300,
-            child: AppTheme.neonContainer(
-              borderColor: AppTheme.neonGreen,
-              child: const Text(
-                'ЗАГРУЗИТЕ СПИСОК КОМНАТ',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        );
+        return _emptyCard('Загрузите список комнат');
       },
     );
   }
 
-  // Карточка комнаты/игры
   Widget _buildGameCard(Game game) {
-    return AppTheme.neonCard(
-      title: game.name,
-      borderColor: AppTheme.neonBlue,
-      padding: const EdgeInsets.all(16),
+    final cs = Theme.of(context).colorScheme;
+    return ModernCard(
       child: InkWell(
         onTap: () => context.push('/games/${game.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'МИР: ${game.world.name}',
-                    style: const TextStyle(color: Colors.white70),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      game.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
-                ),
-                GameStatusChip(status: game.status, uppercase: true),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'ИГРОКОВ: ${game.players.length}/${game.maxPlayers}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                AppTheme.neonButton(
-                  text: 'ЗАЙТИ',
-                  onPressed: () {
-                    // Просто переходим на экран деталей, без вызова joinGame
-                    context.push('/games/${game.id}');
-                  },
-                  color: AppTheme.neonGreen,
-                  width: 120.0,
-                ),
-              ],
-            ),
-          ],
+                  GameStatusChip(status: game.status, uppercase: true),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Мир: ${game.world.name}',
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Игроков: ${game.players.length}/${game.maxPlayers}',
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  NeonButton(
+                    text: 'Зайти',
+                    onPressed: () => context.push('/games/${game.id}'),
+                    style: NeonButtonStyle.filled,
+                    color: cs.primary,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -299,58 +224,24 @@ class _HomeScreenState extends State<HomeScreen>
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, authState) {
         if (authState is Unauthenticated) {
-          return Center(
-            child: SizedBox(
-              width: 300,
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonPurple,
-                child: const Text(
-                  'ВОЙДИТЕ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          );
+          return _emptyCard('Войдите, чтобы увидеть свои миры');
         }
 
         return BlocBuilder<WorldsCubit, WorldsState>(
           builder: (context, state) {
-            if (state is WorldsLoading) {
-              return Center(
-                child: AppTheme.neonProgressIndicator(
-                  color: AppTheme.neonPurple,
-                  size: 50.0,
-                ),
-              );
-            }
+            if (state is WorldsLoading) return _loading();
 
             if (state is UserWorldsLoaded) {
               final worlds = state.worlds;
-
-              if (worlds.isEmpty) {
-                return Center(
-                  child: SizedBox(
-                    width: 300,
-                    child: AppTheme.neonContainer(
-                      borderColor: AppTheme.neonGreen,
-                      child: const Text(
-                        'У ВАС ПОКА НЕТ СОЗДАННЫХ МИРОВ',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                );
-              }
+              if (worlds.isEmpty) return _emptyCard('У вас пока нет созданных миров');
 
               return GridView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(8),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.8,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.9,
                 ),
                 itemCount: worlds.length,
                 itemBuilder: (context, index) {
@@ -361,34 +252,10 @@ class _HomeScreenState extends State<HomeScreen>
             }
 
             if (state is WorldsFailure) {
-              return Center(
-                child: SizedBox(
-                  width: 300,
-                  child: AppTheme.neonContainer(
-                    borderColor: AppTheme.neonPink,
-                    child: Text(
-                      'ОШИБКА: ${state.message}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppTheme.neonPink),
-                    ),
-                  ),
-                ),
-              );
+              return _emptyCard('Ошибка: ${state.message}');
             }
 
-            return Center(
-              child: SizedBox(
-                width: 300,
-                child: AppTheme.neonContainer(
-                  borderColor: AppTheme.neonGreen,
-                  child: const Text(
-                    'АВТОРИЗУЙТЕСЬ, ЧТОБЫ УВИДЕТЬ СВОИ МИРЫ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            );
+            return _emptyCard('Авторизуйтесь, чтобы увидеть свои миры');
           },
         );
       },
@@ -399,41 +266,19 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildWorldsShowcase() {
     return BlocBuilder<WorldsCubit, WorldsState>(
       builder: (context, state) {
-        if (state is WorldsLoading) {
-          return Center(
-            child: AppTheme.neonProgressIndicator(
-              color: AppTheme.neonGreen,
-              size: 50.0,
-            ),
-          );
-        }
+        if (state is WorldsLoading) return _loading();
 
         if (state is PopularWorldsLoaded) {
           final worlds = state.worlds;
-
-          if (worlds.isEmpty) {
-            return Center(
-              child: SizedBox(
-                width: 300,
-                child: AppTheme.neonContainer(
-                  borderColor: AppTheme.neonPurple,
-                  child: const Text(
-                    'МИРЫ НЕ НАЙДЕНЫ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            );
-          }
+          if (worlds.isEmpty) return _emptyCard('Миры не найдены');
 
           return GridView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.9,
             ),
             itemCount: worlds.length,
             itemBuilder: (context, index) {
@@ -444,96 +289,38 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         if (state is WorldsFailure) {
-          return Center(
-            child: SizedBox(
-              width: 300,
-              child: AppTheme.neonContainer(
-                borderColor: AppTheme.neonPink,
-                child: Text(
-                  'ОШИБКА: ${state.message}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.neonPink),
-                ),
-              ),
-            ),
-          );
+          return _emptyCard('Ошибка: ${state.message}');
         }
 
-        return Center(
-          child: SizedBox(
-            width: 300,
-            child: AppTheme.neonContainer(
-              borderColor: AppTheme.neonGreen,
-              child: const Text(
-                'ЗАГРУЗКА МИРОВ...',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        );
+        return _emptyCard('Загрузка миров...');
       },
     );
   }
 
-  // Карточка мира
   Widget _buildWorldCard(World world, {required bool isMyWorld}) {
-    // Определяем цвет в зависимости от типа мира
-    Color borderColor;
-    switch (world.type) {
-      case WorldType.fantasy:
-        borderColor = AppTheme.neonPurple;
-        break;
-      case WorldType.scifi:
-        borderColor = AppTheme.neonBlue;
-        break;
-      case WorldType.historical:
-        borderColor = AppTheme.neonPink;
-        break;
-      case WorldType.horror:
-        borderColor = Colors.red;
-        break;
-      default:
-        borderColor = AppTheme.neonGreen;
-    }
-
-    return AppTheme.neonContainer(
-      borderColor: borderColor,
-      padding: EdgeInsets.zero,
+    final cs = Theme.of(context).colorScheme;
+    return ModernCard(
       child: InkWell(
         onTap: () => context.push('/worlds/${world.id}'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Заголовок с градиентом
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.darkAccent,
-                    Color.lerp(AppTheme.darkAccent, borderColor, 0.3)!,
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(15),
-                ),
+                color: cs.surfaceContainerHighest,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: Text(
-                world.name.toUpperCase(),
-                style: TextStyle(
-                  color: borderColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+                world.name,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-
-            // Содержимое карточки
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -541,17 +328,13 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ТИП: ${world.type.toString().split('.').last.toUpperCase()}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                      'Тип: ${world.type.toString().split('.').last}',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       world.description ?? 'Нет описания',
-                      // Добавляем проверку на null
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(color: cs.onSurface, fontSize: 12),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -560,37 +343,22 @@ class _HomeScreenState extends State<HomeScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'РЕЙТИНГ: ${world.rating}/10',
-                          style: TextStyle(
-                            color: borderColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          'Рейтинг: ${world.rating}/10',
+                          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
                         ),
                         if (isMyWorld)
-                          Icon(Icons.edit, color: borderColor, size: 20),
+                          Icon(Icons.edit, color: cs.onSurfaceVariant, size: 18),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Кнопка действия
             Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    borderColor.withAlpha(100),
-                    borderColor.withAlpha(50),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(15),
-                ),
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
               ),
-              child: MaterialButton(
+              child: TextButton(
                 onPressed: () {
                   if (isMyWorld) {
                     context.push('/games/create?worldId=${world.id}');
@@ -598,13 +366,7 @@ class _HomeScreenState extends State<HomeScreen>
                     context.push('/worlds/${world.id}');
                   }
                 },
-                child: Text(
-                  isMyWorld ? 'СОЗДАТЬ ИГРУ' : 'ПОДРОБНЕЕ',
-                  style: TextStyle(
-                    color: borderColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text(isMyWorld ? 'Создать игру' : 'Подробнее'),
               ),
             ),
           ],

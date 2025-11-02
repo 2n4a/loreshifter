@@ -47,7 +47,7 @@ class AppTheme {
   // Мягкие тени для карточек
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.08),
+      color: Colors.black.withValues(alpha: 0.08),
       blurRadius: 16.0,
       offset: const Offset(0, 4),
     ),
@@ -56,7 +56,7 @@ class AppTheme {
   // Мягкие тени для поднятых элементов
   static List<BoxShadow> get elevatedShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.12),
+      color: Colors.black.withValues(alpha: 0.12),
       blurRadius: 20.0,
       offset: const Offset(0, 6),
     ),
@@ -109,7 +109,7 @@ class AppTheme {
       color: surface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shadowColor: Colors.black.withOpacity(0.08),
+      shadowColor: Colors.black.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
         side: BorderSide(color: outlineVariant, width: 1),
@@ -121,10 +121,10 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         foregroundColor: Colors.white,
         backgroundColor: primaryGreen,
-        disabledForegroundColor: onSurfaceVariant.withOpacity(0.38),
-        disabledBackgroundColor: onSurface.withOpacity(0.12),
+        disabledForegroundColor: onSurfaceVariant.withValues(alpha: 0.38),
+        disabledBackgroundColor: onSurface.withValues(alpha: 0.12),
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.15),
+        shadowColor: Colors.black.withValues(alpha: 0.15),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24.0),
@@ -143,8 +143,8 @@ class AppTheme {
       style: FilledButton.styleFrom(
         foregroundColor: Colors.white,
         backgroundColor: primaryGreen,
-        disabledForegroundColor: onSurfaceVariant.withOpacity(0.38),
-        disabledBackgroundColor: onSurface.withOpacity(0.12),
+        disabledForegroundColor: onSurfaceVariant.withValues(alpha: 0.38),
+        disabledBackgroundColor: onSurface.withValues(alpha: 0.12),
         elevation: 0,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -163,7 +163,7 @@ class AppTheme {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryGreen,
-        disabledForegroundColor: onSurface.withOpacity(0.38),
+        disabledForegroundColor: onSurface.withValues(alpha: 0.38),
         backgroundColor: Colors.transparent,
         side: BorderSide(color: outline, width: 1),
         shape: RoundedRectangleBorder(
@@ -182,7 +182,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryGreen,
-        disabledForegroundColor: onSurface.withOpacity(0.38),
+        disabledForegroundColor: onSurface.withValues(alpha: 0.38),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
         ),
@@ -221,7 +221,7 @@ class AppTheme {
         borderSide: BorderSide(color: error, width: 2),
       ),
       labelStyle: TextStyle(color: onSurfaceVariant, fontSize: 14),
-      hintStyle: TextStyle(color: onSurfaceVariant.withOpacity(0.6), fontSize: 14),
+      hintStyle: TextStyle(color: onSurfaceVariant.withValues(alpha: 0.6), fontSize: 14),
       errorStyle: TextStyle(color: error, fontSize: 12),
       helperStyle: TextStyle(color: onSurfaceVariant, fontSize: 12),
     ),
@@ -229,7 +229,7 @@ class AppTheme {
     dialogTheme: DialogThemeData(
       backgroundColor: surface,
       elevation: 24,
-      shadowColor: Colors.black.withOpacity(0.2),
+      shadowColor: Colors.black.withValues(alpha: 0.2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28.0),
       ),
@@ -348,7 +348,7 @@ class AppTheme {
       color: darkSurface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0),
         side: BorderSide(color: darkOutlineVariant, width: 1),
@@ -360,10 +360,10 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         foregroundColor: darkGreen,
         backgroundColor: lightGreen,
-        disabledForegroundColor: onDarkSurfaceVariant.withOpacity(0.38),
-        disabledBackgroundColor: onDarkSurface.withOpacity(0.12),
+        disabledForegroundColor: onDarkSurfaceVariant.withValues(alpha: 0.38),
+        disabledBackgroundColor: onDarkSurface.withValues(alpha: 0.12),
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.3),
+        shadowColor: Colors.black.withValues(alpha: 0.3),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24.0),
@@ -382,8 +382,8 @@ class AppTheme {
       style: FilledButton.styleFrom(
         foregroundColor: darkGreen,
         backgroundColor: lightGreen,
-        disabledForegroundColor: onDarkSurfaceVariant.withOpacity(0.38),
-        disabledBackgroundColor: onDarkSurface.withOpacity(0.12),
+        disabledForegroundColor: onDarkSurfaceVariant.withValues(alpha: 0.38),
+        disabledBackgroundColor: onDarkSurface.withValues(alpha: 0.12),
         elevation: 0,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -402,7 +402,7 @@ class AppTheme {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: lightGreen,
-        disabledForegroundColor: onDarkSurface.withOpacity(0.38),
+        disabledForegroundColor: onDarkSurface.withValues(alpha: 0.38),
         backgroundColor: Colors.transparent,
         side: BorderSide(color: darkOutline, width: 1),
         shape: RoundedRectangleBorder(
@@ -421,7 +421,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: lightGreen,
-        disabledForegroundColor: onDarkSurface.withOpacity(0.38),
+        disabledForegroundColor: onDarkSurface.withValues(alpha: 0.38),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
         ),
@@ -460,7 +460,7 @@ class AppTheme {
         borderSide: BorderSide(color: Color(0xFFFFB4AB), width: 2),
       ),
       labelStyle: TextStyle(color: onDarkSurfaceVariant, fontSize: 14),
-      hintStyle: TextStyle(color: onDarkSurfaceVariant.withOpacity(0.6), fontSize: 14),
+      hintStyle: TextStyle(color: onDarkSurfaceVariant.withValues(alpha: 0.6), fontSize: 14),
       errorStyle: TextStyle(color: Color(0xFFFFB4AB), fontSize: 12),
       helperStyle: TextStyle(color: onDarkSurfaceVariant, fontSize: 12),
     ),
@@ -468,7 +468,7 @@ class AppTheme {
     dialogTheme: DialogThemeData(
       backgroundColor: darkSurface,
       elevation: 24,
-      shadowColor: Colors.black.withOpacity(0.5),
+      shadowColor: Colors.black.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28.0),
       ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '/core/theme/app_theme.dart';
 
-class NeonButton extends StatefulWidget {
+class NeonButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final IconData? icon;
@@ -10,7 +9,7 @@ class NeonButton extends StatefulWidget {
   final ButtonSize size;
   final NeonButtonStyle style;
   final Gradient? gradient;
-  final double glowIntensity; // 0..1, влияет на тень
+  final double glowIntensity;
 
   const NeonButton({
     super.key,
@@ -22,61 +21,38 @@ class NeonButton extends StatefulWidget {
     this.size = ButtonSize.medium,
     this.style = NeonButtonStyle.filled,
     this.gradient,
-    this.glowIntensity = 0.3,
+    this.glowIntensity = 0.0,
   });
 
   @override
-  State<NeonButton> createState() => _NeonButtonState();
-}
-
-enum ButtonSize { small, medium, large }
-
-enum NeonButtonStyle { filled, outlined, text, gradient }
-
-class _NeonButtonState extends State<NeonButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _glowAnimation;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: AppTheme.normalAnimation,
-      vsync: this,
-    );
-
-    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: AppTheme.defaultCurve),
-    );
-
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _controller, curve: AppTheme.bounceCurve),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    switch (style) {
+      case NeonButtonStyle.filled:
+        return _buildElevated(context);
+      case NeonButtonStyle.outlined:
+        return _buildOutlined(context);
+      case NeonButtonStyle.text:
+        return _buildText(context);
+      case NeonButtonStyle.gradient:
+        return _buildGradient(context);
+    }
   }
 
   EdgeInsetsGeometry get _padding {
-    switch (widget.size) {
+    switch (size) {
       case ButtonSize.small:
-        return const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+        return const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
       case ButtonSize.medium:
-        return const EdgeInsets.symmetric(horizontal: 24, vertical: 16);
+        return const EdgeInsets.symmetric(horizontal: 20, vertical: 14);
       case ButtonSize.large:
-        return const EdgeInsets.symmetric(horizontal: 32, vertical: 20);
+        return const EdgeInsets.symmetric(horizontal: 24, vertical: 16);
     }
   }
 
   double get _fontSize {
-    switch (widget.size) {
+    switch (size) {
       case ButtonSize.small:
-        return 12;
+        return 13;
       case ButtonSize.medium:
         return 14;
       case ButtonSize.large:
@@ -85,173 +61,119 @@ class _NeonButtonState extends State<NeonButton>
   }
 
   double get _iconSize {
-    switch (widget.size) {
+    switch (size) {
       case ButtonSize.small:
-        return 16;
+        return 18;
       case ButtonSize.medium:
         return 20;
       case ButtonSize.large:
-        return 24;
+        return 22;
     }
   }
 
-  Color get _buttonColor => widget.color ?? AppTheme.neonPurple;
+  Color _accent(BuildContext context) =>
+      color ?? Theme.of(context).colorScheme.primary;
 
-  void _onTapDown() {
-    _controller.forward();
-  }
-
-  void _onTapUp() {
-    _controller.reverse();
-  }
-
-  bool get _isFilledLike =>
-      widget.style == NeonButtonStyle.filled ||
-      widget.style == NeonButtonStyle.gradient;
-
-  Widget _buildButtonContent() {
-    final contentColor = _isFilledLike ? Colors.white : _buttonColor;
-
-    if (widget.isLoading) {
+  Widget _content(BuildContext context, {required Color textColor}) {
+    final children = <Widget>[];
+    if (isLoading) {
       return SizedBox(
-        height: _iconSize,
         width: _iconSize,
-        child: CircularProgressIndicator(strokeWidth: 2, color: contentColor),
+        height: _iconSize,
+        child: CircularProgressIndicator(strokeWidth: 2, color: textColor),
       );
     }
-
-    final List<Widget> children = [];
-
-    if (widget.icon != null) {
-      children.add(Icon(widget.icon, size: _iconSize, color: contentColor));
-      if (widget.text.isNotEmpty) children.add(const SizedBox(width: 8));
+    if (icon != null) {
+      children.add(Icon(icon, size: _iconSize, color: textColor));
+      if (text.isNotEmpty) children.add(const SizedBox(width: 8));
     }
-
-    if (widget.text.isNotEmpty) {
+    if (text.isNotEmpty) {
       children.add(
         Text(
-          widget.text,
+          text,
           style: TextStyle(
             fontSize: _fontSize,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.1,
-            color: contentColor,
+            fontWeight: FontWeight.w600,
+            color: textColor,
           ),
         ),
       );
     }
-
     return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _pulseAnimation.value,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow:
-                  widget.style == NeonButtonStyle.filled ||
-                          widget.style == NeonButtonStyle.gradient
-                      ? AppTheme.neonShadow(
-                        _buttonColor,
-                        intensity: widget.glowIntensity * _glowAnimation.value,
-                      )
-                      : null,
-            ),
-            child: _buildButton(),
-          ),
-        );
-      },
+  Widget _buildElevated(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ElevatedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _accent(context),
+        foregroundColor: cs.onPrimary,
+        padding: _padding,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+      ),
+      child: _content(context, textColor: cs.onPrimary),
     );
   }
 
-  Widget _buildButton() {
-    switch (widget.style) {
-      case NeonButtonStyle.filled:
-        return GestureDetector(
-          onTapDown: (_) => _onTapDown(),
-          onTapUp: (_) => _onTapUp(),
-          onTapCancel: () => _onTapUp(),
-          child: ElevatedButton(
-            onPressed: widget.isLoading ? null : widget.onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _buttonColor,
-              foregroundColor: Colors.white,
-              padding: _padding,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            child: _buildButtonContent(),
-          ),
-        );
+  Widget _buildOutlined(BuildContext context) {
+    final acc = _accent(context);
+    return OutlinedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: acc,
+        side: BorderSide(color: acc, width: 1),
+        padding: _padding,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: _content(context, textColor: acc),
+    );
+  }
 
-      case NeonButtonStyle.outlined:
-        return GestureDetector(
-          onTapDown: (_) => _onTapDown(),
-          onTapUp: (_) => _onTapUp(),
-          onTapCancel: () => _onTapUp(),
-          child: OutlinedButton(
-            onPressed: widget.isLoading ? null : widget.onPressed,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _buttonColor,
-              side: BorderSide(color: _buttonColor, width: 1.5),
-              padding: _padding,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: _buildButtonContent(),
-          ),
-        );
+  Widget _buildText(BuildContext context) {
+    final acc = _accent(context);
+    return TextButton(
+      onPressed: isLoading ? null : onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: acc,
+        padding: _padding,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: _content(context, textColor: acc),
+    );
+  }
 
-      case NeonButtonStyle.text:
-        return GestureDetector(
-          onTapDown: (_) => _onTapDown(),
-          onTapUp: (_) => _onTapUp(),
-          onTapCancel: () => _onTapUp(),
-          child: TextButton(
-            onPressed: widget.isLoading ? null : widget.onPressed,
-            style: TextButton.styleFrom(
-              foregroundColor: _buttonColor,
-              padding: _padding,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _buildButtonContent(),
-          ),
+  Widget _buildGradient(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final grad =
+        gradient ??
+        LinearGradient(
+          colors: [cs.primary, cs.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         );
-
-      case NeonButtonStyle.gradient:
-        return GestureDetector(
-          onTapDown: (_) => _onTapDown(),
-          onTapUp: (_) => _onTapUp(),
-          onTapCancel: () => _onTapUp(),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: widget.gradient ?? AppTheme.neonGradient,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: widget.isLoading ? null : widget.onPressed,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: _padding,
-                  child: _buildButtonContent(),
-                ),
-              ),
-            ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: grad,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: isLoading ? null : onPressed,
+          child: Padding(
+            padding: _padding,
+            child: Center(child: _content(context, textColor: Colors.white)),
           ),
-        );
-    }
+        ),
+      ),
+    );
   }
 }
+
+enum ButtonSize { small, medium, large }
+
+enum NeonButtonStyle { filled, outlined, text, gradient }

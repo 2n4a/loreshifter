@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '/core/theme/app_theme.dart';
 
 class InfoTile extends StatelessWidget {
   final String label;
@@ -21,6 +20,9 @@ class InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Column(
       children: [
         Material(
@@ -33,15 +35,15 @@ class InfoTile extends StatelessWidget {
               child: Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 20, color: iconColor ?? AppTheme.neonBlue),
+                    Icon(icon, size: 20, color: iconColor ?? cs.primary),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
                     flex: 2,
                     child: Text(
                       label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Colors.white70,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -51,8 +53,8 @@ class InfoTile extends StatelessWidget {
                     flex: 3,
                     child: Text(
                       value,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurface,
                         fontWeight: FontWeight.w400,
                       ),
                       textAlign: TextAlign.end,
@@ -60,7 +62,11 @@ class InfoTile extends StatelessWidget {
                   ),
                   if (onTap != null) ...[
                     const SizedBox(width: 8),
-                    Icon(Icons.chevron_right, size: 20, color: Colors.white38),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ],
                 ],
               ),
@@ -73,7 +79,7 @@ class InfoTile extends StatelessWidget {
             thickness: 1,
             indent: icon != null ? 48 : 16,
             endIndent: 16,
-            color: AppTheme.outline.withAlpha(76),
+            color: cs.outlineVariant,
           ),
       ],
     );
@@ -100,6 +106,9 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Container(
       padding: padding ?? const EdgeInsets.fromLTRB(20, 24, 20, 12),
       child: Row(
@@ -108,18 +117,14 @@ class SectionHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (iconColor ?? AppTheme.neonBlue).withAlpha(25),
+                color: (iconColor ?? cs.primary).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: (iconColor ?? AppTheme.neonBlue).withAlpha(76),
+                  color: (iconColor ?? cs.primary).withValues(alpha: 0.24),
                   width: 1,
                 ),
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: iconColor ?? AppTheme.neonBlue,
-              ),
+              child: Icon(icon, size: 20, color: iconColor ?? cs.primary),
             ),
             const SizedBox(width: 12),
           ],
@@ -129,20 +134,18 @@ class SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTheme.neonTextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: cs.onSurface,
                     fontWeight: FontWeight.w600,
-                    intensity: 0.3,
                   ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.white60),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ],
@@ -177,17 +180,27 @@ class GradientContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Container(
       height: height,
       width: width,
       margin: margin,
       decoration: BoxDecoration(
-        gradient: gradient ?? AppTheme.subtleGradient,
+        gradient: gradient,
+        color: gradient == null ? cs.surface : null,
         borderRadius: borderRadius ?? BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.outline.withAlpha(76), width: 1),
-        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: cs.outlineVariant, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Container(
+      child: Padding(
         padding: padding ?? const EdgeInsets.all(16),
         child: child,
       ),
@@ -238,6 +251,9 @@ class _LoadingShimmerState extends State<LoadingShimmer>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -249,11 +265,11 @@ class _LoadingShimmerState extends State<LoadingShimmer>
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              stops: [0.0, 0.5, 1.0],
+              stops: const [0.0, 0.5, 1.0],
               colors: [
-                AppTheme.darkAccent,
-                AppTheme.darkAccent.withAlpha(127),
-                AppTheme.darkAccent,
+                cs.surfaceContainerHighest,
+                cs.surface.withValues(alpha: 0.8),
+                cs.surfaceContainerHighest,
               ],
               transform: GradientRotation(_animation.value),
             ),
@@ -280,13 +296,21 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withAlpha(51),
+        color: color.withValues(alpha: 0.12),
         border: Border.all(color: color, width: 1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: AppTheme.neonShadow(color, intensity: 0.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -296,12 +320,15 @@ class StatusBadge extends StatelessWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: AppTheme.neonGreen,
+                color: color,
                 shape: BoxShape.circle,
-                boxShadow: AppTheme.neonShadow(
-                  AppTheme.neonGreen,
-                  intensity: 0.5,
-                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 6),
@@ -312,9 +339,8 @@ class StatusBadge extends StatelessWidget {
           ],
           Text(
             text,
-            style: TextStyle(
+            style: theme.textTheme.labelMedium?.copyWith(
               color: color,
-              fontSize: 12,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.1,
             ),

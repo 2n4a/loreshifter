@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/worlds/domain/models/world.dart';
 import '/core/services/world_service.dart';
-import '/core/theme/app_theme.dart';
 import '/core/widgets/modern_card.dart';
 import '/core/widgets/neon_button.dart';
 import '/core/widgets/user_avatar.dart';
@@ -38,24 +37,24 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   void _setupAnimations() {
     _fadeController = AnimationController(
-      duration: AppTheme.slowAnimation,
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
 
     _slideController = AnimationController(
-      duration: AppTheme.normalAnimation,
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: AppTheme.defaultCurve),
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _slideController, curve: AppTheme.defaultCurve),
+      CurvedAnimation(parent: _slideController, curve: Curves.easeInOut),
     );
   }
 
@@ -75,11 +74,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
     try {
       final worldService = context.read<WorldService>();
       _world = await worldService.getWorldById(widget.worldId);
-
-      // Если экран уже был закрыт — выходим, не трогая контроллеры
       if (!mounted) return;
-
-      // Запускаем анимации после загрузки
       _fadeController.forward();
       await Future.delayed(const Duration(milliseconds: 100));
       if (!mounted) return;
@@ -101,15 +96,15 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppTheme.darkBackground,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(),
+          _buildAppBar(cs),
           if (_isLoading)
-            _buildLoadingSliver()
+            _buildLoadingSliver(cs)
           else if (_error != null && _world == null)
-            _buildErrorSliver()
+            _buildErrorSliver(cs)
           else
             _buildContentSliver(),
         ],
@@ -117,36 +112,25 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(ColorScheme cs) {
     return SliverAppBar(
       expandedHeight: 120,
       floating: false,
       pinned: true,
-      backgroundColor: AppTheme.darkBackground,
-      surfaceTintColor: Colors.transparent,
-      foregroundColor: Colors.white,
       elevation: 0,
+      backgroundColor: cs.surface,
+      foregroundColor: cs.onSurface,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, size: 20),
         onPressed: () => context.pop(),
-        style: IconButton.styleFrom(
-          backgroundColor: AppTheme.surfaceContainer,
-          foregroundColor: Colors.white,
-        ),
+        tooltip: 'Назад',
       ),
       actions: [
         if (_world != null && _isOwner())
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              onPressed: () => context.push('/worlds/${widget.worldId}/edit'),
-              style: IconButton.styleFrom(
-                backgroundColor: AppTheme.neonBlue.withAlpha(25),
-                foregroundColor: AppTheme.neonBlue,
-              ),
-              tooltip: 'Редактировать мир',
-            ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            onPressed: () => context.push('/worlds/${widget.worldId}/edit'),
+            tooltip: 'Редактировать мир',
           ),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -158,11 +142,9 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
               opacity: _fadeAnimation.value,
               child: Text(
                 _world?.name ?? 'Детали мира',
-                style: AppTheme.neonTextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: cs.onSurface,
                   fontWeight: FontWeight.w600,
-                  intensity: 0.3,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -170,23 +152,11 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             );
           },
         ),
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppTheme.darkBackground,
-                AppTheme.darkBackground.withAlpha(200),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildLoadingSliver() {
+  Widget _buildLoadingSliver(ColorScheme cs) {
     return SliverFillRemaining(
       child: Center(
         child: Column(
@@ -195,26 +165,18 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: AppTheme.neonShadow(
-                  AppTheme.neonBlue,
-                  intensity: 0.3,
-                ),
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cs.outlineVariant),
               ),
-              child: CircularProgressIndicator(
-                color: AppTheme.neonBlue,
-                strokeWidth: 3,
-              ),
+              child: const CircularProgressIndicator(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               'Загрузка мира...',
-              style: AppTheme.neonTextStyle(
-                color: AppTheme.neonBlue,
-                fontSize: 16,
-                intensity: 0.5,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -222,32 +184,31 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
     );
   }
 
-  Widget _buildErrorSliver() {
+  Widget _buildErrorSliver(ColorScheme cs) {
     return SliverFillRemaining(
       child: Center(
         child: Container(
           margin: const EdgeInsets.all(24),
           child: ModernCard(
-            color: AppTheme.surfaceContainer,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline, size: 48, color: AppTheme.neonPink),
+                Icon(Icons.error_outline, size: 48, color: cs.error),
                 const SizedBox(height: 16),
                 Text(
                   'Упс! Что-то пошло не так',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
+                    color: cs.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _error!,
+                  _error ?? 'Неизвестная ошибка',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -255,7 +216,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   text: 'Повторить попытку',
                   icon: Icons.refresh,
                   onPressed: _loadWorld,
-                  color: AppTheme.neonBlue,
+                  color: cs.primary,
                 ),
               ],
             ),
@@ -294,10 +255,10 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildHeaderSection() {
     if (_world == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return ModernCard(
-      gradient: AppTheme.subtleGradient,
-      withGlow: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -306,11 +267,9 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
               Expanded(
                 child: Text(
                   _world!.name,
-                  style: AppTheme.neonTextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    intensity: 0.4,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -319,7 +278,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           const SizedBox(height: 12),
           StatusBadge(
             text: _world!.public ? 'Публичный мир' : 'Приватный мир',
-            color: _world!.public ? AppTheme.neonGreen : AppTheme.neonOrange,
+            color: _world!.public ? cs.primary : cs.secondary,
             icon: _world!.public ? Icons.public : Icons.lock,
           ),
         ],
@@ -329,6 +288,8 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildDescriptionSection() {
     if (_world == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return ModernCard(
       child: Column(
@@ -337,17 +298,19 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           SectionHeader(
             title: 'Описание',
             icon: Icons.description_outlined,
-            iconColor: AppTheme.neonPurple,
+            iconColor: cs.primary,
             padding: EdgeInsets.zero,
           ),
           const SizedBox(height: 8),
           Text(
             _world!.description ?? 'Описание отсутствует',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            style: theme.textTheme.bodyLarge?.copyWith(
               color:
-                  _world!.description != null ? Colors.white : Colors.white54,
+                  _world!.description != null
+                      ? cs.onSurface
+                      : cs.onSurfaceVariant,
               height: 1.5,
-              letterSpacing: 0.3,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -357,17 +320,18 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildOwnerSection() {
     if (_world == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return ModernCard(
       onTap: () => context.push('/profile/${_world!.owner.id}'),
-      withAnimation: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(
             title: 'Создатель',
             icon: Icons.person_outline,
-            iconColor: AppTheme.neonBlue,
+            iconColor: cs.primary,
             padding: EdgeInsets.zero,
           ),
           const SizedBox(height: 12),
@@ -377,7 +341,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                 name: _world!.owner.name,
                 size: 56,
                 withGlow: true,
-                glowColor: AppTheme.neonBlue,
+                glowColor: cs.primary,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -386,22 +350,22 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   children: [
                     Text(
                       _world!.owner.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: cs.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Нажмите, чтобы посмотреть профиль',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: AppTheme.neonBlue),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: AppTheme.neonBlue),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
             ],
           ),
         ],
@@ -411,6 +375,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildInfoSection() {
     if (_world == null) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
 
     return ModernCard(
       child: Column(
@@ -419,7 +384,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           SectionHeader(
             title: 'Информация',
             icon: Icons.info_outline,
-            iconColor: AppTheme.neonGreen,
+            iconColor: cs.secondary,
             padding: EdgeInsets.zero,
           ),
           const SizedBox(height: 8),
@@ -427,13 +392,13 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             label: 'Создан',
             value: _formatDate(_world!.createdAt),
             icon: Icons.calendar_today_outlined,
-            iconColor: AppTheme.neonGreen,
+            iconColor: cs.secondary,
           ),
           InfoTile(
             label: 'Обновлен',
             value: _formatDate(_world!.lastUpdatedAt),
             icon: Icons.update_outlined,
-            iconColor: AppTheme.neonBlue,
+            iconColor: cs.primary,
             withDivider: false,
           ),
         ],
@@ -442,6 +407,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
   }
 
   Widget _buildActionButtons() {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -452,9 +418,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             onPressed:
                 () => context.push('/games/create?worldId=${widget.worldId}'),
             size: ButtonSize.large,
-            style: NeonButtonStyle.gradient,
-            gradient: AppTheme.greenToBlueGradient,
-            glowIntensity: 0.12,
+            style: NeonButtonStyle.gradient, // мягкий градиент по умолчанию
           ),
           const SizedBox(height: 12),
           NeonButton(
@@ -462,7 +426,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             icon: Icons.history,
             onPressed: () => context.push('/worlds/${widget.worldId}/history'),
             style: NeonButtonStyle.outlined,
-            color: AppTheme.neonGreen,
+            color: cs.primary,
           ),
           const SizedBox(height: 12),
           Row(
@@ -472,16 +436,12 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   text: 'Поделиться',
                   icon: Icons.share_outlined,
                   onPressed: () {
-                    // Логика для шаринга
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Функция в разработке'),
-                        backgroundColor: AppTheme.surfaceContainerHigh,
-                      ),
+                      const SnackBar(content: Text('Функция в разработке')),
                     );
                   },
                   style: NeonButtonStyle.outlined,
-                  color: AppTheme.neonBlue,
+                  color: cs.primary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -490,16 +450,12 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   text: 'Избранное',
                   icon: Icons.favorite_outline,
                   onPressed: () {
-                    // Логика для добавления в избранное
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Добавлено в избранное'),
-                        backgroundColor: AppTheme.surfaceContainerHigh,
-                      ),
+                      const SnackBar(content: Text('Добавлено в избранное')),
                     );
                   },
                   style: NeonButtonStyle.outlined,
-                  color: AppTheme.neonPink,
+                  color: cs.secondary,
                 ),
               ),
             ],
@@ -511,8 +467,6 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   bool _isOwner() {
     if (_world == null) return false;
-    // В MVP версии мы просто покажем кнопку редактирования для всех,
-    // но в реальном приложении нужно проверять ID пользователя
     return true;
   }
 
@@ -531,7 +485,6 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
       'ноя',
       'дек',
     ];
-
     return '${date.day} ${months[date.month - 1]} ${date.year}, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 }
