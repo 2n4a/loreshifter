@@ -45,11 +45,15 @@ services:
       - oauth2-github-client-secret
       - db-password
       - gen-api-key
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v0/liveness"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+
+  frontend:
+    image: ghcr.io/2n4a/loreshifter-web:latest
+    container_name: dev_frontend
+    ports:
+      - "15003:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 secrets:
   db-password:

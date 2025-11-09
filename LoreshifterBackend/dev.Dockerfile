@@ -34,5 +34,7 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 CMD wget -q -O - http://0.0.0.0:8000/api/v0/liveness || exit 1
+
 # Set the entry point for development with hot reload
 ENTRYPOINT ["dotnet", "run", "--project", "LoreshifterBackend.csproj", "--urls", "http://0.0.0.0:8000"]

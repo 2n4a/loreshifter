@@ -25,7 +25,10 @@ class MyApp extends StatelessWidget {
   MyApp({super.key});
 
   // Создаем ApiClient с локальным URL бекенда для разработки
-  final apiClient = ApiClient(baseUrl: 'http://localhost:8000/api/v0');
+  final apiClient = ApiClient(baseUrl: const String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://localhost:8000/api/v0'
+  ));
 
   @override
   Widget build(BuildContext context) {

@@ -57,6 +57,20 @@ services:
       timeout: 5s
       retries: 3
 
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        - BACKEND_URL=http://0.0.0.0:15002/api/v0
+    container_name: dev_frontend
+    ports:
+      - "15003:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+
 secrets:
   db-password:
     file: ./secrets/db-password

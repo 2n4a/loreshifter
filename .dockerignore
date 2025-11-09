@@ -6,3 +6,5 @@ deploy/**
 docs/**
 LoreshifterBackend/bin
 LoreshifterBackend/obj
+frontend/.dart_tool
+frontend/.build
