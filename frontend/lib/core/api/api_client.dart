@@ -1,0 +1,179 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '/core/models/api_error.dart';
+import 'dart:developer' as developer;
+
+class ApiClient {
+  final Dio _dio;
+  final String baseUrl;
+
+  ApiClient({required this.baseUrl})
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: baseUrl,
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        ) {
+    if (kIsWeb) {
+      (_dio.httpClientAdapter as dynamic).withCredentials = true;
+    }
+
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          // ignore: avoid_print
+          print('🌐 HTTP ${options.method} ${options.uri}');
+          developer.log(
+            'HTTP ${options.method} ${options.uri}',
+            name: 'ApiClient',
+          );
+          developer.log(
+            'Headers: ${options.headers}',
+            name: 'ApiClient',
+          );
+          if (options.data != null) {
+            developer.log(
+              'Request data: ${options.data}',
+              name: 'ApiClient',
+            );
+          }
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          print('✅ Response ${response.statusCode} from ${response.requestOptions.uri}');
+          developer.log(
+            'Response ${response.statusCode} from ${response.requestOptions.uri}',
+            name: 'ApiClient',
+          );
+          developer.log(
+            'Response data: ${response.data}',
+            name: 'ApiClient',
+          );
+          return handler.next(response);
+        },
+        onError: (error, handler) {
+          // ignore: avoid_print
+          print('❌ HTTP Error ${error.response?.statusCode} from ${error.requestOptions.uri}');
+          print('   Error: ${error.message}');
+          if (error.response?.data != null) {
+            // ignore: avoid_print
+            print('   Response: ${error.response?.data}');
+          }
+          developer.log(
+            'HTTP Error ${error.response?.statusCode} from ${error.requestOptions.uri}',
+            name: 'ApiClient',
+            error: error.message,
+          );
+          if (error.response?.data != null) {
+            developer.log(
+              'Error response: ${error.response?.data}',
+              name: 'ApiClient',
+            );
+          }
+          return handler.next(error);
+        },
+      ),
+    );
+  }
+
+  Future<T> get<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required T Function(dynamic data) fromJson,
+  }) async {
+    try {
+      final response = await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: Options(
+          extra: {'withCredentials': true},
+        ),
+      );
+      return fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<T> post<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    required T Function(dynamic data) fromJson,
+  }) async {
+    try {
+      final response = await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(
+          extra: {'withCredentials': true},
+        ),
+      );
+      return fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<T> put<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    required T Function(dynamic data) fromJson,
+  }) async {
+    try {
+      final response = await _dio.put(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(
+          extra: {'withCredentials': true},
+        ),
+      );
+      return fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<T> delete<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required T Function(dynamic data) fromJson,
+  }) async {
+    try {
+      final response = await _dio.delete(
+        path,
+        queryParameters: queryParameters,
+        options: Options(
+          extra: {'withCredentials': true},
+        ),
+      );
+      return fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Exception _handleError(DioException e) {
+    if (e.response != null) {
+      if (e.response?.data != null &&
+          e.response?.data is Map<String, dynamic>) {
+        try {
+          final error = ApiError.fromJson(e.response?.data);
+          return Exception('${error.code}: ${error.message}');
+        } catch (_) {
+          return Exception('Ошибка: ${e.response?.statusCode}');
+        }
+      }
+      return Exception('Ошибка: ${e.response?.statusCode}');
+    }
+    return Exception('Ошибка соединения: ${e.message}');
+  }
+}
