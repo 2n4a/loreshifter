@@ -73,7 +73,7 @@ type GameStateBase = {
     status: GameStatus,
 }
 
-type MessageOut = {
+type MessageIn = {
     text: string,
     special: string,
     metadata: any,

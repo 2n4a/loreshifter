@@ -3,7 +3,7 @@ import pytest_asyncio
 import os
 from pathlib import Path
 
-from game.utils import init_connection
+from app.dependencies import init_connection
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -21,7 +21,7 @@ async def postgres_connection_string():
         await primary_connection.execute("ALTER DATABASE test OWNER TO test")
         connection = await asyncpg.connect(test_dsn)
         try:
-            for migration in sorted(Path("db/migrations/").glob("*.sql")):
+            for migration in sorted(Path("../db/migrations/").glob("*.sql")):
                 message = await connection.execute(migration.read_text())
         finally:
             await connection.close()
@@ -40,4 +40,4 @@ async def db(postgres_connection_string):
     try:
         yield conn
     finally:
-        trxn.rollback()
+        await trxn.rollback()

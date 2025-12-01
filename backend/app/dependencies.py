@@ -12,11 +12,11 @@ from fastapi.params import Cookie, Header
 import game.user
 from app.events import WebSocketController
 from game.user import UserOut
-from game.utils import init_connection
 from game.universe import Universe
 
 from jose import jwt
 
+from types.utils import PgEnum
 
 PG_DSN = os.environ.get("POSTGRES_URL", "postgres://devuser:devpass@localhost:5432/devdb")
 JWT_SECRET = os.environ.get("JWT_SECRET")
@@ -89,8 +89,8 @@ async def get_user_or_401(
     return user
 
 
-User = Annotated[UserOut, Depends(get_user)]
-Auth = Annotated[UserOut, Depends(get_user_or_401)]
+UserDep = Annotated[UserOut | None, Depends(get_user)]
+AuthDep = Annotated[UserOut, Depends(get_user_or_401)]
 
 
 @asynccontextmanager
@@ -112,3 +112,7 @@ async def livespan(_app: FastAPI):
 
             await universe.stop()
             state = None
+
+
+async def init_connection(conn: asyncpg.Connection):
+    await PgEnum.register_all(conn)

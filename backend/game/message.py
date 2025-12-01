@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 from typing import Protocol, Any
 
-from game.utils import PgEnum
+from types.utils import PgEnum
 
 
 class MessageKind(metaclass=PgEnum):

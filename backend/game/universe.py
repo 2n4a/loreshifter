@@ -5,7 +5,7 @@ import typing
 import asyncpg
 
 from game.game import GameEvent
-from game.world import WorldOut
+from types.world import WorldOut
 from game.system import System
 
 
@@ -30,8 +30,8 @@ class Universe(System[UniverseEvent]):
     def __init__(self):
         super().__init__()
 
-    def stop(self):
-        super().stop()
+    async def stop(self):
+        await super().stop()
 
     async def create_world(
             self,
@@ -41,7 +41,7 @@ class Universe(System[UniverseEvent]):
             public: bool,
             description: str | None = None,
             data: typing.Any = None,
-     ) -> WorldOut:
+    ) -> WorldOut:
         id_ = await conn.fetchval(
             """
             INSERT
@@ -73,3 +73,6 @@ class Universe(System[UniverseEvent]):
         )
         self.emit(UniverseNewWorldEvent(world))
         return world
+
+    async def set_ready(self, conn: asyncpg.Connection, user_id: int, ready: bool) -> bool:
+        ...

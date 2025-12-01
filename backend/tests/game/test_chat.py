@@ -1,4 +1,5 @@
-from game.chat import ChatSystem, ChatType
+from types.chat import ChatType
+from events.chat import ChatSystem
 from tests import postgres_connection_string, db
 import pytest
 

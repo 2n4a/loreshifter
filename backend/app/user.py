@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.dependencies import User, Conn, Auth
+from app.dependencies import UserDep, Conn, AuthDep
 from game.user import UserOut, OtherUserOut
 import game.user
 
@@ -8,12 +8,12 @@ router = APIRouter()
 
 
 @router.get("/api/v0/user/me")
-async def get_user(user: Auth) -> UserOut:
+async def get_user(user: AuthDep) -> UserOut:
     return user
 
 
 @router.get("/api/v0/user/{id}")
-async def get_user(user: User, conn: Conn, id: int) -> UserOut | OtherUserOut:
+async def get_user(user: UserDep, conn: Conn, id: int) -> UserOut | OtherUserOut:
     if id == 0 or id == user.id:
         return user
     user = await game.user.get_user(conn, id)

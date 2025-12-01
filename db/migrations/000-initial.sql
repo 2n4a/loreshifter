@@ -43,7 +43,8 @@ CREATE TABLE games (
     host_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     max_players INTEGER NOT NULL,
     status game_status NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMPTZ NOT NULL,
+    state JSONB NOT NULL
 );
 
 CREATE TABLE game_players (
@@ -52,7 +53,6 @@ CREATE TABLE game_players (
     is_ready BOOLEAN NOT NULL,
     is_host BOOLEAN NOT NULL,
     is_spectator BOOLEAN NOT NULL,
-    is_joined BOOLEAN NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (game_id, user_id)
 );

@@ -1,6 +1,6 @@
 import enum
+
 import asyncpg
-import typing
 
 
 class PgEnum(enum.EnumMeta):
@@ -31,7 +31,3 @@ class PgEnum(enum.EnumMeta):
                 encoder=lambda x: x.value,
                 decoder=lambda x: enum_cls(x),
             )
-
-
-async def init_connection(conn: asyncpg.Connection):
-    await PgEnum.register_all(conn)

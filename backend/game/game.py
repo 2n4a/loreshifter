@@ -1,21 +1,15 @@
 import datetime
-import enum
 import dataclasses
 
 import asyncpg
 import random
 
 import game.chat as chat
-from game.chat import ChatSystem, ChatType
+import types.chat
+from types.chat import ChatType
+from events.chat import ChatSystem
 from game.system import System
-from game.utils import PgEnum
-
-class GameStatus(enum.Enum, metaclass=PgEnum):
-    __pg_enum_name__ = "game_status"
-    WAITING = "waiting"
-    PLAYING = "playing"
-    FINISHED = "finished"
-    ARCHIVED = "archived"
+from types.game import GameStatus
 
 
 @dataclasses.dataclass
@@ -24,14 +18,13 @@ class GameEvent:
 
 @dataclasses.dataclass
 class GameStatusEvent(GameEvent):
-    game_id: int
     new_status: GameStatus
 
 @dataclasses.dataclass
 class GameChatEvent(GameEvent):
     chat_type: ChatType
     owner_id: int | None
-    event: chat.ChatEvent
+    event: types.chat.ChatEvent
 
 @dataclasses.dataclass
 class PlayerJoinedEvent(GameEvent):
@@ -62,14 +55,18 @@ class PlayerSpectatorEvent(GameEvent):
 
 
 class Game(System[GameEvent]):
-    def __init__(self, id_: int, room_chat: ChatSystem):
+    games_by_id = {}
+
+    def __init__(self, id_: int):
         super().__init__()
         self.id = id_
-        self.room_chat: ChatSystem = room_chat
-        self.add_pipe(self.forward_chat_events, self.room_chat, ChatType.ROOM, None)
+        Game.games_by_id[id_] = self
+
+    @staticmethod
+    def get_by_id(id_: int) -> Game | None:
+        return Game.games_by_id.get(id_)
 
     async def stop(self):
-        await self.room_chat.stop()
         await super().stop()
 
     async def forward_chat_events(self, chat_: ChatSystem, type_: ChatType, owner_id: int | None):
@@ -85,7 +82,7 @@ class Game(System[GameEvent]):
             public: bool,
             max_players: int,
     ) -> Game | None:
-        with conn.transaction(isolation="serializable"):
+        async with conn.transaction(isolation="serializable"):
             while True:
                 code: str = "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=4))
 
@@ -101,13 +98,15 @@ class Game(System[GameEvent]):
 
             id_ = await conn.fetchval(
                 """
+                SE
                 WITH create_game AS (
-                    INSERT INTO games (host_id, world_id, name, public, max_players, code, status, created_at)
+                    INSERT INTO games (host_id, world_id, name, public, max_players, code, status, created_at, state)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                         RETURNING id
                 )
-                INSERT INTO game_players (game_id, user_id, is_ready, is_host, is_spectator, is_joined, joined_at)
-                    VALUES (create_game.id, $1, false, true, false, true, $8)
+                INSERT INTO game_players (game_id, user_id, is_ready, is_host, is_spectator, joined_at)
+                    SELECT id, $1, false, true, false, $8 FROM create_game
+                    RETURNING id 
                 """,
                 host_id,
                 world_id,
@@ -127,3 +126,24 @@ class Game(System[GameEvent]):
             game = Game(id_, room_chat)
             game.emit(GameStatusEvent(id_, GameStatus.WAITING))
             return game
+
+    @staticmethod
+    async def set_ready(conn: asyncpg.Connection, user_id: int, ready: bool) -> bool:
+        with conn.transaction():
+            game_id = await conn.fetchval(
+                """
+                UPDATE game_players
+                SET is_ready = $2
+                WHERE user_id = $1
+                RETURNING game_id
+                """,
+                user_id,
+                ready,
+            )
+
+            if game_id is None:
+                return False
+
+            Game.get_by_id(game_id).emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
+
+            return True
