@@ -21,7 +21,10 @@ class SystemException(RuntimeError):
         super().__init__(message)
 
 
-class System[E]:
+_system_index: dict[tuple[type[System], typing.Any], System] = {}
+
+
+class System[E, I = int]:
     """
     A system is an object which accepts commands and emits events.
 
@@ -38,14 +41,20 @@ class System[E]:
     Events can be piped to other systems using `add_pipe`.
     """
 
-    def __init__(self, name: None | str = None):
+    def __init__(self, id_: I, name: str| None = None):
         self._event_queue: asyncio.Queue[E | SystemPipeException | SystemStopMarker] = asyncio.Queue()
         self.active_pipes = 0
+        self.id = id_
         self.name = name or self.__class__.__name__
         self.stopped: bool = False
         self.listened: bool = False
         self.finished_event: asyncio.Event = asyncio.Event()
         self.finished_event.set()
+        _system_index[(self.__class__, id_)] = self
+
+    @classmethod
+    def of(cls, id_: I):
+        return _system_index.get((cls, id_))
 
     def add_pipe(self, pipe: typing.Callable[P, typing.Coroutine], *args: P.args, **kwargs: P.kwargs):
         if self.stopped:
@@ -112,7 +121,7 @@ async def test_system_example():
         def __init__(self, start: int, end: int):
             self.start = start
             self.end = end
-            super().__init__()
+            super().__init__(0)
 
         def run(self):
             for i in range(self.start, self.end):
@@ -120,7 +129,7 @@ async def test_system_example():
 
     class DoubleSystem(System[int]):
         def __init__(self, source: SourceSystem):
-            super().__init__()
+            super().__init__(0)
             self.add_pipe(self.double_pipe, source)
 
         async def double_pipe(self, system: SourceSystem):

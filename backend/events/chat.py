@@ -15,6 +15,10 @@ class ChatSystem(System[ChatEvent]):
         self.id = id_
 
     @staticmethod
+    async def of(id_: int) -> ChatSystem:
+
+
+    @staticmethod
     async def retrieve(conn: asyncpg.Connection, id_: int) -> ChatSystem | None:
         if await conn.fetchval("SELECT id FROM chats WHERE id = $1", id_) is None:
             return None

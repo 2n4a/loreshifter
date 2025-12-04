@@ -93,6 +93,10 @@ UserDep = Annotated[UserOut | None, Depends(get_user)]
 AuthDep = Annotated[UserOut, Depends(get_user_or_401)]
 
 
+async def init_connection(conn: asyncpg.Connection):
+    await PgEnum.register_all(conn)
+
+
 @asynccontextmanager
 async def livespan(_app: FastAPI):
     global state
@@ -112,7 +116,3 @@ async def livespan(_app: FastAPI):
 
             await universe.stop()
             state = None
-
-
-async def init_connection(conn: asyncpg.Connection):
-    await PgEnum.register_all(conn)

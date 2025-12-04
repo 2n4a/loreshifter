@@ -13,10 +13,10 @@ async def get_user(user: AuthDep) -> UserOut:
 
 
 @router.get("/api/v0/user/{id}")
-async def get_user(user: UserDep, conn: Conn, id: int) -> UserOut | OtherUserOut:
-    if id == 0 or id == user.id:
+async def get_user(user: UserDep, conn: Conn, id_: int) -> UserOut | OtherUserOut:
+    if id_ == 0 or id_ == user.id:
         return user
-    user = await game.user.get_user(conn, id)
+    user = await game.user.get_user(conn, id_)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return OtherUserOut(
