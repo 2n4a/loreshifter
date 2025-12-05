@@ -3,11 +3,11 @@ import datetime
 import enum
 import typing
 
-import types.utils
-from game.message import MessageOut
+import lstypes.utils
+from lstypes.message import MessageOut
 
 
-class ChatType(enum.Enum, metaclass=types.utils.PgEnum):
+class ChatType(enum.Enum, metaclass=lstypes.utils.PgEnum):
     __pg_enum_name__ = "chat_type"
 
     ROOM = "room"
@@ -16,7 +16,7 @@ class ChatType(enum.Enum, metaclass=types.utils.PgEnum):
     ADVICE = "advice"
 
 
-class ChatInterfaceType(enum.Enum, metaclass=types.utils.PgEnum):
+class ChatInterfaceType(enum.Enum, metaclass=lstypes.utils.PgEnum):
     __pg_enum_name__ = "chat_interface_type"
 
     READONLY = "readonly"
@@ -50,25 +50,3 @@ class ChatSegmentOut:
     next_id: int | None
     suggestions = list[str]
     interface: ChatInterface
-
-
-@dataclasses.dataclass
-class ChatEvent:
-    chat_id: int
-
-
-@dataclasses.dataclass
-class ChatMessageSentEvent(ChatEvent):
-    message: MessageOut
-
-
-@dataclasses.dataclass
-class ChatMessageDeletedEvent(ChatEvent):
-    message: MessageOut
-
-
-@dataclasses.dataclass
-class ChatMessageEditEvent(ChatEvent):
-    message: MessageOut
-
-

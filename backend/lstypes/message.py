@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 from typing import Protocol, Any
 
-from types.utils import PgEnum
+from lstypes.utils import PgEnum
 
 
 class MessageKind(metaclass=PgEnum):

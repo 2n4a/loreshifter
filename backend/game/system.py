@@ -42,25 +42,26 @@ class System[E, I = int]:
     """
 
     def __init__(self, id_: I, name: str| None = None):
+        self.name = name or self.__class__.__name__
+        if (self.__class__, id_) in _system_index:
+            raise SystemException(f"System {self.name} (id={id_}) already exists")
+        _system_index[(self.__class__, id_)] = self
         self._event_queue: asyncio.Queue[E | SystemPipeException | SystemStopMarker] = asyncio.Queue()
         self.active_pipes = 0
         self.id = id_
-        self.name = name or self.__class__.__name__
         self.stopped: bool = False
         self.listened: bool = False
         self.finished_event: asyncio.Event = asyncio.Event()
         self.finished_event.set()
-        _system_index[(self.__class__, id_)] = self
 
     @classmethod
     def of(cls, id_: I):
         return _system_index.get((cls, id_))
 
-    def add_pipe(self, pipe: typing.Callable[P, typing.Coroutine], *args: P.args, **kwargs: P.kwargs):
+    def add_pipe(self, coro: typing.Coroutine):
         if self.stopped:
-            raise SystemException(f"Trying to add pipe to a stopped system {self.name}")
+            raise SystemException(f"Trying to add pipe to a stopped system {self.name} (id={self.id})")
 
-        coro = pipe(*args, **kwargs)
         if not inspect.isawaitable(coro):
             raise ValueError("Pipes must be async functions")
 
@@ -91,12 +92,13 @@ class System[E, I = int]:
             return
         await self.finished_event.wait()
         self.stopped = True
+        del _system_index[(self.__class__, self.id)]
         await self._event_queue.put(SystemStopMarker())
 
     async def listen(self) -> typing.AsyncGenerator[E]:
         if self.listened:
             raise SystemException(
-                f"System {self.name} is already being listened to. "
+                f"System {self.name} (id={self.id}) is already being listened to. "
                 "You can only listen to a system once."
             )
 
@@ -130,7 +132,7 @@ async def test_system_example():
     class DoubleSystem(System[int]):
         def __init__(self, source: SourceSystem):
             super().__init__(0)
-            self.add_pipe(self.double_pipe, source)
+            self.add_pipe(self.double_pipe(source))
 
         async def double_pipe(self, system: SourceSystem):
             async for x in system.listen():

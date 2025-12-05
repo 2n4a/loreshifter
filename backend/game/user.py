@@ -1,32 +1,8 @@
 import datetime
 
 import asyncpg
-import dataclasses
 
-
-@dataclasses.dataclass
-class User:
-    id: int
-    name: str
-    email: str
-    created_at: datetime.datetime
-    deleted: bool
-
-
-@dataclasses.dataclass
-class UserOut:
-    id: int
-    name: str
-    email: str
-    created_at: datetime.datetime
-    deleted: bool
-
-
-@dataclasses.dataclass
-class OtherUserOut:
-    id: int
-    name: str
-    created_at: datetime.datetime
+from lstypes.user import FullUserOut
 
 
 async def get_or_create_user(
@@ -34,7 +10,7 @@ async def get_or_create_user(
         name: str,
         email: str,
         auth_id: int,
-    ) -> UserOut:
+    ) -> FullUserOut:
     user = await conn.fetchrow(
         """
         SELECT id, name, email, created_at, deleted
@@ -67,7 +43,7 @@ async def get_or_create_user(
             email,
             user["id"],
         )
-    return UserOut(
+    return FullUserOut(
         id=user["id"],
         name=user["name"],
         email=user["email"],
@@ -83,7 +59,7 @@ async def create_test_user(
         conn: asyncpg.Connection,
         name: str | None = None,
         email: str | None = None,
-) -> UserOut:
+) -> FullUserOut:
     global TEST_USER_COUNTER
     if name is None or email is None:
         TEST_USER_COUNTER += 1
@@ -105,7 +81,7 @@ async def create_test_user(
         False,
     )
 
-    return UserOut(
+    return FullUserOut(
         id=user["id"],
         name=user["name"],
         email=user["email"],
@@ -114,7 +90,7 @@ async def create_test_user(
     )
 
 
-async def get_user(conn: asyncpg.Connection, id_: int) -> UserOut | None:
+async def get_user(conn: asyncpg.Connection, id_: int) -> FullUserOut | None:
     user = await conn.fetchrow(
         """
         SELECT id, name, email, created_at, deleted
@@ -125,7 +101,7 @@ async def get_user(conn: asyncpg.Connection, id_: int) -> UserOut | None:
     )
     if user is None:
         return None
-    return UserOut(
+    return FullUserOut(
         id=user["id"],
         name=user["name"],
         email=user["email"],
@@ -134,7 +110,7 @@ async def get_user(conn: asyncpg.Connection, id_: int) -> UserOut | None:
     )
 
 
-async def get_user_by_auth_id(conn: asyncpg.Connection, auth_id: int) -> UserOut | None:
+async def get_user_by_auth_id(conn: asyncpg.Connection, auth_id: int) -> FullUserOut | None:
     user = await conn.fetchrow(
         """
         SELECT id, name, email, created_at, deleted
@@ -145,7 +121,7 @@ async def get_user_by_auth_id(conn: asyncpg.Connection, auth_id: int) -> UserOut
     )
     if user is None:
         return None
-    return UserOut(
+    return FullUserOut(
         id=user["id"],
         name=user["name"],
         email=user["email"],

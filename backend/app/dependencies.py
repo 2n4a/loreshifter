@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import json
 import os
 import typing
 from contextlib import asynccontextmanager
@@ -10,13 +11,13 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.params import Cookie, Header
 
 import game.user
-from app.events import WebSocketController
-from game.user import UserOut
+from app.ws import WebSocketController
+from lstypes.user import FullUserOut
 from game.universe import Universe
 
 from jose import jwt
 
-from types.utils import PgEnum
+from lstypes.utils import PgEnum
 
 PG_DSN = os.environ.get("POSTGRES_URL", "postgres://devuser:devpass@localhost:5432/devdb")
 JWT_SECRET = os.environ.get("JWT_SECRET")
@@ -71,29 +72,41 @@ async def get_jwt(
 async def get_user(
         conn: Conn,
         jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
-) -> UserOut | None:
+) -> FullUserOut | None:
     if not jwt_:
         return None
-    return await game.user.get_user_by_auth_id(conn, jwt_["auth_id"])
+    return await game.user.get_user(conn, jwt_["id"])
 
 
 async def get_user_or_401(
         conn: Conn,
         jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
-) -> UserOut:
+) -> FullUserOut:
     if not jwt_:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    user = await game.user.get_user_by_auth_id(conn, jwt_["auth_id"])
+    user = await game.user.get_user(conn, jwt_["id"])
     if user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
 
-UserDep = Annotated[UserOut | None, Depends(get_user)]
-AuthDep = Annotated[UserOut, Depends(get_user_or_401)]
+UserDep = Annotated[FullUserOut | None, Depends(get_user)]
+AuthDep = Annotated[FullUserOut, Depends(get_user_or_401)]
 
 
 async def init_connection(conn: asyncpg.Connection):
+    await conn.set_type_codec(
+        'json',
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema='pg_catalog'
+    )
+    await conn.set_type_codec(
+        'jsonb',
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema='pg_catalog'
+    )
     await PgEnum.register_all(conn)
 
 

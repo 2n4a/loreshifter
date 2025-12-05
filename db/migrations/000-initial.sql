@@ -36,7 +36,7 @@ CREATE TYPE game_status AS ENUM ('waiting', 'playing', 'finished', 'archived');
 
 CREATE TABLE games (
     id SERIAL PRIMARY KEY,
-    code TEXT UNIQUE NOT NULL,
+    code TEXT NOT NULL,
     name TEXT NOT NULL,
     public BOOLEAN NOT NULL,
     world_id INTEGER NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -53,9 +53,12 @@ CREATE TABLE game_players (
     is_ready BOOLEAN NOT NULL,
     is_host BOOLEAN NOT NULL,
     is_spectator BOOLEAN NOT NULL,
+    is_joined BOOLEAN NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (game_id, user_id)
 );
+
+CREATE UNIQUE INDEX game_unique_code ON games (code) WHERE status != 'archived';
 
 CREATE TYPE chat_type AS ENUM ('room', 'character_creation', 'game', 'advice');
 CREATE TYPE chat_interface_type AS ENUM ('readonly', 'foreign', 'full', 'timed', 'foreignTimed');
