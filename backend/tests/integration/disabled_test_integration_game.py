@@ -5,7 +5,6 @@ from game.game import GameSystem, GameStatusEvent, PlayerReadyEvent
 from lstypes.game import GameStatus
 from game.universe import Universe, UniverseGameEvent
 from game.user import create_test_user
-from tests import postgres_connection_string, db
 from tests.service import service
 import aiohttp
 import app.dependencies as deps

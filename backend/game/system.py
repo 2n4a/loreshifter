@@ -116,6 +116,10 @@ class System[E, I = int]:
         finally:
             self.listened = False
 
+    async def stop_and_gather_events(self) -> list[E]:
+        await self.stop()
+        return [event async for event in self.listen()]
+
 
 @pytest.mark.asyncio
 async def test_system_example():

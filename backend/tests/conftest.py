@@ -1,14 +1,16 @@
-import asyncpg
-import pytest_asyncio
-import os
 from pathlib import Path
 
+import asyncpg
+import pytest_asyncio
+
+import config
 from app.dependencies import init_connection
+from game.universe import Universe
 
 
 @pytest_asyncio.fixture(scope="session")
 async def postgres_connection_string():
-    dsn = os.environ.get("POSTGRES_URL", "postgres://devuser:devpass@localhost:5432/devdb")
+    dsn = config.POSTGRES_URL
     test_dsn = "postgres://test:test@localhost:5432/test"
 
     primary_connection: asyncpg.Connection = await asyncpg.connect(dsn)
@@ -22,7 +24,7 @@ async def postgres_connection_string():
         connection = await asyncpg.connect(test_dsn)
         try:
             for migration in sorted(Path("../db/migrations/").glob("*.sql")):
-                message = await connection.execute(migration.read_text())
+                await connection.execute(migration.read_text())
         finally:
             await connection.close()
     finally:
@@ -41,3 +43,10 @@ async def db(postgres_connection_string):
         yield conn
     finally:
         await trxn.rollback()
+
+
+@pytest_asyncio.fixture
+async def universe():
+    universe = Universe()
+    yield universe
+    await universe.stop()

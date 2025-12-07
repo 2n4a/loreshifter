@@ -1,6 +1,5 @@
 import abc
 import dataclasses
-import os
 import typing
 import json
 import base64
@@ -13,6 +12,7 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
+import config
 import game.user
 from app.dependencies import Conn
 
@@ -22,7 +22,7 @@ router = APIRouter()
 SELF_URL = "http://localhost:8000"
 
 
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = config.JWT_SECRET
 
 
 def generate_jwt(payload: dict[str, typing.Any]):
@@ -123,8 +123,8 @@ class GithubAuthProvider(AuthProvider):
 
 AUTH_PROVIDERS = [
     GithubAuthProvider(
-        client_id=os.getenv("OAUTH2_GITHUB_CLIENT_ID"),
-        client_secret=os.getenv("OAUTH2_GITHUB_CLIENT_SECRET"),
+        client_id=config.OAUTH2_GITHUB_CLIENT_ID,
+        client_secret=config.OAUTH2_GITHUB_CLIENT_SECRET,
     )
 ]
 

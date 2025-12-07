@@ -1,4 +1,6 @@
 import dotenv
+from starlette.middleware.cors import CORSMiddleware
+
 dotenv.load_dotenv()
 
 from app.auth import router as auth_router
@@ -14,6 +16,14 @@ app = FastAPI(lifespan=livespan)
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(game_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/api/v0/liveness")
 def liveness():

@@ -4,6 +4,8 @@ import typing
 
 import asyncpg
 
+from game.logger import gl_log
+from lstypes.error import ServiceError, error
 from lstypes.message import MessageOut, MessageKind
 from game.system import System
 from lstypes.chat import ChatType, ChatInterfaceType, ChatInterface, ChatSegmentOut
@@ -39,9 +41,9 @@ class ChatSystem(System[ChatEvent]):
             game_id: int,
             kind: ChatType,
             owner_id: int | None = None,
-            interface_type: ChatInterfaceType = ChatInterfaceType.FULL
-    ) -> ChatSystem:
-
+            interface_type: ChatInterfaceType = ChatInterfaceType.FULL,
+            log=gl_log,
+    ) -> ChatSystem | ServiceError:
         id_ = await conn.fetchval(
             """
             INSERT INTO chats (game_id, chat_type, owner_id, interface_type)
@@ -54,7 +56,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if id_ is None:
-            raise Exception("Failed to create chat")
+            return await error("SERVER_ERROR", "Failed to create chat", log=log)
 
         return ChatSystem(id_)
 
@@ -80,7 +82,8 @@ class ChatSystem(System[ChatEvent]):
             special: str | None = None,
             metadata: dict[str, typing.Any] | None = None,
             sent_at: datetime.datetime | None = None,
-    ) -> MessageOut:
+            log=gl_log,
+    ) -> MessageOut | ServiceError:
         if sent_at is None:
             sent_at = datetime.datetime.now()
 
@@ -99,7 +102,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message_id is None:
-            raise Exception("Failed to create message")
+            return await error("SERVER_ERROR", "Failed to send message", log=log)
 
         message = MessageOut(
             id=message_id,
@@ -112,6 +115,8 @@ class ChatSystem(System[ChatEvent]):
             metadata=metadata
         )
 
+        await log.ainfo("Sent message", chat_id=self.id, message_id=message_id, message_kind=message_kind)
+
         self.emit(ChatMessageSentEvent(chat_id=self.id, message=message))
 
         return message
@@ -123,7 +128,8 @@ class ChatSystem(System[ChatEvent]):
             text: str,
             special: str | None = None,
             metadata: dict[str, typing.Any] | None = None,
-    ) -> MessageOut | None:
+            log=gl_log,
+    ) -> MessageOut | ServiceError:
         message = await conn.fetchrow(
             """
             UPDATE messages
@@ -139,13 +145,20 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return None
+            return await error("MESSAGE_NOT_FOUND", "Message not found", log=log)
+
+        await log.ainfo("Edited message", chat_id=self.id, message_id=message_id)
 
         message = self.message_out_from_row(message)
         self.emit(ChatMessageEditEvent(chat_id=self.id, message=message))
         return message
 
-    async def delete_message(self, conn: asyncpg.Connection, message_id: int) -> MessageOut | None:
+    async def delete_message(
+            self,
+            conn: asyncpg.Connection,
+            message_id: int,
+            log=gl_log
+    ) -> MessageOut | ServiceError:
         message = await conn.fetchrow(
             """
             DELETE
@@ -156,7 +169,9 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return None
+            return await error("MESSAGE_NOT_FOUND", "Message not found", log=log)
+
+        await log.ainfo("Deleted message", chat_id=self.id, message_id=message_id)
 
         message = self.message_out_from_row(message)
         self.emit(ChatMessageDeletedEvent(chat_id=self.id, message=message))
@@ -169,7 +184,7 @@ class ChatSystem(System[ChatEvent]):
             *,
             before_message_id: int | None = None,
             after_message_id: int | None = None,
-    ) -> ChatSegmentOut | None:
+    ) -> ChatSegmentOut | ServiceError:
         if before_message_id is not None and after_message_id is not None:
             raise Exception("before_message_id and after_message_id are mutually exclusive")
         # if before_message_id is not None and after_message_id is not None:
@@ -190,8 +205,7 @@ class ChatSystem(System[ChatEvent]):
                    m.metadata,
                    m.sent_at
             FROM chats AS c
-                     LEFT JOIN messages AS m
-                               ON c.id = m.chat_id
+                     LEFT JOIN messages AS m ON c.id = m.chat_id
             WHERE c.id = $1
             ORDER BY m.id ASC NULLS FIRST
                 LIMIT $2
@@ -201,7 +215,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if not messages:
-            return None
+            return await error("CHAT_NOT_FOUND", "Chat not found", log=gl_log)
 
         return ChatSegmentOut(
             chat_id=messages[0]["chat_id"],

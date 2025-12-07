@@ -4,8 +4,10 @@ import asyncpg
 
 import game.chat
 from game.chat import ChatSystem
+from game.logger import gl_log
 from lstypes.chat import ChatType
 from game.system import System
+from lstypes.error import error, ServiceError
 from lstypes.game import GameStatus
 
 
@@ -77,23 +79,32 @@ class GameSystem(System[GameEvent]):
         async for event in chat_.listen():
             self.emit(GameChatEvent(self.id, type_, owner_id, event))
 
-    @staticmethod
-    async def set_ready(conn: asyncpg.Connection, user_id: int, ready: bool) -> bool:
+    async def set_ready(
+            self,
+            conn: asyncpg.Connection,
+            user_id: int,
+            ready: bool,
+            log = gl_log
+    ) -> None | ServiceError:
+        log = log.bind(game_id=self.id, user_id=user_id)
         async with conn.transaction():
+            await log.ainfo("Setting ready status", ready=ready)
+
             game_id = await conn.fetchval(
                 """
                 UPDATE game_players
-                SET is_ready = $2
-                WHERE user_id = $1
+                SET is_ready = $3
+                WHERE user_id = $1 AND game_id = $2
                 RETURNING game_id
                 """,
                 user_id,
+                self.id,
                 ready,
             )
 
             if game_id is None:
-                return False
+                return await error('PLAYER_NOT_FOUND', "Player not found", log=log)
 
-            GameSystem.of(game_id).emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
+            self.emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
 
-            return True
+            return None

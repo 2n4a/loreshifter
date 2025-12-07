@@ -1,9 +1,9 @@
-import os
 import dataclasses
 from typing import Literal
 
 from openai import AsyncOpenAI
 
+import config
 from game.system import System
 
 
@@ -32,7 +32,7 @@ class LlmChat(System[InferenceEvent]):
 class OpenaiChat(LlmChat):
     def __init__(self, model: str):
         super().__init__()
-        api_key = os.getenv("PROXY_API_KEY")
+        api_key = config.PROXY_API_KEY
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.proxyapi.ru/openai/v1/")
         self.messages = []
         self.completion = None

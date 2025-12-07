@@ -51,7 +51,6 @@ CREATE TABLE game_players (
     game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     is_ready BOOLEAN NOT NULL,
-    is_host BOOLEAN NOT NULL,
     is_spectator BOOLEAN NOT NULL,
     is_joined BOOLEAN NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL,
@@ -106,3 +105,25 @@ CREATE INDEX idx_games_host ON games(host_id);
 CREATE INDEX idx_messages_chat ON messages(chat_id);
 CREATE INDEX idx_chats_game ON chats(game_id);
 CREATE INDEX idx_game_players_user ON game_players(user_id);
+
+CREATE VIEW active_games AS
+    SELECT * FROM games WHERE status != 'archived';
+
+CREATE VIEW players AS
+    SELECT
+        p.is_ready, p.is_spectator,
+        p.is_joined, p.joined_at,
+        g.host_id = u.id as is_host,
+        g.status as game_status,
+        g.id as game_id,
+        g.name as game_name,
+        u.id as id,
+        u.name as user_name,
+        u.created_at as user_created_at,
+        u.deleted as user_deleted
+    FROM game_players as p
+        JOIN games g on g.id = p.game_id
+        JOIN users u on p.user_id = u.id;
+
+CREATE VIEW active_players AS
+    SELECT * FROM players WHERE players.game_status != 'archived';

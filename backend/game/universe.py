@@ -6,8 +6,11 @@ import typing
 import asyncpg
 
 from game.chat import ChatSystem
+from game.logger import gl_log
+from game.user import check_user_exists
 from lstypes.chat import ChatType
 from game.game import GameSystem, GameEvent, GameStatusEvent
+from lstypes.error import ServiceError, error
 from lstypes.game import GameStatus, GameOut
 from lstypes.player import PlayerOut
 from lstypes.user import UserOut
@@ -58,7 +61,10 @@ class Universe(System[UniverseEvent, None]):
             public: bool,
             description: str | None = None,
             data: typing.Any = None,
-    ) -> WorldOut:
+            log = gl_log,
+    ) -> WorldOut | ServiceError:
+        log = log.bind(world_name=name, world_owner_id=owner_id, world_public=public)
+
         if data is None:
             data = {"initialState": {}}
 
@@ -90,6 +96,19 @@ class Universe(System[UniverseEvent, None]):
             now,
         )
 
+        if row is None:
+            if check_user_exists(conn, owner_id):
+                return await error(
+                    "USER_NOT_FOUND",
+                    "User not found",
+                    log=log,
+                )
+            return await error(
+                "SERVER_ERROR",
+                "Failed to create the world",
+                log=log,
+            )
+
         world = WorldOut(
             id=row["id"],
             name=name,
@@ -109,6 +128,10 @@ class Universe(System[UniverseEvent, None]):
         self.emit(UniverseNewWorldEvent(world))
         return world
 
+    @staticmethod
+    async def check_world_exists(conn: asyncpg.Connection, world_id: int):
+        return await conn.fetchval("SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1)", world_id)
+
     async def create_game(
             self,
             conn: asyncpg.Connection,
@@ -117,7 +140,12 @@ class Universe(System[UniverseEvent, None]):
             name: str,
             public: bool,
             max_players: int,
-    ) -> GameOut | None:
+            log=gl_log,
+    ) -> GameOut | ServiceError:
+        log = log.bind(
+            game_host_id=host_id, game_world_id=world_id, game_name=name,
+            game_public=public, game_max_players=max_players
+        )
         try:
             async with conn.transaction(isolation="serializable"):
                 while True:
@@ -129,7 +157,9 @@ class Universe(System[UniverseEvent, None]):
                         code,
                     )
                     if old_game_id is None:
+                        await log.ainfo("Creating new world with code %s", code)
                         break
+                log = log.bind(game_code=code)
 
                 row = await conn.fetchrow(
                     """
@@ -151,13 +181,13 @@ class Universe(System[UniverseEvent, None]):
                     ), create_game AS (
                         INSERT INTO games
                             (host_id, world_id, name, public, max_players, code, status, created_at, state)
-                        SELECT $1, $2, $3, $4, $5, $6, $7, $8, w.initial_state
-                        FROM w
+                        SELECT h.id, w.id, $3, $4, $5, $6, $7, $8, w.initial_state
+                        FROM w, h
                         RETURNING id
                     ), create_player AS (
                         INSERT INTO game_players
-                            (game_id, user_id, is_ready, is_host, is_spectator, is_joined, joined_at)
-                            SELECT create_game.id, $1, false, true, false, true, $8 FROM create_game
+                            (game_id, user_id, is_ready, is_spectator, is_joined, joined_at)
+                            SELECT create_game.id, $1, false, false, true, $8 FROM create_game
                     )
                     SELECT
                         create_game.id as game_id,
@@ -186,11 +216,32 @@ class Universe(System[UniverseEvent, None]):
                 )
 
                 if row is None:
-                    return None
+                    if not await check_user_exists(conn, host_id):
+                        return await error(
+                            "USER_NOT_FOUND",
+                            "Host user not found",
+                            user_id=host_id,
+                            log=log,
+                        )
+                    if not await self.check_world_exists(conn, world_id):
+                        return await error(
+                            "WORLD_NOT_FOUND",
+                            "World not found",
+                            world_id=world_id,
+                            log=log,
+                        )
+                    return await error(
+                        "SERVER_ERROR",
+                        "Failed to create the game",
+                        log=log,
+                    )
 
                 id_ = row["game_id"]
+                log = log.bind(game_id=id_)
 
-                room_chat = await ChatSystem.create_new(conn, id_, ChatType.ROOM)
+                await log.ainfo("Created new game")
+
+                room_chat = await ChatSystem.create_new(conn, id_, ChatType.ROOM, log=log)
 
                 game = GameSystem(id_, room_chat)
                 self.add_game(game)
@@ -235,34 +286,9 @@ class Universe(System[UniverseEvent, None]):
                     status=GameStatus.WAITING,
                 )
         except asyncpg.DeadlockDetectedError as e:
-            print("Failed to create game due to transaction failure:", e)
-            return None
-
-
-
-# row = await conn.fetchrow(
-#     """
-#     WITH world AS (
-#         SELECT
-#             id,
-#             name,
-#             owner_id,
-#             public,
-#             description,
-#             created_at,
-#             last_updated_at,
-#             deleted,
-#             data->'initialState' as initial_state,
-#         FROM worlds
-#         where id = $2
-#     )
-#     """,
-#     host_id,
-#     world_id,
-#     name,
-#     public,
-#     max_players,
-#     code,
-#     GameStatus.WAITING,
-#     datetime.datetime.now(),
-# )
+            return await error(
+                "SERVER_ERROR",
+                "Failed to create the game due to transaction failure",
+                cause=e,
+                log=log,
+            )
