@@ -10,7 +10,7 @@ from game.chat import ChatSystem
 from game.logger import gl_log
 from game.user import check_user_exists
 from lstypes.chat import ChatType
-from game.game import GameSystem, GameEvent, GameStatusEvent
+from game.game import GameSystem, GameEvent, GameStatusEvent, Player
 from lstypes.error import ServiceError, error
 from lstypes.game import GameStatus, GameOut
 from lstypes.player import PlayerOut
@@ -254,7 +254,21 @@ class Universe(System[UniverseEvent, None]):
 
                 room_chat = await ChatSystem.create_new(conn, id_, ChatType.ROOM, log=log)
 
-                game = GameSystem(id_, room_chat)
+                host = UserOut(
+                    id=row["host_id"],
+                    name=row["host_name"],
+                    created_at=row["host_created_at"],
+                    deleted=row["host_deleted"],
+                )
+
+                game = GameSystem(id_, Player(
+                    id=host_id,
+                    user=host,
+                    is_joined=True,
+                    is_ready=False,
+                    is_spectator=False,
+                ), room_chat)
+
                 self.add_game(game)
                 game.emit(GameStatusEvent(id_, GameStatus.WAITING))
 
@@ -263,30 +277,11 @@ class Universe(System[UniverseEvent, None]):
                     code=code,
                     public=public,
                     name=name,
-                    world=ShortWorldOut(
-                        id=row["world_id"],
-                        name=row["world_name"],
-                        owner=UserOut(
-                            id=row["world_owner_id"],
-                            name=row["world_owner_name"],
-                            created_at=row["world_owner_created_at"],
-                            deleted=row["world_owner_deleted"],
-                        ),
-                        public=row["world_public"],
-                        description=row["world_description"],
-                        created_at=row["world_created_at"],
-                        last_updated_at=row["world_last_updated_at"],
-                        deleted=row["world_deleted"],
-                    ),
+                    world=Universe.row_to_short_world_out(row),
                     host_id=host_id,
                     players=[
                         PlayerOut(
-                            user=UserOut(
-                                id=row["host_id"],
-                                name=row["host_name"],
-                                created_at=row["host_created_at"],
-                                deleted=row["host_deleted"],
-                            ),
+                            user=host,
                             is_ready=False,
                             is_host=True,
                             is_spectator=False,
@@ -416,26 +411,30 @@ class Universe(System[UniverseEvent, None]):
             code=row["code"],
             public=row["public"],
             name=row["name"],
-            world=ShortWorldOut(
-                id=row["world_id"],
-                name=row["world_name"],
-                owner=UserOut(
-                    id=row["world_owner_id"],
-                    name=row["world_owner_name"],
-                    created_at=row["world_owner_created_at"],
-                    deleted=row["world_owner_deleted"],
-                ),
-                public=row["world_public"],
-                description=row["world_description"],
-                created_at=row["world_created_at"],
-                last_updated_at=row["world_last_updated_at"],
-                deleted=row["world_deleted"],
-            ),
+            world=Universe.row_to_short_world_out(row),
             host_id=row["host_id"],
             players=[PlayerOut(**p) for p in (row["players"] or [])],
             created_at=row["created_at"],
             max_players=row["max_players"],
             status=row["status"],
+        )
+
+    @staticmethod
+    def row_to_short_world_out(row) -> ShortWorldOut:
+        return ShortWorldOut(
+            id=row["world_id"],
+            name=row["world_name"],
+            owner=UserOut(
+                id=row["world_owner_id"],
+                name=row["world_owner_name"],
+                created_at=row["world_owner_created_at"],
+                deleted=row["world_owner_deleted"],
+            ),
+            public=row["world_public"],
+            description=row["world_description"],
+            created_at=row["world_created_at"],
+            last_updated_at=row["world_last_updated_at"],
+            deleted=row["world_deleted"],
         )
 
     @staticmethod

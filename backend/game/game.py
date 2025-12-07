@@ -9,6 +9,7 @@ from lstypes.chat import ChatType
 from game.system import System
 from lstypes.error import error, ServiceError
 from lstypes.game import GameStatus
+from lstypes.user import UserOut
 
 
 @dataclasses.dataclass
@@ -61,15 +62,29 @@ class PlayerSpectatorEvent(GameEvent):
     spectator: bool
 
 
+@dataclasses.dataclass
+class Player:
+    id: int
+    user: UserOut
+    is_joined: bool
+    is_ready: bool
+    is_spectator: bool
+
+
 class GameSystem(System[GameEvent]):
     def __init__(
             self,
             id_: int,
+            host: Player,
             room_chat: ChatSystem,
     ):
         super().__init__(id_)
+        self.status = GameStatus.WAITING
         self.room_chat = room_chat
         self.add_pipe(self.forward_chat_events(room_chat, ChatType.ROOM, None))
+
+        self.host_id: int = host.id
+        self.player_states: dict[int, Player] = {}
 
     async def stop(self):
         await self.room_chat.stop()
@@ -85,7 +100,7 @@ class GameSystem(System[GameEvent]):
             player_id: int,
             log=gl_log,
     ) -> None | ServiceError:
-        # game is 'archived' -> error
+        # game is 'archived' -> no-op?
         # player in game_players, is_joined -> no-op
         # game is 'waiting', player not in game_players, players < max_players -> join as player
         # game is 'waiting', player not in game_players, players >= max_players -> join as spectator
@@ -93,7 +108,18 @@ class GameSystem(System[GameEvent]):
         # game is 'playing' | 'finished', player not in game_players -> join as spectator
         # game is 'playing' | 'finished', player in game_players, is_joined -> is_joined = true
         # ???
-        ...
+        if self.stopped:
+            return
+
+        if player_id in self.player_states:
+            return
+
+        should_add = False
+        as_spectator = False
+        match self.status:
+            case GameStatus.WAITING:
+                ...
+
 
 
     async def disconnect_player(
