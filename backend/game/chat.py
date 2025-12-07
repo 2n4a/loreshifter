@@ -6,7 +6,7 @@ import asyncpg
 
 from game.logger import gl_log
 from lstypes.error import ServiceError, error
-from lstypes.message import MessageOut, MessageKind
+from lstypes.message import MessageOut, MessageKind, MessageOutWithNeighbors
 from game.system import System
 from lstypes.chat import ChatType, ChatInterfaceType, ChatInterface, ChatSegmentOut
 
@@ -18,7 +18,7 @@ class ChatEvent:
 
 @dataclasses.dataclass
 class ChatMessageSentEvent(ChatEvent):
-    message: MessageOut
+    message: MessageOutWithNeighbors
 
 
 @dataclasses.dataclass
@@ -31,9 +31,98 @@ class ChatMessageEditEvent(ChatEvent):
     message: MessageOut
 
 
+@dataclasses.dataclass
+class ChatUpdatedSuggestions(ChatEvent):
+    suggestions: list[str]
+
+
+@dataclasses.dataclass
+class MessageRef:
+    msg: MessageOut | None
+    prev: MessageRef | None = None
+    next: MessageRef | None = None
+
+    def to_message_out_with_neighbors(self) -> MessageOutWithNeighbors:
+        prev_id = None
+        next_id = None
+        if self.prev is not None and self.prev.msg is not None:
+            prev_id = self.prev.msg.id
+        if self.next is not None and self.next.msg is not None:
+            next_id = self.next.msg.id
+        return MessageOutWithNeighbors(
+            msg=self.msg,
+            prev_id=prev_id,
+            next_id=next_id,
+        )
+
+class MessageIndex:
+    def __init__(self):
+        dummy = MessageRef(None)
+        self.first = dummy
+        self.last = dummy
+        self.index: dict[int, MessageRef] = {-1: dummy}
+
+    def append(self, msg: MessageOut) -> MessageRef:
+        ref = MessageRef(msg)
+        self.last.next = ref
+        ref.prev = self.last
+        self.last = ref
+        self.index[msg.id] = ref
+        return ref
+
+    def edit(self, msg: MessageOut) -> bool:
+        if msg.id not in self.index:
+            return False
+        ref = self.index[msg.id]
+        ref.msg = msg
+        return True
+
+    def delete(self, id_: int) -> MessageOut | None:
+        if id_ not in self.index:
+            return None
+        ref = self.index[id_]
+        ref.prev.next = ref.next
+        ref.next.prev = ref.prev
+        del self.index[id_]
+
+        if self.first.msg.id == id_:
+            self.first = ref.next
+        if self.last.msg.id == id_:
+            self.last = ref.prev
+        return ref.msg
+
+    def walk_forward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
+        if start_id is None:
+            ref = self.first
+        elif start_id not in self.index:
+            return
+        else:
+            ref =self.index[start_id].prev
+        for _ in range(count):
+            ref = ref.next
+            if ref is None:
+                break
+            yield ref
+
+    def walk_backward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
+        if start_id is None:
+            ref = self.last
+        elif start_id not in self.index:
+            return
+        else:
+            ref = self.index[start_id]
+        for _ in range(count):
+            yield ref
+            ref = ref.prev
+            if ref is None or ref.msg is None:
+                break
+
+
 class ChatSystem(System[ChatEvent]):
     def __init__(self, id_: int):
         super().__init__(id_)
+        self.index = MessageIndex()
+        self.suggestions = []
 
     @staticmethod
     async def create_new(
@@ -83,7 +172,7 @@ class ChatSystem(System[ChatEvent]):
             metadata: dict[str, typing.Any] | None = None,
             sent_at: datetime.datetime | None = None,
             log=gl_log,
-    ) -> MessageOut | ServiceError:
+    ) -> MessageOutWithNeighbors | ServiceError:
         if sent_at is None:
             sent_at = datetime.datetime.now()
 
@@ -114,6 +203,9 @@ class ChatSystem(System[ChatEvent]):
             sent_at=sent_at,
             metadata=metadata
         )
+
+        ref = self.index.append(message)
+        message = ref.to_message_out_with_neighbors()
 
         await log.ainfo("Sent message", chat_id=self.id, message_id=message_id, message_kind=message_kind)
 
@@ -150,6 +242,9 @@ class ChatSystem(System[ChatEvent]):
         await log.ainfo("Edited message", chat_id=self.id, message_id=message_id)
 
         message = self.message_out_from_row(message)
+
+        assert self.index.edit(message)
+
         self.emit(ChatMessageEditEvent(chat_id=self.id, message=message))
         return message
 
@@ -174,6 +269,9 @@ class ChatSystem(System[ChatEvent]):
         await log.ainfo("Deleted message", chat_id=self.id, message_id=message_id)
 
         message = self.message_out_from_row(message)
+
+        assert self.index.delete(message_id) is not None
+
         self.emit(ChatMessageDeletedEvent(chat_id=self.id, message=message))
         return message
 
@@ -184,59 +282,81 @@ class ChatSystem(System[ChatEvent]):
             *,
             before_message_id: int | None = None,
             after_message_id: int | None = None,
+            log=gl_log,
     ) -> ChatSegmentOut | ServiceError:
-        if before_message_id is not None and after_message_id is not None:
-            raise Exception("before_message_id and after_message_id are mutually exclusive")
-        # if before_message_id is not None and after_message_id is not None:
-        #     raise NotImplementedError("before_message_id and after_message_id are not implemented yet")
+        log = log.bind(limit=limit, before_message_id=before_message_id, after_message_id=after_message_id)
 
-        messages = await conn.fetch(
-            # language=sql
+        if before_message_id is not None and after_message_id is not None:
+            return await error(
+                "MUTUALLY_EXCLUSIVE_OPTIONS",
+                "before_message_id and after_message_id are mutually exclusive",
+                log=log
+            )
+
+        chat_info = await conn.fetchrow(
             """
             SELECT c.id as chat_id,
                    c.owner_id,
                    c.interface_type,
                    c.deadline,
-                   m.id as message_id,
-                   m.sender_id,
-                   m.kind,
-                   m.text,
-                   m.special,
-                   m.metadata,
-                   m.sent_at
             FROM chats AS c
-                     LEFT JOIN messages AS m ON c.id = m.chat_id
             WHERE c.id = $1
-            ORDER BY m.id ASC NULLS FIRST
-                LIMIT $2
             """,
             self.id,
             limit + 1,
         )
 
-        if not messages:
-            return await error("CHAT_NOT_FOUND", "Chat not found", log=gl_log)
+        if not chat_info:
+            return await error("SERVER_ERROR", "Chat not found", log=gl_log)
+
+        if after_message_id is not None:
+            messages = list(self.index.walk_forward(after_message_id, limit))
+            if not messages:
+                return await error(
+                    "MESSAGE_NOT_FOUND",
+                    "Message with id 'after_message_id' not found",
+                    log=gl_log
+                )
+        else:
+            messages = list(self.index.walk_backward(before_message_id, limit))
+            if not messages:
+                return await error(
+                    "MESSAGE_NOT_FOUND",
+                    "Message with id 'before_message_id' not found",
+                    log=gl_log
+                )
+
+        messages.sort(key=lambda ref: ref.msg.id)
 
         return ChatSegmentOut(
-            chat_id=messages[0]["chat_id"],
-            chat_owner=messages[0]["owner_id"],
+            chat_id=chat_info["chat_id"],
+            chat_owner=chat_info["owner_id"],
             interface=ChatInterface(
-                type=messages[0]["interface_type"],
-                deadline=messages[0]["deadline"],
+                type=chat_info["interface_type"],
+                deadline=chat_info["deadline"],
             ),
-            next_id=None,
-            previous_id=messages[0]["message_id"],
-            messages=[
-                MessageOut(
-                    chat_id=messages[0]["chat_id"],
-                    id=m["message_id"],
-                    sender_id=m["sender_id"],
-                    kind=m["kind"],
-                    text=m["text"],
-                    sent_at=m["sent_at"],
-                    special=m["special"],
-                    metadata=m["metadata"],
-                )
-                for m in messages[1:]
-            ]
+            previous_id=messages[0].prev,
+            next_id=messages[0].next,
+            messages=[m.msg for m in messages],
+            suggestions=self.suggestions,
+        )
+
+    async def add_suggestion(self, suggestion: str):
+        self.suggestions.append(suggestion)
+        self.emit(
+            ChatUpdatedSuggestions(
+                chat_id=self.id,
+                suggestions=self.suggestions,
+            )
+        )
+
+    async def clear_suggestions(self):
+        if not self.suggestions:
+            return
+        self.suggestions = []
+        self.emit(
+            ChatUpdatedSuggestions(
+                chat_id=self.id,
+                suggestions=self.suggestions,
+            )
         )

@@ -37,3 +37,10 @@ class MessageOut:
     special: str | None
     sent_at: datetime.datetime
     metadata: dict[str, Any] | None
+
+
+@dataclasses.dataclass
+class MessageOutWithNeighbors:
+    msg: MessageOut
+    next_id: int | None
+    prev_id: int | None

@@ -12,7 +12,7 @@ class WorldOut:
     owner: UserOut
     public: bool
     description: str | None
-    data: typing.Any
+    data: typing.Any | None
     created_at: datetime.datetime
     last_updated_at: datetime.datetime
     deleted: bool

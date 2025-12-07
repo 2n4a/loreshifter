@@ -127,3 +127,22 @@ CREATE VIEW players AS
 
 CREATE VIEW active_players AS
     SELECT * FROM players WHERE players.game_status != 'archived';
+
+CREATE VIEW game_players_agg_view AS
+    SELECT
+        p.game_id,
+        jsonb_agg(jsonb_build_object(
+            'user', jsonb_build_object(
+                'id', u.id,
+                'name', u.name,
+                'created_at', u.created_at,
+                'deleted', u.deleted
+            ),
+            'is_ready', p.is_ready,
+            'is_host', g.host_id = u.id,
+            'is_spectator', p.is_spectator
+        )) AS players
+    FROM game_players p
+    JOIN users u ON p.user_id = u.id
+    JOIN games g ON p.game_id = g.id
+    GROUP BY p.game_id;

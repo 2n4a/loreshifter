@@ -9,6 +9,7 @@ import asyncpg
 import structlog
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.params import Cookie, Header
+from structlog import BoundLogger
 
 import config
 import game.user
@@ -90,8 +91,23 @@ async def get_user_or_401(
     return user
 
 
+
 UserDep = Annotated[FullUserOut | None, Depends(get_user)]
 AuthDep = Annotated[FullUserOut, Depends(get_user_or_401)]
+
+
+async def get_log(
+    user: UserDep,
+    x_request_id: Annotated[str | None, Header()] = None,
+) -> BoundLogger:
+    if user is not None:
+        return gl_log.bind(requester_id=user.id)
+    if x_request_id is not None:
+        return gl_log.bind(request_id=x_request_id)
+    return state.log
+
+
+Log = Annotated[BoundLogger, Depends(get_log)]
 
 
 async def init_connection(conn: asyncpg.Connection):

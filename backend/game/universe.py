@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import random
 import typing
+from typing import Literal
 
 import asyncpg
 
@@ -130,7 +131,17 @@ class Universe(System[UniverseEvent, None]):
 
     @staticmethod
     async def check_world_exists(conn: asyncpg.Connection, world_id: int):
-        return await conn.fetchval("SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1)", world_id)
+        return await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1)",
+            world_id
+        )
+
+    @staticmethod
+    async def check_world_exists_not_deleted(conn: asyncpg.Connection, world_id: int):
+        return await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1 AND NOT deleted)",
+            world_id
+        )
 
     async def create_game(
             self,
@@ -292,3 +303,269 @@ class Universe(System[UniverseEvent, None]):
                 cause=e,
                 log=log,
             )
+
+    @staticmethod
+    async def get_worlds(
+            conn: asyncpg.Connection,
+            limit: int,
+            offset: int,
+            sort: Literal["asc", "desc"],
+            # order: Literal["lastUpdatedAt"] = "lastUpdatedAt",
+            # search: str | None = None,
+            public: bool = False,
+            # filter_: str | None = None,
+            requester_id: int | None = None,
+            log = gl_log,
+
+    ) -> list[WorldOut] | ServiceError:
+        log = log.bind(limit=limit, offset=offset, sort=sort)
+        rows = await conn.fetch(
+            f"""
+            SELECT
+                w.id, w.name, w.owner_id, w.public, w.description, w.created_at, w.last_updated_at, w.deleted,
+                o.name as owner_name, o.created_at as owner_created_at, o.deleted as owner_deleted
+            FROM worlds AS w
+            JOIN users AS o ON w.owner_id = o.id
+            WHERE w.public OR (w.owner_id = $3 AND NOT $4) AND NOT w.deleted
+            ORDER BY last_updated_at {'ASC' if sort == 'asc' else 'DESC'}
+            LIMIT $1 OFFSET $2
+            """,
+            limit,
+            offset,
+            requester_id if requester_id is not None else -1,
+            public,
+        )
+
+        await log.ainfo("Fetching worlds: got %s worlds", len(rows))
+
+        worlds = []
+        for row in rows:
+            worlds.append(WorldOut(
+                id=row["id"],
+                name=row["name"],
+                public=row["public"],
+                owner=UserOut(
+                    id=row["owner_id"],
+                    name=row["owner_name"],
+                    created_at=row["owner_created_at"],
+                    deleted=row["owner_deleted"],
+                ),
+                description=row["description"],
+                data=None,
+                created_at=row["created_at"],
+                last_updated_at=row["last_updated_at"],
+                deleted=row["deleted"],
+            ))
+
+        return worlds
+
+    @staticmethod
+    async def get_world(
+            conn: asyncpg.Connection,
+            id_: int,
+            requester_user_id: int | None = None,
+            log = gl_log,
+    ) -> WorldOut | ServiceError:
+        log = log.bind(id=id_)
+
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                w.id, w.name, w.owner_id, w.public, w.description, w.created_at, w.last_updated_at, w.deleted,
+                w.data,
+                o.name as owner_name, o.created_at as owner_created_at, o.deleted as owner_deleted
+            FROM worlds AS w
+            JOIN users AS o ON w.owner_id = o.id
+            WHERE w.id = $1 AND (w.public OR w.owner_id = $2) AND NOT w.deleted
+            """,
+            id_,
+            requester_user_id if requester_user_id is not None else -1,
+        )
+
+        if row is None:
+            return await error(
+                "WORLD_NOT_FOUND",
+                "World with given id not found",
+                id=id_,
+                log=log,
+            )
+
+        await log.ainfo("Fetched world with id %s", id_)
+
+        return WorldOut(
+            id=row["id"],
+            name=row["name"],
+            public=row["public"],
+            owner=UserOut(
+                id=row["owner_id"],
+                name=row["owner_name"],
+                created_at=row["owner_created_at"],
+                deleted=row["owner_deleted"],
+            ),
+            description=row["description"],
+            data=row["data"],
+            created_at=row["created_at"],
+            last_updated_at=row["last_updated_at"],
+            deleted=row["deleted"],
+        )
+
+    @staticmethod
+    def game_from_row(row) -> GameOut:
+        return GameOut(
+            id=row["id"],
+            code=row["code"],
+            public=row["public"],
+            name=row["name"],
+            world=ShortWorldOut(
+                id=row["world_id"],
+                name=row["world_name"],
+                owner=UserOut(
+                    id=row["world_owner_id"],
+                    name=row["world_owner_name"],
+                    created_at=row["world_owner_created_at"],
+                    deleted=row["world_owner_deleted"],
+                ),
+                public=row["world_public"],
+                description=row["world_description"],
+                created_at=row["world_created_at"],
+                last_updated_at=row["world_last_updated_at"],
+                deleted=row["world_deleted"],
+            ),
+            host_id=row["host_id"],
+            players=[PlayerOut(**p) for p in (row["players"] or [])],
+            created_at=row["created_at"],
+            max_players=row["max_players"],
+            status=row["status"],
+        )
+
+    @staticmethod
+    async def get_games(
+            conn: asyncpg.Connection,
+            limit: int,
+            offset: int,
+            order: Literal["createdAt"] = "createdAt",
+            sort: Literal["asc", "desc"] = "desc",
+            public: bool = False,
+            requester_id: int | None = None,
+            include_archived: bool = False,
+            log=gl_log,
+    ) -> list[GameOut] | ServiceError:
+        log = log.bind(limit=limit, offset=offset, sort=sort, order=order, public=public, requester_id=requester_id)
+
+        rows = await conn.fetch(
+            f"""
+            SELECT
+                g.id, g.code, g.public, g.name, g.host_id, g.max_players, g.status, g.created_at,
+                w.id as world_id, w.name as world_name, w.public as world_public, w.description as world_description,
+                w.created_at as world_created_at, w.last_updated_at as world_last_updated_at, w.deleted as world_deleted,
+                wo.id as world_owner_id, wo.name as world_owner_name,
+                wo.created_at as world_owner_created_at, wo.deleted as world_owner_deleted,
+                gp.players
+            FROM games AS g
+            JOIN worlds AS w ON g.world_id = w.id
+            JOIN users AS wo ON w.owner_id = wo.id
+            LEFT JOIN game_players_agg_view AS gp ON g.id = gp.game_id
+            WHERE
+                (g.public IS TRUE OR (g.id IN (SELECT game_id FROM game_players WHERE user_id = $3)))
+                AND (g.public OR NOT $4)
+                AND (g.status != 'archived' OR $5)
+            ORDER BY g.created_at {'ASC' if sort == 'asc' else 'DESC'}
+            LIMIT $1 OFFSET $2
+            """,
+            limit,
+            offset,
+            requester_id if requester_id is not None else -1,
+            public,
+            include_archived,
+        )
+
+        await log.ainfo("Fetching games: got %s games", len(rows))
+
+        games = []
+        for row in rows:
+            games.append(Universe.game_from_row(row))
+
+        return games
+
+    @staticmethod
+    async def get_game(
+            conn: asyncpg.Connection,
+            game_id: int,
+            requester_id: int | None = None,
+            log=gl_log,
+    ) -> GameOut | ServiceError:
+        log = log.bind(game_id=game_id, requester_id=requester_id)
+
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                g.id, g.code, g.public, g.name, g.host_id, g.max_players, g.status, g.created_at,
+                w.id as world_id, w.name as world_name, w.public as world_public, w.description as world_description,
+                w.created_at as world_created_at, w.last_updated_at as world_last_updated_at, w.deleted as world_deleted,
+                wo.id as world_owner_id, wo.name as world_owner_name,
+                wo.created_at as world_owner_created_at, wo.deleted as world_owner_deleted,
+                gp.players
+            FROM games AS g
+            JOIN worlds AS w ON g.world_id = w.id
+            JOIN users AS wo ON w.owner_id = wo.id
+            LEFT JOIN game_players_agg_view AS gp ON g.id = gp.game_id
+            WHERE
+                g.id = $1
+                AND (g.public IS TRUE OR (g.id IN (SELECT game_id FROM game_players WHERE user_id = $2)))
+            """,
+            game_id,
+            requester_id if requester_id is not None else -1,
+        )
+
+        if row is None:
+            return await error(
+                "GAME_NOT_FOUND",
+                "Game with given id not found",
+                game_id=game_id,
+                log=log,
+            )
+
+        await log.ainfo("Fetching game: got 1 game")
+
+        return Universe.game_from_row(row)
+
+    @staticmethod
+    async def get_game_by_code(
+            conn: asyncpg.Connection,
+            game_code: str,
+            requester_id: int | None = None,
+            log=gl_log,
+    ) -> GameOut | ServiceError:
+        log = log.bind(game_code=game_code, requester_id=requester_id)
+
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                g.id, g.code, g.public, g.name, g.host_id, g.max_players, g.status, g.created_at,
+                w.id as world_id, w.name as world_name, w.public as world_public, w.description as world_description,
+                w.created_at as world_created_at, w.last_updated_at as world_last_updated_at, w.deleted as world_deleted,
+                wo.id as world_owner_id, wo.name as world_owner_name,
+                wo.created_at as world_owner_created_at, wo.deleted as world_owner_deleted,
+                gp.players
+            FROM games AS g
+            JOIN worlds AS w ON g.world_id = w.id
+            JOIN users AS wo ON w.owner_id = wo.id
+            LEFT JOIN game_players_agg_view AS gp ON g.id = gp.game_id
+            WHERE
+                g.code = $1
+                AND g.status != 'archived'
+            """,
+            game_code,
+        )
+
+        if row is None:
+            return await error(
+                "GAME_NOT_FOUND",
+                "Game with given code not found",
+                game_code=game_code,
+                log=log,
+            )
+
+        await log.ainfo("Fetching game by code: got 1 game %s", row["id"])
+
+        return Universe.game_from_row(row)

@@ -79,6 +79,38 @@ class GameSystem(System[GameEvent]):
         async for event in chat_.listen():
             self.emit(GameChatEvent(self.id, type_, owner_id, event))
 
+    async def connect_player(
+            self,
+            conn: asyncpg.Connection,
+            player_id: int,
+            log=gl_log,
+    ) -> None | ServiceError:
+        # game is 'archived' -> error
+        # player in game_players, is_joined -> no-op
+        # game is 'waiting', player not in game_players, players < max_players -> join as player
+        # game is 'waiting', player not in game_players, players >= max_players -> join as spectator
+        # game is 'waiting', player in game_players, !is_joined -> is_joined = true
+        # game is 'playing' | 'finished', player not in game_players -> join as spectator
+        # game is 'playing' | 'finished', player in game_players, is_joined -> is_joined = true
+        # ???
+        ...
+
+
+    async def disconnect_player(
+            self,
+            conn: asyncpg.Connection,
+            player_id: int,
+            log=gl_log,
+    ) -> None | ServiceError:
+        ...
+
+    async def start_game(
+            self,
+            conn: asyncpg.Connection,
+            log=gl_log,
+    ) -> None | ServiceError:
+        ...
+
     async def set_ready(
             self,
             conn: asyncpg.Connection,

@@ -20,7 +20,7 @@ type User = {
     email?: string,
 }
 
-type World = {
+type WorldOut = {
     id: number,
     name: string,
     public: boolean,
@@ -45,7 +45,7 @@ type Game = {
     code: string,
     public: boolean,
     name: string,
-    world: World,
+    world: WorldOut,
     hostId: number,
     players: Player[],
     createdAt: Date,

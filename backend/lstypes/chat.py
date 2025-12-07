@@ -48,5 +48,5 @@ class ChatSegmentOut:
     messages: list[MessageOut]
     previous_id: int | None
     next_id: int | None
-    suggestions = list[str]
+    suggestions: list[str]
     interface: ChatInterface
