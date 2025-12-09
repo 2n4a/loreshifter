@@ -60,7 +60,7 @@ CREATE TABLE game_players (
 CREATE UNIQUE INDEX game_unique_code ON games (code) WHERE status != 'archived';
 
 CREATE TYPE chat_type AS ENUM ('room', 'character_creation', 'game', 'advice');
-CREATE TYPE chat_interface_type AS ENUM ('readonly', 'foreign', 'full', 'timed', 'foreignTimed');
+CREATE TYPE chat_interface_type AS ENUM ('readonly', 'foreign', 'full', 'timed', 'foreign_timed');
 
 CREATE TABLE chats (
     id SERIAL PRIMARY KEY,
@@ -72,7 +72,7 @@ CREATE TABLE chats (
 );
 
 CREATE TYPE message_kind AS ENUM (
-    'player', 'system', 'characterCreation', 'generalInfo', 'publicInfo', 'privateInfo'
+    'player', 'system', 'character_creation', 'general_info', 'public_info', 'private_info'
 );
 
 CREATE TABLE messages (
@@ -138,9 +138,11 @@ CREATE VIEW game_players_agg_view AS
                 'created_at', u.created_at,
                 'deleted', u.deleted
             ),
+            'is_joined', p.is_joined,
             'is_ready', p.is_ready,
             'is_host', g.host_id = u.id,
-            'is_spectator', p.is_spectator
+            'is_spectator', p.is_spectator,
+            'joined_at', to_char(p.joined_at::TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
         )) AS players
     FROM game_players p
     JOIN users u ON p.user_id = u.id

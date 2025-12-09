@@ -10,7 +10,7 @@ from game.chat import ChatSystem
 from game.logger import gl_log
 from game.user import check_user_exists
 from lstypes.chat import ChatType
-from game.game import GameSystem, GameEvent, GameStatusEvent, Player
+from game.game import GameSystem, GameEvent, GameStatusEvent
 from lstypes.error import ServiceError, error
 from lstypes.game import GameStatus, GameOut
 from lstypes.player import PlayerOut
@@ -172,6 +172,8 @@ class Universe(System[UniverseEvent, None]):
                         break
                 log = log.bind(game_code=code)
 
+                now = datetime.datetime.now()
+
                 row = await conn.fetchrow(
                     """
                     WITH w AS (
@@ -223,7 +225,7 @@ class Universe(System[UniverseEvent, None]):
                     max_players,
                     code,
                     GameStatus.WAITING,
-                    datetime.datetime.now(),
+                    now,
                 )
 
                 if row is None:
@@ -252,8 +254,6 @@ class Universe(System[UniverseEvent, None]):
 
                 await log.ainfo("Created new game")
 
-                room_chat = await ChatSystem.create_new(conn, id_, ChatType.ROOM, log=log)
-
                 host = UserOut(
                     id=row["host_id"],
                     name=row["host_name"],
@@ -261,18 +261,7 @@ class Universe(System[UniverseEvent, None]):
                     deleted=row["host_deleted"],
                 )
 
-                game = GameSystem(id_, Player(
-                    id=host_id,
-                    user=host,
-                    is_joined=True,
-                    is_ready=False,
-                    is_spectator=False,
-                ), room_chat)
-
-                self.add_game(game)
-                game.emit(GameStatusEvent(id_, GameStatus.WAITING))
-
-                return GameOut(
+                game = GameOut(
                     id=id_,
                     code=code,
                     public=public,
@@ -285,12 +274,25 @@ class Universe(System[UniverseEvent, None]):
                             is_ready=False,
                             is_host=True,
                             is_spectator=False,
+                            is_joined=True,
+                            joined_at=now,
                         )
                     ],
-                    created_at=datetime.datetime.now(),
+                    created_at=now,
                     max_players=max_players,
                     status=GameStatus.WAITING,
                 )
+
+                game_system = await GameSystem.create_new(
+                    conn,
+                    game,
+                )
+
+                self.add_game(game_system)
+                game_system.emit(GameStatusEvent(id_, GameStatus.WAITING))
+
+                return game
+
         except asyncpg.DeadlockDetectedError as e:
             return await error(
                 "SERVER_ERROR",
@@ -413,7 +415,19 @@ class Universe(System[UniverseEvent, None]):
             name=row["name"],
             world=Universe.row_to_short_world_out(row),
             host_id=row["host_id"],
-            players=[PlayerOut(**p) for p in (row["players"] or [])],
+            players=[PlayerOut(
+                user=UserOut(
+                    id=p["user"]["id"],
+                    name=p["user"]["name"],
+                    created_at=p["user"]["created_at"],
+                    deleted=p["user"]["deleted"],
+                ),
+                is_ready=p["is_ready"],
+                is_host=p["is_host"],
+                is_spectator=p["is_spectator"],
+                is_joined=p["is_joined"],
+                joined_at=datetime.datetime.fromisoformat(p["joined_at"]),
+            ) for p in (row["players"] or [])],
             created_at=row["created_at"],
             max_players=row["max_players"],
             status=row["status"],

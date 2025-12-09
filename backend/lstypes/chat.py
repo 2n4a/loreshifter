@@ -11,7 +11,7 @@ class ChatType(enum.Enum, metaclass=lstypes.utils.PgEnum):
     __pg_enum_name__ = "chat_type"
 
     ROOM = "room"
-    CHARACTER_CREATION = "characterCreation"
+    CHARACTER_CREATION = "character_creation"
     GAME = "game"
     ADVICE = "advice"
 
@@ -23,7 +23,7 @@ class ChatInterfaceType(enum.Enum, metaclass=lstypes.utils.PgEnum):
     FOREIGN = "foreign"
     FULL = "full"
     TIMED = "timed"
-    FOREIGN_TIMED = "foreignTimed"
+    FOREIGN_TIMED = "foreign_timed"
 
 
 class Chat(typing.Protocol):

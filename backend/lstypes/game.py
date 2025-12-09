@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 
+from lstypes.chat import ChatSegmentOut
 from lstypes.player import PlayerOut
 from lstypes.utils import PgEnum
 from lstypes.world import ShortWorldOut
@@ -27,3 +28,13 @@ class GameOut:
     created_at: datetime.datetime
     max_players: int
     status: GameStatus
+
+
+@dataclasses.dataclass
+class StateOut:
+    game: GameOut
+    status: GameStatus
+    character_creation_chat: ChatSegmentOut
+    game_chat: ChatSegmentOut
+    player_chats: list[ChatSegmentOut]
+    advice_chats: list[ChatSegmentOut]

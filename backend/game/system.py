@@ -58,7 +58,10 @@ class System[E, I = int]:
     def of(cls, id_: I):
         return _system_index.get((cls, id_))
 
-    def add_pipe(self, coro: typing.Coroutine):
+    def add_pipe(self, coro: typing.Coroutine, name: str | None = None):
+        if name is None:
+            name = coro.__name__
+
         if self.stopped:
             raise SystemException(f"Trying to add pipe to a stopped system {self.name} (id={self.id})")
 
@@ -72,13 +75,15 @@ class System[E, I = int]:
                 await self._event_queue.put(SystemPipeException(e, self.name))
             finally:
                 self.active_pipes -= 1
+                # print("popped", name, self.active_pipes)
                 if self.active_pipes == 0:
                     self.finished_event.set()
 
-        self.add_raw_pipe(wrapper())
+        self.add_raw_pipe(wrapper(), name)
 
     def add_raw_pipe(self, pipe: typing.Coroutine, name: str | None = None):
         self.active_pipes += 1
+        # print("pushed", name, self.active_pipes)
         self.finished_event.clear()
         asyncio.create_task(pipe, name=name)
 

@@ -125,7 +125,7 @@ class ChatSystem(System[ChatEvent]):
         self.suggestions = []
 
     @staticmethod
-    async def create_new(
+    async def create_or_load(
             conn: asyncpg.Connection,
             game_id: int,
             kind: ChatType,
@@ -135,19 +135,46 @@ class ChatSystem(System[ChatEvent]):
     ) -> ChatSystem | ServiceError:
         id_ = await conn.fetchval(
             """
-            INSERT INTO chats (game_id, chat_type, owner_id, interface_type)
-            VALUES ($1, $2, $3, $4) RETURNING id
+            SELECT id FROM chats
+            WHERE game_id = $1 AND chat_type = $2 AND owner_id = $3
             """,
             game_id,
             kind,
             owner_id,
-            interface_type,
         )
 
         if id_ is None:
-            return await error("SERVER_ERROR", "Failed to create chat", log=log)
+            id_ = await conn.fetchval(
+                """
+                INSERT INTO chats (game_id, chat_type, owner_id, interface_type)
+                VALUES ($1, $2, $3, $4) RETURNING id
+                """,
+                game_id,
+                kind,
+                owner_id,
+                interface_type,
+            )
 
-        return ChatSystem(id_)
+            if id_ is None:
+                return await error("SERVER_ERROR", "Failed to create chat", log=log)
+
+        chat_system = ChatSystem(id_)
+
+        messages = await conn.fetch(
+            """
+            SELECT id, chat_id, sender_id, kind, text, special, sent_at, metadata
+            FROM messages
+            WHERE chat_id = $1
+            ORDER BY id
+            """,
+            id_,
+        )
+
+        for row in messages:
+            message = ChatSystem.message_out_from_row(row)
+            chat_system.index.append(message)
+
+        return chat_system
 
     @staticmethod
     def message_out_from_row(row: dict[str, typing.Any]) -> MessageOut:
@@ -179,7 +206,7 @@ class ChatSystem(System[ChatEvent]):
         message_id = await conn.fetchval(
             """
             INSERT INTO messages (chat_id, sender_id, kind, text, special, metadata, sent_at)
-            VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
             """,
             self.id,
             sender_id,
@@ -228,7 +255,7 @@ class ChatSystem(System[ChatEvent]):
             SET text     = $1,
                 special  = $2,
                 metadata = $3
-            WHERE id = $4 RETURNING (id, chat_id, sender_id, kind, text, special, sent_at, metadata)
+            WHERE id = $4 RETURNING id, chat_id, sender_id, kind, text, special, sent_at, metadata
             """,
             text,
             special,
@@ -258,7 +285,7 @@ class ChatSystem(System[ChatEvent]):
             """
             DELETE
             FROM messages
-            WHERE id = $1 RETURNING (id, chat_id, sender_id, kind, text, special, sent_at, metadata)
+            WHERE id = $1 RETURNING id, chat_id, sender_id, kind, text, special, sent_at, metadata
             """,
             message_id,
         )
@@ -298,12 +325,11 @@ class ChatSystem(System[ChatEvent]):
             SELECT c.id as chat_id,
                    c.owner_id,
                    c.interface_type,
-                   c.deadline,
+                   c.deadline
             FROM chats AS c
             WHERE c.id = $1
             """,
             self.id,
-            limit + 1,
         )
 
         if not chat_info:
@@ -335,8 +361,8 @@ class ChatSystem(System[ChatEvent]):
                 type=chat_info["interface_type"],
                 deadline=chat_info["deadline"],
             ),
-            previous_id=messages[0].prev,
-            next_id=messages[0].next,
+            previous_id=messages[0].prev.msg.id if messages and messages[0].prev and messages[0].prev.msg else None,
+            next_id=messages[-1].next.msg.id if messages and messages[-1].next and messages[-1].next.msg else None,
             messages=[m.msg for m in messages],
             suggestions=self.suggestions,
         )

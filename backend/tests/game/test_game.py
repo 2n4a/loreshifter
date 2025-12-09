@@ -1,6 +1,16 @@
+import asyncio
+
 import pytest
 
-from game.game import GameSystem, GameStatusEvent, PlayerReadyEvent
+from game.game import (
+    GameSystem,
+    GameStatusEvent,
+    PlayerReadyEvent,
+    PlayerJoinedEvent,
+    PlayerLeftEvent,
+    PlayerPromotedEvent,
+    PlayerSpectatorEvent,
+)
 from lstypes.game import GameStatus, GameOut
 from game.universe import UniverseGameEvent
 from game.user import create_test_user
@@ -79,3 +89,109 @@ async def test_get_game_by_code(db, universe):
 
     game = await universe.get_game_by_code(db, "INVALID_CODE")
     assert game.code == "GAME_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_player_join_and_leave(db, universe):
+    user1 = await create_test_user(db, "user1")
+    user2 = await create_test_user(db, "user2")
+    world = await universe.create_world(db, "world", user1.id, True)
+    game = await universe.create_game(db, user1.id, world.id, "test_game", True, 2)
+    game_system = GameSystem.of(game.id)
+
+    # user2 joins
+    await game_system.connect_player(db, user2.id)
+    assert user2.id in game_system.player_states
+    assert game_system.player_states[user2.id].is_joined
+
+    # user2 leaves
+    await game_system.disconnect_player(db, user2.id, kick_immediately=True)
+    await asyncio.sleep(0)  # Allow kick task to run
+    assert user2.id not in game_system.player_states
+
+    # user1 leaves, which should terminate the game
+    await game_system.disconnect_player(db, user1.id, kick_immediately=True)
+    await asyncio.sleep(0)  # Allow kick task to run
+    assert not game_system.player_states
+    assert game_system.status == GameStatus.ARCHIVED
+
+    events = [
+        event.event for event in await universe.stop_and_gather_events()
+        if isinstance(event, UniverseGameEvent)
+    ]
+
+    joined_events = [e for e in events if isinstance(e, PlayerJoinedEvent)]
+    assert len(joined_events) == 1
+    assert joined_events[0].player.user.id == user2.id
+
+    left_events = [e for e in events if isinstance(e, PlayerLeftEvent)]
+    assert len(left_events) == 2  # user1 and user2
+
+    archived_events = [e for e in events if isinstance(e, GameStatusEvent) and e.new_status == GameStatus.ARCHIVED]
+    assert len(archived_events) > 0
+
+
+@pytest.mark.asyncio
+async def test_host_migration(db, universe):
+    user1 = await create_test_user(db, "user1")
+    user2 = await create_test_user(db, "user2")
+    world = await universe.create_world(db, "world", user1.id, True)
+    game = await universe.create_game(db, user1.id, world.id, "test_game", True, 2)
+    game_system = GameSystem.of(game.id)
+    assert game_system.host_id == user1.id
+
+    # user2 joins
+    await game_system.connect_player(db, user2.id)
+
+    # user1 (host) leaves
+    await game_system.disconnect_player(db, user1.id, kick_immediately=True)
+
+    assert user1.id not in game_system.player_states
+    assert game_system.host_id == user2.id
+
+    events = [
+        event.event for event in await universe.stop_and_gather_events()
+        if isinstance(event, UniverseGameEvent)
+    ]
+
+    promoted_events = [e for e in events if isinstance(e, PlayerPromotedEvent)]
+    assert len(promoted_events) == 1
+    assert promoted_events[0].old_host == user1.id
+    assert promoted_events[0].new_host == user2.id
+
+
+@pytest.mark.asyncio
+async def test_spectator_flow(db, universe):
+    user1 = await create_test_user(db, "user1")
+    user2 = await create_test_user(db, "user2")
+    user3 = await create_test_user(db, "user3")
+    world = await universe.create_world(db, "world", user1.id, True)
+    # Game with 1 player slot
+    game = await universe.create_game(db, user1.id, world.id, "test_game", True, 1)
+    game_system = GameSystem.of(game.id)
+
+    # user2 tries to join, becomes spectator as game is full
+    await game_system.connect_player(db, user2.id)
+    assert user2.id in game_system.player_states
+    assert game_system.player_states[user2.id].is_spectator
+
+    # user1 (host) leaves
+    await game_system.disconnect_player(db, user1.id, kick_immediately=True)
+
+    # user2 is promoted to host but is still a spectator
+    assert game_system.host_id == user2.id
+    assert game_system.player_states[user2.id].is_spectator
+
+    # user2 (now host) makes themself a player
+    await game_system.make_spectator(db, user2.id, spectate=False, requester_id=user2.id)
+    assert not game_system.player_states[user2.id].is_spectator
+    assert game_system.num_non_spectators == 1
+
+    # user3 joins, becomes spectator
+    await game_system.connect_player(db, user3.id)
+    assert game_system.player_states[user3.id].is_spectator
+
+    # user2 tries to make user3 a player, but game is full
+    result = await game_system.make_spectator(db, user3.id, spectate=False, requester_id=user2.id)
+    assert result.code == "GAME_FULL"
+    assert game_system.player_states[user3.id].is_spectator

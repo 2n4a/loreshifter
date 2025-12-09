@@ -10,10 +10,10 @@ class MessageKind(metaclass=PgEnum):
 
     PLAYER = "player"
     SYSTEM = "system"
-    CHARACTER_CREATION = "characterCreation"
-    GENERAL_INFO = "generalInfo"
-    PUBLIC_INFO = "publicInfo"
-    PRIVATE_INFO = "privateInfo"
+    CHARACTER_CREATION = "character_creation"
+    GENERAL_INFO = "general_info"
+    PUBLIC_INFO = "public_info"
+    PRIVATE_INFO = "private_info"
 
 
 class Message(Protocol):
