@@ -1,7 +1,6 @@
 import dataclasses
 
 import asyncio
-import pytest
 import pytest_asyncio
 import uvicorn
 
@@ -26,10 +25,9 @@ class Service:
         self._stopped = True
 
 
-@pytest_asyncio.fixture(scope="session")
-async def service(postgres_connection_string) -> Service:
+@pytest_asyncio.fixture
+async def service() -> Service:
     port = 54321
-    deps.PG_DSN = postgres_connection_string
     server = uvicorn.Server(
         config=uvicorn.Config(
             app,
@@ -39,8 +37,8 @@ async def service(postgres_connection_string) -> Service:
         )
     )
     task = asyncio.create_task(server.serve())
-    while not server.started and deps.state is None:
-        pass
+    while not server.started or deps.state is None:
+        await asyncio.sleep(0)
     service = Service(
         url=f'http://127.0.0.1:{port}',
         universe=deps.state.universe,
@@ -51,4 +49,3 @@ async def service(postgres_connection_string) -> Service:
         yield service
     finally:
         await service.stop()
-

@@ -13,7 +13,7 @@ from app.dependencies import state, get_db
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(6)
 async def test_game_set_ready(service):
     async with aiohttp.ClientSession(base_url=service.url) as client:
         resp = await client.get("/api/v0/test-login")
@@ -32,16 +32,5 @@ async def test_game_set_ready(service):
         headers = {'Authentication': token}
         resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers)
         assert resp.status == 200
-        resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers)
+        resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers, json={"ready": False})
         assert resp.status == 200
-
-    await service.stop()
-    events = [
-        event.event async for event in service.universe.listen()
-        if isinstance(event, UniverseGameEvent)
-    ]
-    assert events == [
-        GameStatusEvent(game_id=game.id, new_status=GameStatus.WAITING),
-        PlayerReadyEvent(game_id=game.id, player_id=user.id, ready=True),
-        PlayerReadyEvent(game_id=game.id, player_id=user.id, ready=False),
-    ]

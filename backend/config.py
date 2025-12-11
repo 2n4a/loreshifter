@@ -2,6 +2,10 @@ import os
 import sys
 import typing
 
+import dotenv
+
+dotenv.load_dotenv()
+
 ENVIRONMENT: typing.Literal["dev", "prod"] = os.environ.get("ENVIRONMENT", "dev")
 if ENVIRONMENT not in ("dev", "prod"):
     print(f"Unknown environment: {ENVIRONMENT}", file=sys.stderr)

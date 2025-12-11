@@ -1,4 +1,5 @@
 import datetime
+import random
 
 import asyncpg
 
@@ -61,22 +62,18 @@ async def get_or_create_user(
     )
 
 
-TEST_USER_COUNTER = 0
-
-
 async def create_test_user(
         conn: asyncpg.Connection,
         name: str | None = None,
         email: str | None = None,
         log=gl_log,
 ) -> FullUserOut | ServiceError:
-    global TEST_USER_COUNTER
-    if name is None or email is None:
-        TEST_USER_COUNTER += 1
+    if name is None or email is None:1
+        nonce = random.randbytes(8).hex()
         if name is None:
-            name = f"test_{TEST_USER_COUNTER}"
+            name = f"test_{nonce}"
         if email is None:
-            email = f"test{TEST_USER_COUNTER}@example.com"
+            email = f"test{nonce}@example.com"
 
     user = await conn.fetchrow(
         """

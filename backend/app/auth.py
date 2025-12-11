@@ -22,11 +22,8 @@ router = APIRouter()
 SELF_URL = "http://localhost:8000"
 
 
-JWT_SECRET = config.JWT_SECRET
-
-
 def generate_jwt(payload: dict[str, typing.Any]):
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    return jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
 
 
 @dataclasses.dataclass
@@ -155,6 +152,7 @@ async def login_callback(request: Request, conn: Conn, provider: str):
 
             jwt_token = generate_jwt({
                 "auth_id": user.auth_id,
+                "id": user.id,
             })
 
             user = await game.user.get_or_create_user(conn, user.name, user.email, user.auth_id)
@@ -184,8 +182,7 @@ async def test_login(
     user = await game.user.create_test_user(conn, name, email)
     jwt_token = generate_jwt({
         "auth_id": None,
-        "name": user.name,
-        "email": user.email,
+        "id": user.id,
         "test": True,
     })
     if to is not None:

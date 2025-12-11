@@ -90,6 +90,17 @@ class Player:
     advice_chat: ChatSystem | None
     player_chat: ChatSystem | None
 
+    def get_player_out(self, host_id: int) -> PlayerOut:
+        return PlayerOut(
+            user=self.user,
+            is_joined=self.is_joined,
+            is_ready=self.is_ready,
+            is_host=self.user.id == host_id,
+            is_spectator=self.is_spectator,
+            joined_at=self.joined_at,
+        )
+
+
 
 class GameSystem(System[GameEvent]):
     @staticmethod
@@ -269,14 +280,7 @@ class GameSystem(System[GameEvent]):
                 player.joined_at = now
                 player.kick_task.cancel("Player rejoined")
 
-                self.emit(PlayerJoinedEvent(self.id, PlayerOut(
-                    user=player.user,
-                    is_ready=player.is_ready,
-                    is_host=self.host_id == player_id,
-                    is_spectator=player.is_spectator,
-                    is_joined=True,
-                    joined_at=player.joined_at,
-                )))
+                self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id)))
                 await log.ainfo("Player rejoined")
                 return None
 
@@ -338,14 +342,7 @@ class GameSystem(System[GameEvent]):
             )
             await self.update_chats_for_player(conn, player, log=log)
             self.player_states[player_id] = player
-            self.emit(PlayerJoinedEvent(self.id, PlayerOut(
-                user=self.player_states[player_id].user,
-                is_ready=False,
-                is_host=False,
-                is_spectator=not allow_entry,
-                is_joined=True,
-                joined_at=now,
-            )))
+            self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id)))
             await log.ainfo("Player joined")
             return None
 
@@ -415,14 +412,7 @@ class GameSystem(System[GameEvent]):
 
             await log.ainfo("Removed player from the game")
 
-            self.emit(PlayerLeftEvent(self.id, player=PlayerOut(
-                user=player.user,
-                is_ready=False,
-                is_host=False,
-                is_spectator=False,
-                is_joined=False,
-                joined_at=player.joined_at,
-            )))
+            self.emit(PlayerLeftEvent(self.id, player=player.get_player_out(self.host_id)))
 
             async def kick_task(dont_wait: bool = False):
                 nonlocal log
@@ -705,6 +695,17 @@ class GameSystem(System[GameEvent]):
         self.emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
 
         return None
+
+    async def get_player(
+        self,
+        conn: asyncpg.Connection,
+        user_id: int,
+        log=gl_log,
+    ) -> PlayerOut | ServiceError:
+        log = log.bind(user_id=user_id)
+        if user_id not in self.player_states:
+            return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+        return self.player_states[user_id].get_player_out(self.host_id)
 
     async def get_state(
             self,

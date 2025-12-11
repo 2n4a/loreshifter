@@ -1,9 +1,10 @@
 from typing import Literal, Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 
 from app.dependencies import Conn, AuthDep, U, UserDep, Log
+from lstypes.player import PlayerOut
 from game.game import GameSystem
 from lstypes.error import ServiceError
 from lstypes.game import GameOut
@@ -100,11 +101,23 @@ async def get_game_by_code(
     )
 
 
+class ReadyIn(BaseModel):
+    ready: bool = True
+
+
 @router.post("/api/v0/game/{game_id}/ready")
 async def ready(
         game_id: int,
         conn: Conn,
         user: AuthDep,
         log: Log,
-):
-    GameSystem.of(game_id).set_ready(conn, user.id, log=log)
+        ready: ReadyIn | None = None,
+) -> PlayerOut | ServiceError:
+    game = GameSystem.of(game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    ready = ready.ready if ready else True
+    result = await game.set_ready(conn, user.id, ready, log=log)
+    if isinstance(result, ServiceError):
+        return result
+    return await game.get_player(conn, user.id, log=log)
