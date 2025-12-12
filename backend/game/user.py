@@ -68,7 +68,7 @@ async def create_test_user(
         email: str | None = None,
         log=gl_log,
 ) -> FullUserOut | ServiceError:
-    if name is None or email is None:1
+    if name is None or email is None:
         nonce = random.randbytes(8).hex()
         if name is None:
             name = f"test_{nonce}"

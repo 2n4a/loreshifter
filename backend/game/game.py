@@ -676,25 +676,30 @@ class GameSystem(System[GameEvent]):
     ) -> None | ServiceError:
         log = log.bind(game_id=self.id, user_id=user_id)
 
-        game_id = await conn.fetchval(
-            """
-            UPDATE game_players
-            SET is_ready = $3
-            WHERE user_id = $1 AND game_id = $2
-            RETURNING game_id
-            """,
-            user_id,
-            self.id,
-            ready,
-        )
+        if user_id not in self.player_states:
+            return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
 
-        if game_id is None:
-            return await error('PLAYER_NOT_FOUND', "Player not found", log=log)
+        async with self.lock:
+            game_id = await conn.fetchval(
+                """
+                UPDATE game_players
+                SET is_ready = $3
+                WHERE user_id = $1 AND game_id = $2
+                RETURNING game_id
+                """,
+                user_id,
+                self.id,
+                ready,
+            )
 
-        await log.ainfo("Setting ready status", ready=ready)
-        self.emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
+            if game_id is None:
+                return await error('SERVER_ERROR', "Player not found", log=log)
 
-        return None
+            await log.ainfo("Setting ready status", ready=ready)
+            self.player_states[user_id].is_ready = ready
+            self.emit(PlayerReadyEvent(game_id=game_id, player_id=user_id, ready=ready))
+
+            return None
 
     async def get_player(
         self,
