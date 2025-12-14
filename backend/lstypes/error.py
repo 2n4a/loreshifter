@@ -2,15 +2,30 @@ import dataclasses
 import inspect
 import typing
 
+from enum import Enum
 from structlog import BoundLogger
 
 import config
 from game.logger import gl_log
 
 
+class ServiceCode(str, Enum):
+    USER_NOT_FOUND = "UserNotFound"
+    WORLD_NOT_FOUND = "WorldNotFound"
+    GAME_NOT_FOUND = "GameNotFound"
+    PLAYER_NOT_FOUND = "PlayerNotFound"
+    NOT_HOST = "NotHost"
+    GAME_FULL = "GameFull"
+    SERVER_ERROR = "ServerError"
+    MESSAGE_NOT_FOUND = "MessageNotFound"
+    MUTUALLY_EXCLUSIVE_OPTIONS = "MutuallyExclusiveOptions"
+    GAME_ALREADY_STARTED = "GameAlreadyStarted"
+    PLAYER_NOT_READY = "PlayerNotReady"
+
+
 @dataclasses.dataclass
 class ServiceError:
-    code: str
+    code: ServiceCode
     message: str
     details: dict[str, typing.Any] | None = None
 
@@ -19,7 +34,7 @@ LOG_STACKTRACE = config.LOG_STACKTRACE
 
 
 async def error(
-        code: str, message: str,
+        code: ServiceCode, message: str,
         log: BoundLogger | None = gl_log,
         cause: Exception | None = None,
         **kwargs

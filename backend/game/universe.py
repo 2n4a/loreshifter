@@ -11,7 +11,7 @@ from game.logger import gl_log
 from game.user import check_user_exists
 from lstypes.chat import ChatType
 from game.game import GameSystem, GameEvent, GameStatusEvent
-from lstypes.error import ServiceError, error
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.game import GameStatus, GameOut
 from lstypes.player import PlayerOut
 from lstypes.user import UserOut
@@ -100,12 +100,12 @@ class Universe(System[UniverseEvent, None]):
         if row is None:
             if not await check_user_exists(conn, owner_id):
                 return await error(
-                    "USER_NOT_FOUND",
+                    ServiceCode.USER_NOT_FOUND,
                     "User not found",
                     log=log,
                 )
             return await error(
-                "SERVER_ERROR",
+                ServiceCode.SERVER_ERROR,
                 "Failed to create the world",
                 log=log,
             )
@@ -231,20 +231,20 @@ class Universe(System[UniverseEvent, None]):
                 if row is None:
                     if not await check_user_exists(conn, host_id):
                         return await error(
-                            "USER_NOT_FOUND",
+                            ServiceCode.USER_NOT_FOUND,
                             "Host user not found",
                             user_id=host_id,
                             log=log,
                         )
                     if not await self.check_world_exists(conn, world_id):
                         return await error(
-                            "WORLD_NOT_FOUND",
+                            ServiceCode.WORLD_NOT_FOUND,
                             "World not found",
                             world_id=world_id,
                             log=log,
                         )
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Failed to create the game",
                         log=log,
                     )
@@ -295,7 +295,7 @@ class Universe(System[UniverseEvent, None]):
 
         except asyncpg.DeadlockDetectedError as e:
             return await error(
-                "SERVER_ERROR",
+                ServiceCode.SERVER_ERROR,
                 "Failed to create the game due to transaction failure",
                 cause=e,
                 log=log,
@@ -381,7 +381,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "WORLD_NOT_FOUND",
+                ServiceCode.WORLD_NOT_FOUND,
                 "World with given id not found",
                 id=id_,
                 log=log,
@@ -545,7 +545,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "GAME_NOT_FOUND",
+                ServiceCode.GAME_NOT_FOUND,
                 "Game with given id not found",
                 game_id=game_id,
                 log=log,
@@ -586,7 +586,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "GAME_NOT_FOUND",
+                ServiceCode.GAME_NOT_FOUND,
                 "Game with given code not found",
                 game_code=game_code,
                 log=log,

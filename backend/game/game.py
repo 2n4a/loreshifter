@@ -14,7 +14,7 @@ from game.logger import gl_log
 from game.utils import Timer, AsyncReentrantLock
 from lstypes.chat import ChatType, ChatInterfaceType
 from game.system import System
-from lstypes.error import error, ServiceError
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.game import GameStatus, GameOut, StateOut
 from lstypes.player import PlayerOut
 from lstypes.user import UserOut
@@ -269,7 +269,7 @@ class GameSystem(System[GameEvent]):
 
                 if not result:
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Player not found",
                         log=log
                     )
@@ -318,7 +318,7 @@ class GameSystem(System[GameEvent]):
 
             if not row:
                 return await error(
-                    "SERVER_ERROR",
+                    ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to insert player",
                 )
 
@@ -358,7 +358,7 @@ class GameSystem(System[GameEvent]):
             return None
 
         if requester_id is not None and requester_id != self.host_id and requester_id != player_id:
-            return await error("NOT_HOST", "Only host can kick players", log=log)
+            return await error(ServiceCode.NOT_HOST, "Only host can kick players", log=log)
 
         log = log.bind(game_id=self.id, player_id=player_id)
 
@@ -383,7 +383,7 @@ class GameSystem(System[GameEvent]):
                 )
                 if not success:
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Failed to remove spectator",
                         log=log
                     )
@@ -406,7 +406,7 @@ class GameSystem(System[GameEvent]):
 
             if not success:
                 return await error(
-                    "SERVER_ERROR",
+                    ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to remove player",
                 )
 
@@ -439,7 +439,7 @@ class GameSystem(System[GameEvent]):
                         )
                         if not row:
                             await error(
-                                "SERVER_ERROR",
+                                ServiceCode.SERVER_ERROR,
                                 "Mismatch between server state and DB state. Failed to remove player",
                                 log=log
                             )
@@ -488,11 +488,11 @@ class GameSystem(System[GameEvent]):
         log = log.bind(game_id=self.id, player_id=player_id, spectate=spectate, requester_id=requester_id)
 
         if requester_id is not None and requester_id != self.host_id and requester_id != player_id:
-            return await error("NOT_HOST", "Only host can force players to be spectators/players", log=log)
+            return await error(ServiceCode.NOT_HOST, "Only host can force players to be spectators/players", log=log)
 
         async with self.lock:
             if player_id not in self.player_states:
-                return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+                return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
 
             player = self.player_states[player_id]
             if player.is_spectator == spectate:
@@ -511,7 +511,7 @@ class GameSystem(System[GameEvent]):
                 )
                 if not success:
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Failed to make player spectator",
                         log=log,
                     )
@@ -522,7 +522,7 @@ class GameSystem(System[GameEvent]):
                 self.emit(PlayerSpectatorEvent(self.id, player_id, True))
             else:
                 if self.num_non_spectators >= self.max_players:
-                    return await error("GAME_FULL", "Game is full", log=log)
+                    return await error(ServiceCode.GAME_FULL, "Game is full", log=log)
 
                 success = await conn.fetchval(
                     """
@@ -536,7 +536,7 @@ class GameSystem(System[GameEvent]):
                 )
                 if not success:
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Failed to make player not spectator",
                         log=log,
                     )
@@ -559,11 +559,11 @@ class GameSystem(System[GameEvent]):
         old_host = self.host_id
 
         if requester_id is not None and requester_id != old_host:
-            return await error("NOT_HOST", "Only host can promote other players", log=log)
+            return await error(ServiceCode.NOT_HOST, "Only host can promote other players", log=log)
 
         async with self.lock:
             if player_id not in self.player_states:
-                return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+                return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
 
             success = await conn.fetchval(
                 """
@@ -574,7 +574,7 @@ class GameSystem(System[GameEvent]):
             )
             if not success:
                 return await error(
-                    "SERVER_ERROR",
+                    ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to promote player to host",
                     log=log
                 )
@@ -593,11 +593,11 @@ class GameSystem(System[GameEvent]):
     ) -> None | ServiceError:
         log = log.bind(force=force, game_id=self.id, requester_id=requester_id)
         if self.status != GameStatus.WAITING:
-            return await error("GAME_ALREADY_STARTED", "Game already started", log=log)
+            return await error(ServiceCode.GAME_ALREADY_STARTED, "Game already started", log=log)
 
         if requester_id is not None:
             if requester_id != self.host_id:
-                return await error("NOT_HOST", "Only host can start the game", log=log)
+                return await error(ServiceCode.NOT_HOST, "Only host can start the game", log=log)
 
         async with self.lock:
             for player in self.player_states.values():
@@ -608,7 +608,7 @@ class GameSystem(System[GameEvent]):
                             return result
                     else:
                         return await error(
-                            "PLAYER_NOT_READY",
+                            ServiceCode.PLAYER_NOT_READY,
                             "Not all players are ready for a game yet",
                             log=log,
                         )
@@ -620,7 +620,7 @@ class GameSystem(System[GameEvent]):
             )
             if not success:
                 return await error(
-                    "SERVER_ERROR",
+                    ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to update game status",
                     log=log,
                 )
@@ -659,7 +659,7 @@ class GameSystem(System[GameEvent]):
             )
             if not success:
                 return await error(
-                    "SERVER_ERROR",
+                    ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to update game status",
                     log=log,
                 )
@@ -677,7 +677,7 @@ class GameSystem(System[GameEvent]):
         log = log.bind(game_id=self.id, user_id=user_id)
 
         if user_id not in self.player_states:
-            return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
 
         async with self.lock:
             game_id = await conn.fetchval(
@@ -693,7 +693,7 @@ class GameSystem(System[GameEvent]):
             )
 
             if game_id is None:
-                return await error('SERVER_ERROR', "Player not found", log=log)
+                return await error(ServiceCode.SERVER_ERROR, "Player not found", log=log)
 
             await log.ainfo("Setting ready status", ready=ready)
             self.player_states[user_id].is_ready = ready
@@ -709,7 +709,7 @@ class GameSystem(System[GameEvent]):
     ) -> PlayerOut | ServiceError:
         log = log.bind(user_id=user_id)
         if user_id not in self.player_states:
-            return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
         return self.player_states[user_id].get_player_out(self.host_id)
 
     async def get_state(
@@ -719,7 +719,7 @@ class GameSystem(System[GameEvent]):
             log=gl_log,
     ) -> StateOut | ServiceError:
         if requester_id not in self.player_states:
-            return await error("PLAYER_NOT_FOUND", "Player not found", log=log)
+            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
 
         player = self.player_states[requester_id]
         game = universe.Universe.of(None).get_game(conn, self.id, requester_id=requester_id, log=log)

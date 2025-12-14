@@ -14,6 +14,7 @@ from game.game import (
 from lstypes.game import GameStatus, GameOut
 from game.universe import UniverseGameEvent
 from game.user import create_test_user
+from lstypes.error import ServiceCode
 
 
 @pytest.mark.asyncio
@@ -25,7 +26,7 @@ async def test_game_set_ready(db, universe):
     game_system = GameSystem.of(game.id)
     assert await game_system.set_ready(db, user.id, True) is None
     assert await game_system.set_ready(db, user.id, False) is None
-    assert (await game_system.set_ready(db, -123, False)).code == "PLAYER_NOT_FOUND"
+    assert (await game_system.set_ready(db, -123, False)).code == ServiceCode.PLAYER_NOT_FOUND
 
     events = [
         event.event for event in await universe.stop_and_gather_events()
@@ -76,7 +77,7 @@ async def test_get_game(db, universe):
     assert game.name == "g1"
 
     game = await universe.get_game(db, -123)
-    assert game.code == "GAME_NOT_FOUND"
+    assert game.code == ServiceCode.GAME_NOT_FOUND
 
 @pytest.mark.asyncio
 async def test_get_game_by_code(db, universe):
@@ -88,7 +89,7 @@ async def test_get_game_by_code(db, universe):
     assert game.name == "g1"
 
     game = await universe.get_game_by_code(db, "INVALID_CODE")
-    assert game.code == "GAME_NOT_FOUND"
+    assert game.code == ServiceCode.GAME_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -217,5 +218,5 @@ async def test_spectator_flow(db, universe):
 
     # user2 tries to make user3 a player, but game is full
     result = await game_system.make_spectator(db, user3.id, spectate=False, requester_id=user2.id)
-    assert result.code == "GAME_FULL"
+    assert result.code == ServiceCode.GAME_FULL
     assert game_system.player_states[user3.id].is_spectator

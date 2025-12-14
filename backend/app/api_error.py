@@ -2,7 +2,7 @@ import typing
 
 from pydantic import BaseModel
 
-from lstypes.error import ServiceError
+from lstypes.error import ServiceCode, ServiceError
 
 
 class ApiError(BaseModel):
@@ -18,26 +18,20 @@ class ApiErrorException(Exception):
         self.error = error
 
 
-_SERVICE_TO_API_CODE: dict[str, str] = {
-    "USER_NOT_FOUND": "UserNotFound",
-    "WORLD_NOT_FOUND": "WorldNotFound",
-    "GAME_NOT_FOUND": "GameNotFound",
-    "PLAYER_NOT_FOUND": "PlayerNotFound",
-    "NOT_HOST": "NotHost",
-    "GAME_FULL": "GameFull",
-    "SERVER_ERROR": "ServerError",
-}
-
-
-def _status_code_from_service_code(code: str) -> int:
+def _status_code_from_service_code(code: ServiceCode) -> int:
     match code:
-        case "SERVER_ERROR":
+        case ServiceCode.SERVER_ERROR:
             return 500
-        case "NOT_HOST":
+        case ServiceCode.NOT_HOST:
             return 403
-        case "GAME_FULL":
+        case ServiceCode.GAME_FULL:
             return 409
-        case "USER_NOT_FOUND" | "WORLD_NOT_FOUND" | "GAME_NOT_FOUND" | "PLAYER_NOT_FOUND":
+        case (
+            ServiceCode.USER_NOT_FOUND
+            | ServiceCode.WORLD_NOT_FOUND
+            | ServiceCode.GAME_NOT_FOUND
+            | ServiceCode.PLAYER_NOT_FOUND
+        ):
             return 404
         case _:
             return 400
@@ -45,15 +39,6 @@ def _status_code_from_service_code(code: str) -> int:
 
 def api_error(code: str, message: str, details: dict[str, typing.Any] | None = None) -> ApiError:
     return ApiError(code=code, message=message, details=details)
-
-
-def api_error_from_service_error(err: ServiceError) -> ApiError:
-    api_code = _SERVICE_TO_API_CODE.get(err.code, err.code)
-    return ApiError(
-        code=api_code,
-        message=err.message,
-        details=err.details,
-    )
 
 
 def raise_api_error(
@@ -68,7 +53,11 @@ def raise_api_error(
 def raise_for_service_error(err: ServiceError) -> typing.NoReturn:
     raise ApiErrorException(
         _status_code_from_service_code(err.code),
-        api_error_from_service_error(err),
+        ApiError(
+            code=err.code.value,
+            message=err.message,
+            details=err.details,
+        ),
     )
 
 

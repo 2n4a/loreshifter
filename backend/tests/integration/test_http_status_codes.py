@@ -1,6 +1,8 @@
 import aiohttp
 import pytest
 
+from lstypes.error import ServiceError
+import app.dependencies as deps
 from tests.service import service
 
 
@@ -66,32 +68,29 @@ async def test_error_responses_use_non_200_http_status_codes(service):
 
 
 @pytest.mark.asyncio
-async def test_ready_does_not_return_200_when_player_not_found(service, monkeypatch):
-    from game.game import GameSystem
-    from lstypes.error import ServiceError
-    import app.dependencies as deps
-
+async def test_ready_does_not_return_200_when_player_not_found(service):
     async with aiohttp.ClientSession(base_url=service.url) as client:
         resp = await client.get("/api/v0/test-login")
         assert resp.status == 200
         body = await resp.json()
-        token = body["token"]
-        user_id = body["user"]["id"]
+        host_user_id = body["user"]["id"]
+
+        resp = await client.get("/api/v0/test-login")
+        assert resp.status == 200
+        body = await resp.json()
+        other_token = body["token"]
+        other_user_id = body["user"]["id"]
+
+        assert other_user_id != host_user_id
 
     async with deps.state.pg_pool.acquire() as conn:
-        world = await service.universe.create_world(conn, "world", user_id, True)
+        world = await service.universe.create_world(conn, "world", host_user_id, True)
         assert not isinstance(world, ServiceError)
-        game = await service.universe.create_game(conn, user_id, world.id, "room", True, 1)
+        game = await service.universe.create_game(conn, host_user_id, world.id, "room", True, 1)
         assert not isinstance(game, ServiceError)
 
-    async def fake_get_player(_self, _conn, _user_id, log=None):
-        _ = log
-        return ServiceError(code="PLAYER_NOT_FOUND", message="Player not found")
-
-    monkeypatch.setattr(GameSystem, "get_player", fake_get_player)
-
     async with aiohttp.ClientSession(base_url=service.url) as client:
-        headers = {"Authentication": token}
+        headers = {"Authentication": other_token}
         resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers)
         assert resp.status == 404
         body = await resp.json()

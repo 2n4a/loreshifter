@@ -5,7 +5,7 @@ import typing
 import asyncpg
 
 from game.logger import gl_log
-from lstypes.error import ServiceError, error
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.message import MessageOut, MessageKind, MessageOutWithNeighbors
 from game.system import System
 from lstypes.chat import ChatType, ChatInterfaceType, ChatInterface, ChatSegmentOut
@@ -156,7 +156,7 @@ class ChatSystem(System[ChatEvent]):
             )
 
             if id_ is None:
-                return await error("SERVER_ERROR", "Failed to create chat", log=log)
+                return await error(ServiceCode.SERVER_ERROR, "Failed to create chat", log=log)
 
         chat_system = ChatSystem(id_)
 
@@ -218,7 +218,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message_id is None:
-            return await error("SERVER_ERROR", "Failed to send message", log=log)
+            return await error(ServiceCode.SERVER_ERROR, "Failed to send message", log=log)
 
         message = MessageOut(
             id=message_id,
@@ -264,7 +264,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return await error("MESSAGE_NOT_FOUND", "Message not found", log=log)
+            return await error(ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log)
 
         await log.ainfo("Edited message", chat_id=self.id, message_id=message_id)
 
@@ -291,7 +291,7 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return await error("MESSAGE_NOT_FOUND", "Message not found", log=log)
+            return await error(ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log)
 
         await log.ainfo("Deleted message", chat_id=self.id, message_id=message_id)
 
@@ -315,7 +315,7 @@ class ChatSystem(System[ChatEvent]):
 
         if before_message_id is not None and after_message_id is not None:
             return await error(
-                "MUTUALLY_EXCLUSIVE_OPTIONS",
+                ServiceCode.MUTUALLY_EXCLUSIVE_OPTIONS,
                 "before_message_id and after_message_id are mutually exclusive",
                 log=log
             )
@@ -333,13 +333,13 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if not chat_info:
-            return await error("SERVER_ERROR", "Chat not found", log=gl_log)
+            return await error(ServiceCode.SERVER_ERROR, "Chat not found", log=gl_log)
 
         if after_message_id is not None:
             messages = list(self.index.walk_forward(after_message_id, limit))
             if not messages:
                 return await error(
-                    "MESSAGE_NOT_FOUND",
+                    ServiceCode.MESSAGE_NOT_FOUND,
                     "Message with id 'after_message_id' not found",
                     log=gl_log
                 )
@@ -347,7 +347,7 @@ class ChatSystem(System[ChatEvent]):
             messages = list(self.index.walk_backward(before_message_id, limit))
             if not messages:
                 return await error(
-                    "MESSAGE_NOT_FOUND",
+                    ServiceCode.MESSAGE_NOT_FOUND,
                     "Message with id 'before_message_id' not found",
                     log=gl_log
                 )

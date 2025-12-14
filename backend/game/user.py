@@ -4,7 +4,7 @@ import random
 import asyncpg
 
 from game.logger import gl_log
-from lstypes.error import ServiceError, error
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.user import FullUserOut
 
 
@@ -125,7 +125,7 @@ async def get_user(
         )
     if user is None:
         return await error(
-            "USER_NOT_FOUND",
+            ServiceCode.USER_NOT_FOUND,
             "User not found",
             user_id=id_,
             log=log,
@@ -189,7 +189,7 @@ async def delete_user(conn: asyncpg.Connection, id_: int, log=gl_log) -> None | 
     )
     if deleted_id is None:
         return await error(
-            "USER_NOT_FOUND",
+            ServiceCode.USER_NOT_FOUND,
             "User not found",
             user_id=id_,
             log=log,
