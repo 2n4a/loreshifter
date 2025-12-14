@@ -7,14 +7,18 @@ import urllib.parse
 
 import httpx
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 from jose import jwt
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 import config
 import game.user
+from app.api_error import raise_api_error, raise_for_service_error
 from app.dependencies import Conn
+from lstypes.error import ServiceError
 
 router = APIRouter()
 
@@ -43,7 +47,7 @@ class AuthProvider(abc.ABC):
         ...
 
     def redirect_url(self):
-        return f"{SELF_URL}/api/v0/login/callback/{self.provider_name}/"
+        return f"{SELF_URL}/api/v0/login/callback/{self.provider_name}"
 
     async def extract_state(self, data: dict[str, str]) -> dict[str, typing.Any]:
         ...
@@ -138,7 +142,7 @@ def login(provider: str, to: str | None = None, redirect: bool = False):
                 return RedirectResponse(login_url)
             return {"url": login_url}
     else:
-        raise HTTPException(status_code=400, detail="Invalid provider")
+        raise_api_error(400, "InvalidProvider", "Invalid provider")
 
 
 @router.get("/api/v0/login/callback/{provider}")
@@ -148,29 +152,34 @@ async def login_callback(request: Request, conn: Conn, provider: str):
             params = {k: v for k, v in request.query_params.items()}
             token = await p.exchange_for_token(params)
             state = await p.extract_state(params)
-            user = await p.fetch_user(token)
+            profile = await p.fetch_user(token)
+            user = await game.user.get_or_create_user(conn, profile.name, profile.email, profile.auth_id)
+            if isinstance(user, ServiceError):
+                raise_for_service_error(user)
 
             jwt_token = generate_jwt({
-                "auth_id": user.auth_id,
+                "auth_id": profile.auth_id,
                 "id": user.id,
             })
 
-            user = await game.user.get_or_create_user(conn, user.name, user.email, user.auth_id)
-
+            secure = config.ENVIRONMENT == "prod"
             if "to" in state:
                 response = RedirectResponse(state["to"])
-                response.set_cookie("session", jwt_token, secure=True, httponly=True)
+                response.set_cookie("session", jwt_token, secure=secure, httponly=True)
                 return response
 
-            return {"token": jwt_token, "user": user}
+            response = JSONResponse({"token": jwt_token, "user": jsonable_encoder(user)})
+            response.set_cookie("session", jwt_token, secure=secure, httponly=True)
+            return response
     else:
-        raise HTTPException(status_code=400, detail="Invalid provider")
+        raise_api_error(400, "InvalidProvider", "Invalid provider")
 
 
 @router.get("/api/v0/logout")
-def logout(request: Request):
-    request.cookies.pop("session")
-    return {}
+def logout():
+    response = JSONResponse({})
+    response.delete_cookie("session")
+    return response
 
 
 @router.get("/api/v0/test-login")
@@ -185,9 +194,12 @@ async def test_login(
         "id": user.id,
         "test": True,
     })
+    secure = config.ENVIRONMENT == "prod"
     if to is not None:
         response = RedirectResponse(to)
-        response.set_cookie("session", jwt_token, secure=True, httponly=True)
+        response.set_cookie("session", jwt_token, secure=secure, httponly=True)
         return response
     else:
-        return {"token": jwt_token, "user": user}
+        response = JSONResponse({"token": jwt_token, "user": jsonable_encoder(user)})
+        response.set_cookie("session", jwt_token, secure=secure, httponly=True)
+        return response

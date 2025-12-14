@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
+from app.api_error import raise_api_error, unwrap
 from app.dependencies import UserDep, Conn, AuthDep
 from lstypes.user import FullUserOut, UserOut
 import game.user
@@ -13,14 +14,19 @@ async def get_user(user: AuthDep) -> FullUserOut:
 
 
 @router.get("/api/v0/user/{id_}")
-async def get_user(user: UserDep, conn: Conn, id_: int) -> FullUserOut | UserOut:
-    if id_ == 0 or id_ == user.id:
-        return user
-    user = await game.user.get_user(conn, id_)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+async def get_user_by_id(requester: UserDep, conn: Conn, id_: int) -> FullUserOut | UserOut:
+    if id_ == 0:
+        if requester is None:
+            raise_api_error(401, "Unauthorized", "Not authenticated")
+        return requester
+
+    if requester is not None and id_ == requester.id:
+        return requester
+
+    user = unwrap(await game.user.get_user(conn, id_, deleted_ok=False))
     return UserOut(
         id=user.id,
         name=user.name,
         created_at=user.created_at,
+        deleted=user.deleted,
     )

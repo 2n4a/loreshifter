@@ -34,6 +34,7 @@ async def service() -> Service:
             host='127.0.0.1',
             port=port,
             lifespan='on',
+            ws="websockets-sansio",
         )
     )
     task = asyncio.create_task(server.serve())

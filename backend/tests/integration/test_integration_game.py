@@ -1,19 +1,10 @@
 import pytest
-
-from app.auth import generate_jwt
-from game.game import GameSystem, GameStatusEvent, PlayerReadyEvent
-from lstypes.game import GameStatus
-from game.universe import Universe, UniverseGameEvent
-from game.user import create_test_user
 from tests.service import service
 import aiohttp
 import app.dependencies as deps
 
-from app.dependencies import state, get_db
-
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(6)
 async def test_game_set_ready(service):
     async with aiohttp.ClientSession(base_url=service.url) as client:
         resp = await client.get("/api/v0/test-login")

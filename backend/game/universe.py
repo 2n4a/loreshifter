@@ -98,7 +98,7 @@ class Universe(System[UniverseEvent, None]):
         )
 
         if row is None:
-            if check_user_exists(conn, owner_id):
+            if not await check_user_exists(conn, owner_id):
                 return await error(
                     "USER_NOT_FOUND",
                     "User not found",
@@ -459,11 +459,20 @@ class Universe(System[UniverseEvent, None]):
             order: Literal["createdAt"] = "createdAt",
             sort: Literal["asc", "desc"] = "desc",
             public: bool = False,
+            joined_only: bool = False,
             requester_id: int | None = None,
             include_archived: bool = False,
             log=gl_log,
     ) -> list[GameOut] | ServiceError:
-        log = log.bind(limit=limit, offset=offset, sort=sort, order=order, public=public, requester_id=requester_id)
+        log = log.bind(
+            limit=limit,
+            offset=offset,
+            sort=sort,
+            order=order,
+            public=public,
+            joined_only=joined_only,
+            requester_id=requester_id,
+        )
 
         rows = await conn.fetch(
             f"""
@@ -482,6 +491,9 @@ class Universe(System[UniverseEvent, None]):
                 (g.public IS TRUE OR (g.id IN (SELECT game_id FROM game_players WHERE user_id = $3)))
                 AND (g.public OR NOT $4)
                 AND (g.status != 'archived' OR $5)
+                AND (NOT $6 OR g.id IN (
+                    SELECT game_id FROM game_players WHERE user_id = $3 AND is_joined IS TRUE
+                ))
             ORDER BY g.created_at {'ASC' if sort == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
@@ -490,6 +502,7 @@ class Universe(System[UniverseEvent, None]):
             requester_id if requester_id is not None else -1,
             public,
             include_archived,
+            joined_only,
         )
 
         await log.ainfo("Fetching games: got %s games", len(rows))

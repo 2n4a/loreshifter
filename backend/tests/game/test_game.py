@@ -92,6 +92,30 @@ async def test_get_game_by_code(db, universe):
 
 
 @pytest.mark.asyncio
+async def test_player_can_join_multiple_games(db, universe):
+    host = await create_test_user(db, "host")
+    player = await create_test_user(db, "player")
+    world = await universe.create_world(db, "world", host.id, True)
+
+    game1 = await universe.create_game(db, host.id, world.id, "g1", True, 2)
+    game2 = await universe.create_game(db, host.id, world.id, "g2", True, 2)
+    game_system1 = GameSystem.of(game1.id)
+    game_system2 = GameSystem.of(game2.id)
+
+    await game_system1.connect_player(db, player.id)
+    await game_system2.connect_player(db, player.id)
+
+    joined_count = await db.fetchval(
+        "SELECT count(*) FROM game_players WHERE user_id = $1 AND is_joined IS TRUE",
+        player.id,
+    )
+    assert joined_count == 2
+
+    joined_games = await universe.get_games(db, 10, 0, requester_id=player.id, joined_only=True)
+    assert {g.name for g in joined_games} == {"g1", "g2"}
+
+
+@pytest.mark.asyncio
 async def test_player_join_and_leave(db, universe):
     user1 = await create_test_user(db, "user1")
     user2 = await create_test_user(db, "user2")

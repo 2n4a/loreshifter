@@ -7,7 +7,7 @@ from typing import Annotated
 
 import asyncpg
 import structlog
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.params import Cookie, Header
 from structlog import BoundLogger
 
@@ -15,12 +15,14 @@ import config
 import game.user
 from app.ws import WebSocketController
 from game.logger import gl_log
+from lstypes.error import ServiceError
 from lstypes.user import FullUserOut
 from game.universe import Universe
 
 from jose import jwt
 
 from lstypes.utils import PgEnum
+from app.api_error import raise_api_error
 
 
 @dataclasses.dataclass
@@ -55,18 +57,31 @@ U = Annotated[Universe, Depends(get_universe)]
 
 async def get_jwt(
         session: Annotated[str | None, Cookie()] = None,
+        authorization: Annotated[str | None, Header()] = None,
         authentication: Annotated[str | None, Header()] = None,
 ) -> dict[str, typing.Any] | None:
+    if not config.JWT_SECRET:
+        return None
+
+    tokens: list[str] = []
     if session is not None:
-        try:
-            return jwt.decode(session, config.JWT_SECRET, algorithms=["HS256"])
-        except jwt.JWTError:
-            pass
+        tokens.append(session)
+    if authorization is not None:
+        auth = authorization.strip()
+        if auth.lower().startswith("bearer "):
+            auth = auth[7:].strip()
+        if auth:
+            tokens.append(auth)
     if authentication is not None:
+        auth = authentication.strip()
+        if auth:
+            tokens.append(auth)
+
+    for token in tokens:
         try:
-            return jwt.decode(authentication, config.JWT_SECRET, algorithms=["HS256"])
+            return jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
         except jwt.JWTError:
-            pass
+            continue
     return None
 
 
@@ -76,7 +91,10 @@ async def get_user(
 ) -> FullUserOut | None:
     if not jwt_:
         return None
-    return await game.user.get_user(conn, jwt_["id"], deleted_ok=False)
+    user = await game.user.get_user(conn, jwt_["id"], deleted_ok=False)
+    if isinstance(user, ServiceError):
+        return None
+    return user
 
 
 async def get_user_or_401(
@@ -84,10 +102,10 @@ async def get_user_or_401(
         jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
 ) -> FullUserOut:
     if not jwt_:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user = await game.user.get_user(conn, jwt_["id"])
-    if user is None:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise_api_error(401, "Unauthorized", "Not authenticated")
+    user = await game.user.get_user(conn, jwt_["id"], deleted_ok=False)
+    if isinstance(user, ServiceError):
+        raise_api_error(401, "Unauthorized", "Not authenticated")
     return user
 
 

@@ -8,9 +8,12 @@ from app.user import router as user_router
 from app.game import router as game_router
 from app.world import router as world_router
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
 import uvicorn
 
 from app.dependencies import livespan
+from app.api_error import ApiErrorException
 
 app = FastAPI(lifespan=livespan)
 
@@ -18,6 +21,12 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(game_router)
 app.include_router(world_router)
+
+
+@app.exception_handler(ApiErrorException)
+async def api_error_exception_handler(_request: Request, exc: ApiErrorException):
+    return JSONResponse(status_code=exc.status_code, content=exc.error.model_dump())
+
 
 app.add_middleware(
     CORSMiddleware,

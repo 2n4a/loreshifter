@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from fastapi.params import Query
 from pydantic import BaseModel
 
+from app.api_error import unwrap
 from app.dependencies import Conn, AuthDep, U, Log, UserDep
-from lstypes.error import ServiceError
 from lstypes.world import WorldOut
 
 router = APIRouter()
@@ -26,8 +26,8 @@ async def post_world(
         user: AuthDep,
         log: Log,
         world: WorldIn,
-) -> WorldOut | ServiceError:
-    return await universe.create_world(
+) -> WorldOut:
+    return unwrap(await universe.create_world(
         conn,
         world.name,
         user.id,
@@ -35,7 +35,7 @@ async def post_world(
         world.description,
         world.data,
         log=log,
-    )
+    ))
 
 
 @router.get("/api/v0/world")
@@ -50,14 +50,12 @@ async def get_worlds(
         search: Annotated[str, Query(max_length=50)] | None = None,
         public: bool | None = None,
         filter_: Annotated[str, Query(max_length=50)] | None = None,
-) -> list[WorldOut] | ServiceError:
+) -> list[WorldOut]:
     _ = sort
     _ = public
     _ = search
     _ = filter_
-    return await universe.get_worlds(
-        conn, limit, offset, order, log=log
-    )
+    return unwrap(await universe.get_worlds(conn, limit, offset, order, log=log))
 
 
 @router.get("/api/v0/world/{id_}")
@@ -67,10 +65,10 @@ async def get_world(
         user: UserDep,
         log: Log,
         id_: int,
-) -> WorldOut | ServiceError:
-    return await universe.get_world(
+) -> WorldOut:
+    return unwrap(await universe.get_world(
         conn,
-        user.id if user else None,
         id_,
-        log=log
-    )
+        requester_user_id=user.id if user else None,
+        log=log,
+    ))

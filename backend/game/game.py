@@ -108,30 +108,28 @@ class GameSystem(System[GameEvent]):
             conn: asyncpg.Connection,
             g: GameOut,
     ) -> GameSystem:
-        status = GameStatus.WAITING
+        status = g.status
         public = g.public
         max_players = g.max_players
 
         room_chat = await ChatSystem.create_or_load(conn, g.id, ChatType.ROOM, None)
 
-        host_id: int | None = None
+        host_id: int | None = g.host_id
         num_non_spectators = 0
         player_states: dict[int, Player] = {}
         for player in g.players:
             player_states[player.user.id] = Player(
                 user=player.user,
-                is_joined=True,
+                is_joined=player.is_joined,
                 is_spectator=player.is_spectator,
                 is_ready=player.is_ready,
-                joined_at=datetime.datetime.now(),
+                joined_at=player.joined_at,
                 kick_timer=Timer(config.KICK_PLAYER_AFTER_SECONDS),
                 kick_task=None,
                 character_chat=None,
                 advice_chat=None,
                 player_chat=None,
             )
-            if player.is_host:
-                host_id = player.user.id
             if not player.is_spectator:
                 num_non_spectators += 1
 
@@ -278,7 +276,9 @@ class GameSystem(System[GameEvent]):
 
                 player.is_joined = True
                 player.joined_at = now
-                player.kick_task.cancel("Player rejoined")
+                if player.kick_task is not None:
+                    player.kick_task.cancel("Player rejoined")
+                    player.kick_task = None
 
                 self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id)))
                 await log.ainfo("Player rejoined")
