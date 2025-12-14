@@ -72,10 +72,7 @@ def raise_for_service_error(err: ServiceError) -> typing.NoReturn:
     )
 
 
-T = typing.TypeVar("T")
-
-
-def unwrap(result: T | ServiceError) -> T:
+def unwrap[T](result: T | ServiceError) -> T:
     if isinstance(result, ServiceError):
         raise_for_service_error(result)
     return result
