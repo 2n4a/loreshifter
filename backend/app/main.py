@@ -13,7 +13,7 @@ from starlette.requests import Request
 import uvicorn
 
 from app.dependencies import livespan
-from app.api_error import ApiErrorException
+from lstypes.error import ServiceErrorException
 
 app = FastAPI(lifespan=livespan)
 
@@ -23,9 +23,9 @@ app.include_router(game_router)
 app.include_router(world_router)
 
 
-@app.exception_handler(ApiErrorException)
-async def api_error_exception_handler(_request: Request, exc: ApiErrorException):
-    return JSONResponse(status_code=exc.status_code, content=exc.error.model_dump())
+@app.exception_handler(ServiceErrorException)
+async def service_error_exception_handler(_request: Request, exc: ServiceErrorException):
+    return JSONResponse(status_code=exc.status_code, content=exc.error.model_dump(mode="json"))
 
 
 app.add_middleware(

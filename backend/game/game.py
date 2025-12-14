@@ -110,6 +110,7 @@ class GameSystem(System[GameEvent]):
     ) -> GameSystem:
         status = g.status
         public = g.public
+        game_name = g.name
         max_players = g.max_players
 
         room_chat = await ChatSystem.create_or_load(conn, g.id, ChatType.ROOM, None)
@@ -137,6 +138,7 @@ class GameSystem(System[GameEvent]):
             g.id,
             status,
             public,
+            game_name,
             max_players,
             host_id,
             num_non_spectators,
@@ -154,6 +156,7 @@ class GameSystem(System[GameEvent]):
             id_: int,
             status: GameStatus,
             public: bool,
+            game_name: str,
             max_players: int,
             host_id: int | None,
             num_not_spectators: int,
@@ -163,6 +166,7 @@ class GameSystem(System[GameEvent]):
         super().__init__(id_)
         self.status = status
         self.public = public
+        self.game_name = game_name
         self.max_players = max_players
         self.host_id = host_id
         self.num_non_spectators = num_not_spectators
@@ -224,7 +228,7 @@ class GameSystem(System[GameEvent]):
 
     async def forward_chat_events(self, chat_: ChatSystem, owner_id: int | None):
         async for event in chat_.listen():
-            self.emit(GameChatEvent(self.id, owner_id, event))
+            self.emit(GameChatEvent(game_id=self.id, chat_id=chat_.id, owner_id=owner_id, event=event))
 
     async def connect_player(
             self,
@@ -312,7 +316,7 @@ class GameSystem(System[GameEvent]):
                 """,
                 self.id,
                 player_id,
-                allow_entry,
+                not allow_entry,
                 now,
             )
 
@@ -569,7 +573,7 @@ class GameSystem(System[GameEvent]):
                 """
                 UPDATE games SET host_id = $1 WHERE id = $2 RETURNING TRUE AS success
                 """,
-                self.host_id,
+                player_id,
                 self.id,
             )
             if not success:
@@ -582,6 +586,51 @@ class GameSystem(System[GameEvent]):
             self.emit(PlayerPromotedEvent(self.id, old_host, self.host_id))
             await log.ainfo("New host promoted")
 
+            return None
+
+    async def update_settings(
+            self,
+            conn: asyncpg.Connection,
+            *,
+            public: bool | None = None,
+            name: str | None = None,
+            max_players: int | None = None,
+            log=gl_log,
+    ) -> None | ServiceError:
+        if self.stopped:
+            return None
+
+        async with self.lock:
+            new_public = self.public if public is None else public
+            new_name = self.game_name if name is None else name
+            new_max_players = self.max_players if max_players is None else max_players
+
+            success = await conn.fetchval(
+                """
+                UPDATE games
+                SET public = $2,
+                    name = $3,
+                    max_players = $4
+                WHERE id = $1
+                RETURNING TRUE AS success
+                """,
+                self.id,
+                new_public,
+                new_name,
+                new_max_players,
+            )
+            if not success:
+                return await error(
+                    ServiceCode.SERVER_ERROR,
+                    "Mismatch between server state and DB state. Failed to update game settings",
+                    log=log,
+                )
+
+            self.public = new_public
+            self.game_name = new_name
+            self.max_players = new_max_players
+            self.emit(GameSettingsUpdateEvent(self.id, public=new_public, name=new_name, max_players=new_max_players))
+            await log.ainfo("Game settings updated")
             return None
 
     async def start_game(
@@ -600,23 +649,30 @@ class GameSystem(System[GameEvent]):
                 return await error(ServiceCode.NOT_HOST, "Only host can start the game", log=log)
 
         async with self.lock:
-            for player in self.player_states.values():
-                if not player.is_ready:
-                    if force:
-                        result = await self.make_spectator(conn, player.user.id)
+            not_ready_ids: list[int] = [
+                p.user.id
+                for p in self.player_states.values()
+                if p.is_joined and not p.is_spectator and not p.is_ready
+            ]
+            if not_ready_ids:
+                if force:
+                    for player_id in not_ready_ids:
+                        result = await self.make_spectator(conn, player_id, log=log)
                         if result is not None:
                             return result
-                    else:
-                        return await error(
-                            ServiceCode.PLAYER_NOT_READY,
-                            "Not all players are ready for a game yet",
-                            log=log,
-                        )
+                else:
+                    return await error(
+                        ServiceCode.PLAYER_NOT_READY,
+                        "Not all players are ready for a game yet",
+                        playerIds=not_ready_ids,
+                        log=log,
+                    )
 
             success = await conn.fetchval(
                 """
-                UPDATE games SET status = 'playing' WHERE id = $2 RETURNING TRUE AS success
+                UPDATE games SET status = 'playing' WHERE id = $1 RETURNING TRUE AS success
                 """,
+                self.id,
             )
             if not success:
                 return await error(
@@ -718,27 +774,52 @@ class GameSystem(System[GameEvent]):
             requester_id: int,
             log=gl_log,
     ) -> StateOut | ServiceError:
-        if requester_id not in self.player_states:
+        if requester_id not in self.player_states or not self.player_states[requester_id].is_joined:
             return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
 
+        game = await universe.Universe.get_game(conn, self.id, requester_id=requester_id, log=log)
+        if isinstance(game, ServiceError):
+            return game
+
         player = self.player_states[requester_id]
-        game = universe.Universe.of(None).get_game(conn, self.id, requester_id=requester_id, log=log)
 
         num_messages = 50
+
+        game_chat = await self.game_chat.get_messages(conn, num_messages, log=log)
+        if isinstance(game_chat, ServiceError):
+            return game_chat
+
+        character_creation_chat = None
+        if player.character_chat is not None:
+            character_creation_chat = await player.character_chat.get_messages(conn, num_messages, log=log)
+            if isinstance(character_creation_chat, ServiceError):
+                return character_creation_chat
+
+        player_chats: list = []
+        advice_chats: list = []
+        if self.status != GameStatus.WAITING:
+            for p in game.players:
+                state = self.player_states.get(p.user.id)
+                if state is None or state.is_spectator or state.player_chat is None or state.advice_chat is None:
+                    continue
+
+                pc = await state.player_chat.get_messages(conn, num_messages, log=log)
+                if isinstance(pc, ServiceError):
+                    return pc
+                player_chats.append(pc)
+
+                ac = await state.advice_chat.get_messages(conn, num_messages, log=log)
+                if isinstance(ac, ServiceError):
+                    return ac
+                advice_chats.append(ac)
 
         return StateOut(
             game=game,
             status=self.status,
-            character_creation_chat=await player.character_chat.get_messages(conn, num_messages, log=log),
-            game_chat=await player.player_chat.get_messages(conn, num_messages, log=log),
-            player_chats=[
-                await p.player_chat.get_messages(conn, num_messages, log=log) for p in
-                self.player_states.values() if not p.is_spectator
-            ],
-            advice_chats=[
-                await p.advice_chat.get_messages(conn, num_messages, log=log)
-                for p in self.player_states.values() if not p.is_spectator
-            ],
+            character_creation_chat=character_creation_chat,
+            game_chat=game_chat,
+            player_chats=player_chats,
+            advice_chats=advice_chats,
         )
 
     async def send_message(
@@ -751,7 +832,26 @@ class GameSystem(System[GameEvent]):
             metadata: dict | None = None,
             log=gl_log,
     ):
-        raise NotImplementedError("send_message")
+        chat_system = ChatSystem.of(chat_id)
+        if chat_system is None:
+            return await error(ServiceCode.SERVER_ERROR, "Chat system not loaded", chat_id=chat_id, log=log)
+
+        result = await chat_system.send_message(
+            conn,
+            game.chat.MessageKind.PLAYER,
+            message,
+            sender_id,
+            special=special,
+            metadata=metadata,
+            log=log,
+        )
+        if isinstance(result, ServiceError):
+            return result
+        return None
 
     async def game_loop(self):
-        raise NotImplementedError("game_loop")
+        try:
+            while True:
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            return

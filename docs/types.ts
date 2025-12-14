@@ -1,9 +1,10 @@
 /// Возвращается в случае ошибки в API
-type ApiError = {
+type ServiceError = {
     /// Код ошибки
     code: string,
     /// Человекочитаемое описание ошибки
     message: string,
+    details?: any,
 }
 
 type Ping = {

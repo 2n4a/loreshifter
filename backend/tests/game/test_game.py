@@ -56,13 +56,13 @@ async def test_get_games(db, universe):
     await universe.create_game(db, user1.id, world1.id, "g3", False, 2)
     await universe.create_game(db, user2.id, world2.id, "g4", False, 2)
 
-    games = await universe.get_games(db, 10, 0, sort="asc", requester_id=user1.id)
+    games = await universe.get_games(db, 10, 0, order="asc", requester_id=user1.id)
     assert len(games) == 3
     assert games[0].name == "g1"
     assert games[1].name == "g2"
     assert games[2].name == "g3"
 
-    games = await universe.get_games(db, 1, 0, sort="desc", public=True)
+    games = await universe.get_games(db, 1, 0, order="desc", public=True)
     assert len(games) == 1
     assert games[0].name == "g2"
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.api_error import raise_api_error, unwrap
 from app.dependencies import UserDep, Conn, AuthDep
+from lstypes.error import ServiceCode, raise_service_error, unwrap
 from lstypes.user import FullUserOut, UserOut
 import game.user
 
@@ -17,7 +17,7 @@ async def get_user(user: AuthDep) -> FullUserOut:
 async def get_user_by_id(requester: UserDep, conn: Conn, id_: int) -> FullUserOut | UserOut:
     if id_ == 0:
         if requester is None:
-            raise_api_error(401, "Unauthorized", "Not authenticated")
+            raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")
         return requester
 
     if requester is not None and id_ == requester.id:

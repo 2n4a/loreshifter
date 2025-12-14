@@ -16,9 +16,8 @@ from starlette.responses import RedirectResponse
 
 import config
 import game.user
-from app.api_error import raise_api_error, raise_for_service_error
 from app.dependencies import Conn
-from lstypes.error import ServiceError
+from lstypes.error import ServiceCode, ServiceError, raise_for_service_error, raise_service_error
 
 router = APIRouter()
 
@@ -142,7 +141,7 @@ def login(provider: str, to: str | None = None, redirect: bool = False):
                 return RedirectResponse(login_url)
             return {"url": login_url}
     else:
-        raise_api_error(400, "InvalidProvider", "Invalid provider")
+        raise_service_error(400, ServiceCode.INVALID_PROVIDER, "Invalid provider")
 
 
 @router.get("/api/v0/login/callback/{provider}")
@@ -172,7 +171,7 @@ async def login_callback(request: Request, conn: Conn, provider: str):
             response.set_cookie("session", jwt_token, secure=secure, httponly=True)
             return response
     else:
-        raise_api_error(400, "InvalidProvider", "Invalid provider")
+        raise_service_error(400, ServiceCode.INVALID_PROVIDER, "Invalid provider")
 
 
 @router.get("/api/v0/logout")

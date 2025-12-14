@@ -323,7 +323,7 @@ class Universe(System[UniverseEvent, None]):
                 o.name as owner_name, o.created_at as owner_created_at, o.deleted as owner_deleted
             FROM worlds AS w
             JOIN users AS o ON w.owner_id = o.id
-            WHERE w.public OR (w.owner_id = $3 AND NOT $4) AND NOT w.deleted
+            WHERE (w.public OR (w.owner_id = $3 AND NOT $4)) AND NOT w.deleted
             ORDER BY last_updated_at {'ASC' if sort == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
@@ -419,14 +419,22 @@ class Universe(System[UniverseEvent, None]):
                 user=UserOut(
                     id=p["user"]["id"],
                     name=p["user"]["name"],
-                    created_at=p["user"]["created_at"],
+                    created_at=(
+                        datetime.datetime.fromisoformat(p["user"]["created_at"])
+                        if isinstance(p["user"]["created_at"], str)
+                        else p["user"]["created_at"]
+                    ),
                     deleted=p["user"]["deleted"],
                 ),
                 is_ready=p["is_ready"],
                 is_host=p["is_host"],
                 is_spectator=p["is_spectator"],
                 is_joined=p["is_joined"],
-                joined_at=datetime.datetime.fromisoformat(p["joined_at"]),
+                joined_at=(
+                    datetime.datetime.fromisoformat(p["joined_at"])
+                    if isinstance(p["joined_at"], str)
+                    else p["joined_at"]
+                ),
             ) for p in (row["players"] or [])],
             created_at=row["created_at"],
             max_players=row["max_players"],
@@ -456,8 +464,8 @@ class Universe(System[UniverseEvent, None]):
             conn: asyncpg.Connection,
             limit: int,
             offset: int,
-            order: Literal["createdAt"] = "createdAt",
-            sort: Literal["asc", "desc"] = "desc",
+            sort: Literal["createdAt"] = "createdAt",
+            order: Literal["asc", "desc"] = "desc",
             public: bool = False,
             joined_only: bool = False,
             requester_id: int | None = None,
@@ -494,7 +502,7 @@ class Universe(System[UniverseEvent, None]):
                 AND (NOT $6 OR g.id IN (
                     SELECT game_id FROM game_players WHERE user_id = $3 AND is_joined IS TRUE
                 ))
-            ORDER BY g.created_at {'ASC' if sort == 'asc' else 'DESC'}
+            ORDER BY g.created_at {'ASC' if order == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
             limit,

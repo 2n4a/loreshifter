@@ -15,14 +15,13 @@ import config
 import game.user
 from app.ws import WebSocketController
 from game.logger import gl_log
-from lstypes.error import ServiceError
+from lstypes.error import ServiceCode, ServiceError, raise_service_error
 from lstypes.user import FullUserOut
 from game.universe import Universe
 
 from jose import jwt
 
 from lstypes.utils import PgEnum
-from app.api_error import raise_api_error
 
 
 @dataclasses.dataclass
@@ -102,10 +101,10 @@ async def get_user_or_401(
         jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
 ) -> FullUserOut:
     if not jwt_:
-        raise_api_error(401, "Unauthorized", "Not authenticated")
+        raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")
     user = await game.user.get_user(conn, jwt_["id"], deleted_ok=False)
     if isinstance(user, ServiceError):
-        raise_api_error(401, "Unauthorized", "Not authenticated")
+        raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")
     return user
 
 
