@@ -16,6 +16,8 @@ JWT_SECRET: str = os.environ.get("JWT_SECRET")
 OAUTH2_GITHUB_CLIENT_ID: str = os.environ.get("OAUTH2_GITHUB_CLIENT_ID")
 OAUTH2_GITHUB_CLIENT_SECRET: str = os.environ.get("OAUTH2_GITHUB_CLIENT_SECRET")
 LOG_STACKTRACE: bool = os.environ.get("LOG_STACKTRACE", "false").lower() == "true"
-POSTGRES_URL: str = os.environ.get("POSTGRES_URL", "postgres://devuser:devpass@localhost:5432/devdb")
+POSTGRES_URL: str = os.environ.get(
+    "POSTGRES_URL", "postgres://devuser:devpass@localhost:5432/devdb"
+)
 
 KICK_PLAYER_AFTER_SECONDS: float = 10.0

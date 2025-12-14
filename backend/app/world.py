@@ -30,65 +30,71 @@ class WorldUpdateIn(BaseModel):
 
 @router.post("/api/v0/world")
 async def post_world(
-        conn: Conn,
-        universe: U,
-        user: AuthDep,
-        log: Log,
-        world: WorldIn,
+    conn: Conn,
+    universe: U,
+    user: AuthDep,
+    log: Log,
+    world: WorldIn,
 ) -> WorldOut:
-    return unwrap(await universe.create_world(
-        conn,
-        world.name,
-        user.id,
-        world.public,
-        world.description,
-        world.data,
-        log=log,
-    ))
+    return unwrap(
+        await universe.create_world(
+            conn,
+            world.name,
+            user.id,
+            world.public,
+            world.description,
+            world.data,
+            log=log,
+        )
+    )
 
 
 @router.get("/api/v0/world")
 async def get_worlds(
-        conn: Conn,
-        universe: U,
-        user: UserDep,
-        log: Log,
-        limit: Annotated[int, Query(ge=1, le=100)] = 25,
-        offset: int = 0,
-        sort: Literal["lastUpdatedAt"] = "lastUpdatedAt",
-        order: Literal["asc", "desc"] = "asc",
-        search: Annotated[str, Query(max_length=50)] | None = None,
-        public: bool | None = None,
-        filter_: Annotated[str, Query(max_length=50)] | None = None,
+    conn: Conn,
+    universe: U,
+    user: UserDep,
+    log: Log,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: int = 0,
+    sort: Literal["lastUpdatedAt"] = "lastUpdatedAt",
+    order: Literal["asc", "desc"] = "asc",
+    search: Annotated[str, Query(max_length=50)] | None = None,
+    public: bool | None = None,
+    filter_: Annotated[str, Query(max_length=50)] | None = None,
 ) -> list[WorldOut]:
     _ = sort
     _ = search
     _ = filter_
-    return unwrap(await universe.get_worlds(
-        conn,
-        limit,
-        offset,
-        order,
-        public=(public is True),
-        requester_id=user.id if user else None,
-        log=log,
-    ))
+    return unwrap(
+        await universe.get_worlds(
+            conn,
+            limit,
+            offset,
+            order,
+            public=(public is True),
+            requester_id=user.id if user else None,
+            log=log,
+        )
+    )
 
 
 @router.get("/api/v0/world/{id_}")
 async def get_world(
-        conn: Conn,
-        universe: U,
-        user: UserDep,
-        log: Log,
-        id_: int,
+    conn: Conn,
+    universe: U,
+    user: UserDep,
+    log: Log,
+    id_: int,
 ) -> WorldOut:
-    return unwrap(await universe.get_world(
-        conn,
-        id_,
-        requester_user_id=user.id if user else None,
-        log=log,
-    ))
+    return unwrap(
+        await universe.get_world(
+            conn,
+            id_,
+            requester_user_id=user.id if user else None,
+            log=log,
+        )
+    )
 
 
 async def _get_world_row(conn: Conn, world_id: int):
@@ -127,11 +133,11 @@ def _world_out_from_row(row) -> WorldOut:
 
 @router.put("/api/v0/world/{id_}")
 async def put_world(
-        id_: int,
-        conn: Conn,
-        user: AuthDep,
-        log: Log,
-        world: WorldUpdateIn,
+    id_: int,
+    conn: Conn,
+    user: AuthDep,
+    log: Log,
+    world: WorldUpdateIn,
 ) -> WorldOut:
     _ = log
     row = await _get_world_row(conn, id_)
@@ -181,10 +187,10 @@ async def put_world(
 
 @router.delete("/api/v0/world/{id_}")
 async def delete_world(
-        id_: int,
-        conn: Conn,
-        user: AuthDep,
-        log: Log,
+    id_: int,
+    conn: Conn,
+    user: AuthDep,
+    log: Log,
 ) -> WorldOut:
     _ = log
     row = await _get_world_row(conn, id_)
@@ -222,19 +228,23 @@ async def delete_world(
 
 @router.post("/api/v0/world/{id_}/copy")
 async def copy_world(
-        id_: int,
-        conn: Conn,
-        universe: U,
-        user: AuthDep,
-        log: Log,
+    id_: int,
+    conn: Conn,
+    universe: U,
+    user: AuthDep,
+    log: Log,
 ) -> WorldOut:
-    original = unwrap(await universe.get_world(conn, id_, requester_user_id=user.id, log=log))
-    return unwrap(await universe.create_world(
-        conn,
-        original.name,
-        user.id,
-        original.public,
-        original.description,
-        original.data,
-        log=log,
-    ))
+    original = unwrap(
+        await universe.get_world(conn, id_, requester_user_id=user.id, log=log)
+    )
+    return unwrap(
+        await universe.create_world(
+            conn,
+            original.name,
+            user.id,
+            original.public,
+            original.description,
+            original.data,
+            log=log,
+        )
+    )

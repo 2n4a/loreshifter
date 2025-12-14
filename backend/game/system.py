@@ -10,6 +10,7 @@ P = typing.ParamSpec("P")
 class SystemStopMarker:
     pass
 
+
 class SystemPipeException(RuntimeError):
     def __init__(self, cause: Exception, system_name: str):
         super().__init__(f"Pipe in system {system_name} failed with an exception")
@@ -41,12 +42,14 @@ class System[E, I = int]:
     Events can be piped to other systems using `add_pipe`.
     """
 
-    def __init__(self, id_: I, name: str| None = None):
+    def __init__(self, id_: I, name: str | None = None):
         self.name = name or self.__class__.__name__
         if (self.__class__, id_) in _system_index:
             raise SystemException(f"System {self.name} (id={id_}) already exists")
         _system_index[(self.__class__, id_)] = self
-        self._event_queue: asyncio.Queue[E | SystemPipeException | SystemStopMarker] = asyncio.Queue()
+        self._event_queue: asyncio.Queue[E | SystemPipeException | SystemStopMarker] = (
+            asyncio.Queue()
+        )
         self.active_pipes = 0
         self.id = id_
         self.stopped: bool = False
@@ -63,7 +66,9 @@ class System[E, I = int]:
             name = coro.__name__
 
         if self.stopped:
-            raise SystemException(f"Trying to add pipe to a stopped system {self.name} (id={self.id})")
+            raise SystemException(
+                f"Trying to add pipe to a stopped system {self.name} (id={self.id})"
+            )
 
         if not inspect.isawaitable(coro):
             raise ValueError("Pipes must be async functions")

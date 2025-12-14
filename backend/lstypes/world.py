@@ -17,6 +17,7 @@ class WorldOut:
     last_updated_at: datetime.datetime
     deleted: bool
 
+
 @dataclasses.dataclass
 class ShortWorldOut:
     id: int

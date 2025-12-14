@@ -31,9 +31,9 @@ async def service() -> Service:
     server = uvicorn.Server(
         config=uvicorn.Config(
             app,
-            host='127.0.0.1',
+            host="127.0.0.1",
             port=port,
-            lifespan='on',
+            lifespan="on",
             ws="websockets-sansio",
         )
     )
@@ -41,7 +41,7 @@ async def service() -> Service:
     while not server.started or deps.state is None:
         await asyncio.sleep(0)
     service = Service(
-        url=f'http://127.0.0.1:{port}',
+        url=f"http://127.0.0.1:{port}",
         universe=deps.state.universe,
         _server=server,
         _task=task,

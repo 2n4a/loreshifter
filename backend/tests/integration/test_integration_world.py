@@ -17,13 +17,20 @@ async def test_world_put_copy_delete(service):
         resp = await client.post(
             "/api/v0/world",
             headers=headers,
-            json={"name": "w1", "public": True, "description": "d", "data": {"initialState": {}}},
+            json={
+                "name": "w1",
+                "public": True,
+                "description": "d",
+                "data": {"initialState": {}},
+            },
         )
         assert resp.status == 200
         world = await resp.json()
         world_id = world["id"]
 
-        resp = await client.put(f"/api/v0/world/{world_id}", headers=headers, json={"name": "w1-updated"})
+        resp = await client.put(
+            f"/api/v0/world/{world_id}", headers=headers, json={"name": "w1-updated"}
+        )
         assert resp.status == 200
         updated = await resp.json()
         assert updated["name"] == "w1-updated"

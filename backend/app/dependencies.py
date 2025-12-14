@@ -55,9 +55,9 @@ U = Annotated[Universe, Depends(get_universe)]
 
 
 async def get_jwt(
-        session: Annotated[str | None, Cookie()] = None,
-        authorization: Annotated[str | None, Header()] = None,
-        authentication: Annotated[str | None, Header()] = None,
+    session: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+    authentication: Annotated[str | None, Header()] = None,
 ) -> dict[str, typing.Any] | None:
     if not config.JWT_SECRET:
         return None
@@ -85,8 +85,7 @@ async def get_jwt(
 
 
 async def get_user(
-        conn: Conn,
-        jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
+    conn: Conn, jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
 ) -> FullUserOut | None:
     if not jwt_:
         return None
@@ -97,8 +96,7 @@ async def get_user(
 
 
 async def get_user_or_401(
-        conn: Conn,
-        jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
+    conn: Conn, jwt_: Annotated[dict[str, typing.Any] | None, Depends(get_jwt)]
 ) -> FullUserOut:
     if not jwt_:
         raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")
@@ -106,7 +104,6 @@ async def get_user_or_401(
     if isinstance(user, ServiceError):
         raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")
     return user
-
 
 
 UserDep = Annotated[FullUserOut | None, Depends(get_user)]
@@ -129,16 +126,10 @@ Log = Annotated[BoundLogger, Depends(get_log)]
 
 async def init_connection(conn: asyncpg.Connection):
     await conn.set_type_codec(
-        'json',
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema='pg_catalog'
+        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
-        'jsonb',
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema='pg_catalog'
+        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
     )
     await PgEnum.register_all(conn)
 
@@ -147,7 +138,9 @@ async def init_connection(conn: asyncpg.Connection):
 async def livespan(_app: FastAPI):
     global state
     log = gl_log.bind()
-    async with asyncpg.create_pool(dsn=config.POSTGRES_URL, init=init_connection) as pg_pool:
+    async with asyncpg.create_pool(
+        dsn=config.POSTGRES_URL, init=init_connection
+    ) as pg_pool:
         universe = Universe()
         ws_controller = WebSocketController()
         async with asyncio.TaskGroup() as bg_tasks:
@@ -157,7 +150,7 @@ async def livespan(_app: FastAPI):
                 pg_pool=pg_pool,
                 universe=universe,
                 ws_controller=ws_controller,
-                log = log,
+                log=log,
             )
 
             yield

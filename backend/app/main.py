@@ -24,8 +24,12 @@ app.include_router(world_router)
 
 
 @app.exception_handler(ServiceErrorException)
-async def service_error_exception_handler(_request: Request, exc: ServiceErrorException):
-    return JSONResponse(status_code=exc.status_code, content=exc.error.model_dump(mode="json"))
+async def service_error_exception_handler(
+    _request: Request, exc: ServiceErrorException
+):
+    return JSONResponse(
+        status_code=exc.status_code, content=exc.error.model_dump(mode="json")
+    )
 
 
 app.add_middleware(
@@ -35,6 +39,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/api/v0/liveness")
 def liveness():

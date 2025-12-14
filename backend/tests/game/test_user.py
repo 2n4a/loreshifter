@@ -1,7 +1,13 @@
 import pytest
 
-from game.user import get_or_create_user, get_user, delete_user, create_test_user, check_user_exists, \
-    check_user_exists_not_deleted
+from game.user import (
+    get_or_create_user,
+    get_user,
+    delete_user,
+    create_test_user,
+    check_user_exists,
+    check_user_exists_not_deleted,
+)
 from lstypes.error import ServiceCode, ServiceError
 from lstypes.user import FullUserOut
 

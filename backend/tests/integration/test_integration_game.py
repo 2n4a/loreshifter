@@ -11,19 +11,23 @@ async def test_game_set_ready(service):
         assert resp.status == 200
         body = await resp.json()
 
-    user = body['user']
-    token = body['token']
-    user_id = user['id']
+    user = body["user"]
+    token = body["token"]
+    user_id = user["id"]
 
     async with deps.state.pg_pool.acquire() as conn:
-        world = await service.universe.create_world(conn, 'world', user_id, True)
-        game = await service.universe.create_game(conn, user_id, world.id, 'room', True, 1)
+        world = await service.universe.create_world(conn, "world", user_id, True)
+        game = await service.universe.create_game(
+            conn, user_id, world.id, "room", True, 1
+        )
 
     async with aiohttp.ClientSession(base_url=service.url) as client:
-        headers = {'Authentication': token}
+        headers = {"Authentication": token}
         resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers)
         assert resp.status == 200
-        resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers, json={"ready": False})
+        resp = await client.post(
+            f"/api/v0/game/{game.id}/ready", headers=headers, json={"ready": False}
+        )
         assert resp.status == 200
 
 
@@ -44,7 +48,9 @@ async def test_game_start_and_restart_errors(service):
 
     async with deps.state.pg_pool.acquire() as conn:
         world = await service.universe.create_world(conn, "world", host_id, True)
-        game = await service.universe.create_game(conn, host_id, world.id, "room", True, 2)
+        game = await service.universe.create_game(
+            conn, host_id, world.id, "room", True, 2
+        )
 
     async with aiohttp.ClientSession(base_url=service.url) as client:
         host_headers = {"Authentication": host_token}
@@ -74,7 +80,9 @@ async def test_game_start_and_restart_errors(service):
         started = await resp.json()
         assert started["status"] == "playing"
 
-        resp = await client.post(f"/api/v0/game/{game.id}/restart", headers=host_headers)
+        resp = await client.post(
+            f"/api/v0/game/{game.id}/restart", headers=host_headers
+        )
         assert resp.status == 400
         body = await resp.json()
         assert body["code"] == "GameNotFinished"
@@ -102,7 +110,9 @@ async def test_game_put_state_and_chat(service):
 
     async with deps.state.pg_pool.acquire() as conn:
         world = await service.universe.create_world(conn, "world", host_id, True)
-        game = await service.universe.create_game(conn, host_id, world.id, "room", True, 2)
+        game = await service.universe.create_game(
+            conn, host_id, world.id, "room", True, 2
+        )
 
     async with aiohttp.ClientSession(base_url=service.url) as client:
         host_headers = {"Authentication": host_token}
@@ -129,7 +139,9 @@ async def test_game_put_state_and_chat(service):
         game_chat_id = state["game_chat"]["chat_id"]
         character_creation_chat_id = state["character_creation_chat"]["chat_id"]
 
-        resp = await client.get(f"/api/v0/game/{game.id}/chat/{game_chat_id}", headers=host_headers)
+        resp = await client.get(
+            f"/api/v0/game/{game.id}/chat/{game_chat_id}", headers=host_headers
+        )
         assert resp.status == 200
         segment = await resp.json()
         assert segment["chat_id"] == game_chat_id
@@ -144,7 +156,9 @@ async def test_game_put_state_and_chat(service):
         msg = await resp.json()
         assert msg["text"] == "hello"
 
-        resp = await client.get(f"/api/v0/game/{game.id}/chat/{game_chat_id}", headers=host_headers)
+        resp = await client.get(
+            f"/api/v0/game/{game.id}/chat/{game_chat_id}", headers=host_headers
+        )
         assert resp.status == 200
         segment = await resp.json()
         assert [m["text"] for m in segment["messages"]] == ["hello"]

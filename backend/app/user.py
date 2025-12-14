@@ -14,7 +14,9 @@ async def get_user(user: AuthDep) -> FullUserOut:
 
 
 @router.get("/api/v0/user/{id_}")
-async def get_user_by_id(requester: UserDep, conn: Conn, id_: int) -> FullUserOut | UserOut:
+async def get_user_by_id(
+    requester: UserDep, conn: Conn, id_: int
+) -> FullUserOut | UserOut:
     if id_ == 0:
         if requester is None:
             raise_service_error(401, ServiceCode.UNAUTHORIZED, "Not authenticated")

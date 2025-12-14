@@ -101,12 +101,11 @@ class Player:
         )
 
 
-
 class GameSystem(System[GameEvent]):
     @staticmethod
     async def create_new(
-            conn: asyncpg.Connection,
-            g: GameOut,
+        conn: asyncpg.Connection,
+        g: GameOut,
     ) -> GameSystem:
         status = g.status
         public = g.public
@@ -152,16 +151,16 @@ class GameSystem(System[GameEvent]):
         return game_system
 
     def __init__(
-            self,
-            id_: int,
-            status: GameStatus,
-            public: bool,
-            game_name: str,
-            max_players: int,
-            host_id: int | None,
-            num_not_spectators: int,
-            player_states: dict[int, Player],
-            room_chat: ChatSystem,
+        self,
+        id_: int,
+        status: GameStatus,
+        public: bool,
+        game_name: str,
+        max_players: int,
+        host_id: int | None,
+        num_not_spectators: int,
+        player_states: dict[int, Player],
+        room_chat: ChatSystem,
     ):
         super().__init__(id_)
         self.status = status
@@ -178,11 +177,11 @@ class GameSystem(System[GameEvent]):
         self.add_pipe(self.forward_chat_events(self.game_chat, None))
 
     async def update_chats_for_player(
-            self,
-            conn: asyncpg.Connection,
-            player: Player,
-            force_stop: bool = False,
-            log=gl_log
+        self,
+        conn: asyncpg.Connection,
+        player: Player,
+        force_stop: bool = False,
+        log=gl_log,
     ) -> Player:
         if force_stop or player.is_spectator:
             if player.character_chat is not None:
@@ -197,20 +196,32 @@ class GameSystem(System[GameEvent]):
         else:
             if player.character_chat is None:
                 player.character_chat = await ChatSystem.create_or_load(
-                    conn, self.id, ChatType.CHARACTER_CREATION, player.user.id,
-                    ChatInterfaceType.FOREIGN, log=log
+                    conn,
+                    self.id,
+                    ChatType.CHARACTER_CREATION,
+                    player.user.id,
+                    ChatInterfaceType.FOREIGN,
+                    log=log,
                 )
                 self.add_pipe(self.forward_chat_events(player.character_chat, None))
             if player.player_chat is None:
                 player.player_chat = await ChatSystem.create_or_load(
-                    conn, self.id, ChatType.GAME, player.user.id,
-                    ChatInterfaceType.FOREIGN, log=log
+                    conn,
+                    self.id,
+                    ChatType.GAME,
+                    player.user.id,
+                    ChatInterfaceType.FOREIGN,
+                    log=log,
                 )
                 self.add_pipe(self.forward_chat_events(player.player_chat, None))
             if player.advice_chat is None:
                 player.advice_chat = await ChatSystem.create_or_load(
-                    conn, self.id, ChatType.ADVICE,
-                    player.user.id, ChatInterfaceType.FOREIGN, log=log
+                    conn,
+                    self.id,
+                    ChatType.ADVICE,
+                    player.user.id,
+                    ChatInterfaceType.FOREIGN,
+                    log=log,
                 )
                 self.add_pipe(self.forward_chat_events(player.advice_chat, None))
         return player
@@ -228,13 +239,17 @@ class GameSystem(System[GameEvent]):
 
     async def forward_chat_events(self, chat_: ChatSystem, owner_id: int | None):
         async for event in chat_.listen():
-            self.emit(GameChatEvent(game_id=self.id, chat_id=chat_.id, owner_id=owner_id, event=event))
+            self.emit(
+                GameChatEvent(
+                    game_id=self.id, chat_id=chat_.id, owner_id=owner_id, event=event
+                )
+            )
 
     async def connect_player(
-            self,
-            conn: asyncpg.Connection,
-            player_id: int,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        player_id: int,
+        log=gl_log,
     ) -> None | ServiceError:
         if self.stopped:
             return None
@@ -275,7 +290,7 @@ class GameSystem(System[GameEvent]):
                     return await error(
                         ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Player not found",
-                        log=log
+                        log=log,
                     )
 
                 player.is_joined = True
@@ -284,7 +299,9 @@ class GameSystem(System[GameEvent]):
                     player.kick_task.cancel("Player rejoined")
                     player.kick_task = None
 
-                self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id)))
+                self.emit(
+                    PlayerJoinedEvent(self.id, player.get_player_out(self.host_id))
+                )
                 await log.ainfo("Player rejoined")
                 return None
 
@@ -295,10 +312,14 @@ class GameSystem(System[GameEvent]):
                         await log.ainfo("Letting player join")
                         allow_entry = True
                     else:
-                        await log.ainfo("Letting player join as spectator as game is full")
+                        await log.ainfo(
+                            "Letting player join as spectator as game is full"
+                        )
                         allow_entry = False
                 case GameStatus.PLAYING | GameStatus.FINISHED:
-                    await log.ainfo("Letting player join as spectator as game is already going")
+                    await log.ainfo(
+                        "Letting player join as spectator as game is already going"
+                    )
                     allow_entry = False
 
             row = await conn.fetchrow(
@@ -351,18 +372,24 @@ class GameSystem(System[GameEvent]):
             return None
 
     async def disconnect_player(
-            self,
-            conn: asyncpg.Connection,
-            player_id: int,
-            kick_immediately: bool = False,
-            requester_id: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        player_id: int,
+        kick_immediately: bool = False,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> None | ServiceError:
         if self.stopped:
             return None
 
-        if requester_id is not None and requester_id != self.host_id and requester_id != player_id:
-            return await error(ServiceCode.NOT_HOST, "Only host can kick players", log=log)
+        if (
+            requester_id is not None
+            and requester_id != self.host_id
+            and requester_id != player_id
+        ):
+            return await error(
+                ServiceCode.NOT_HOST, "Only host can kick players", log=log
+            )
 
         log = log.bind(game_id=self.id, player_id=player_id)
 
@@ -389,7 +416,7 @@ class GameSystem(System[GameEvent]):
                     return await error(
                         ServiceCode.SERVER_ERROR,
                         "Mismatch between server state and DB state. Failed to remove spectator",
-                        log=log
+                        log=log,
                     )
 
                 self.player_states.pop(player_id)
@@ -416,7 +443,9 @@ class GameSystem(System[GameEvent]):
 
             await log.ainfo("Removed player from the game")
 
-            self.emit(PlayerLeftEvent(self.id, player=player.get_player_out(self.host_id)))
+            self.emit(
+                PlayerLeftEvent(self.id, player=player.get_player_out(self.host_id))
+            )
 
             async def kick_task(dont_wait: bool = False):
                 nonlocal log
@@ -445,13 +474,15 @@ class GameSystem(System[GameEvent]):
                             await error(
                                 ServiceCode.SERVER_ERROR,
                                 "Mismatch between server state and DB state. Failed to remove player",
-                                log=log
+                                log=log,
                             )
 
                         await log.ainfo("Player removed from the game")
                         self.player_states.pop(player_id)
                         self.num_non_spectators -= 1
-                        await self.update_chats_for_player(conn, player, force_stop=True, log=log)
+                        await self.update_chats_for_player(
+                            conn, player, force_stop=True, log=log
+                        )
 
                         if len(self.player_states) == 0:
                             await log.ainfo("Terminating game because last player left")
@@ -464,39 +495,61 @@ class GameSystem(System[GameEvent]):
                                     new_host_id = p.user.id
                                     break
                             else:
-                                await log.ainfo("Terminating game because host left and all players are disconnected")
+                                await log.ainfo(
+                                    "Terminating game because host left and all players are disconnected"
+                                )
                                 await self.terminate(conn, log=log)
                                 return
 
-                            await log.ainfo("Promoting new host because old one quit", new_host_id=new_host_id)
+                            await log.ainfo(
+                                "Promoting new host because old one quit",
+                                new_host_id=new_host_id,
+                            )
                             await self.make_host(conn, new_host_id, log=log)
 
             if kick_immediately:
                 await kick_task(dont_wait=True)
             else:
-                player.kick_task = asyncio.Task(kick_task(), name=f"kick_task_player{player_id}_game{self.id}")
+                player.kick_task = asyncio.Task(
+                    kick_task(), name=f"kick_task_player{player_id}_game{self.id}"
+                )
 
         return None
 
     async def make_spectator(
-            self,
-            conn: asyncpg.Connection,
-            player_id: int,
-            spectate: bool = True,
-            requester_id: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        player_id: int,
+        spectate: bool = True,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> None | ServiceError:
         if self.stopped:
             return None
 
-        log = log.bind(game_id=self.id, player_id=player_id, spectate=spectate, requester_id=requester_id)
+        log = log.bind(
+            game_id=self.id,
+            player_id=player_id,
+            spectate=spectate,
+            requester_id=requester_id,
+        )
 
-        if requester_id is not None and requester_id != self.host_id and requester_id != player_id:
-            return await error(ServiceCode.NOT_HOST, "Only host can force players to be spectators/players", log=log)
+        if (
+            requester_id is not None
+            and requester_id != self.host_id
+            and requester_id != player_id
+        ):
+            return await error(
+                ServiceCode.NOT_HOST,
+                "Only host can force players to be spectators/players",
+                log=log,
+            )
 
         async with self.lock:
             if player_id not in self.player_states:
-                return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
+                return await error(
+                    ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log
+                )
 
             player = self.player_states[player_id]
             if player.is_spectator == spectate:
@@ -553,21 +606,27 @@ class GameSystem(System[GameEvent]):
             return None
 
     async def make_host(
-            self,
-            conn: asyncpg.Connection,
-            player_id: int,
-            requester_id: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        player_id: int,
+        requester_id: int | None = None,
+        log=gl_log,
     ):
-        log = log.bind(new_host_id=player_id, old_host=self.host_id, requester_id=requester_id)
+        log = log.bind(
+            new_host_id=player_id, old_host=self.host_id, requester_id=requester_id
+        )
         old_host = self.host_id
 
         if requester_id is not None and requester_id != old_host:
-            return await error(ServiceCode.NOT_HOST, "Only host can promote other players", log=log)
+            return await error(
+                ServiceCode.NOT_HOST, "Only host can promote other players", log=log
+            )
 
         async with self.lock:
             if player_id not in self.player_states:
-                return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
+                return await error(
+                    ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log
+                )
 
             success = await conn.fetchval(
                 """
@@ -580,7 +639,7 @@ class GameSystem(System[GameEvent]):
                 return await error(
                     ServiceCode.SERVER_ERROR,
                     "Mismatch between server state and DB state. Failed to promote player to host",
-                    log=log
+                    log=log,
                 )
             self.host_id = player_id
             self.emit(PlayerPromotedEvent(self.id, old_host, self.host_id))
@@ -589,13 +648,13 @@ class GameSystem(System[GameEvent]):
             return None
 
     async def update_settings(
-            self,
-            conn: asyncpg.Connection,
-            *,
-            public: bool | None = None,
-            name: str | None = None,
-            max_players: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        *,
+        public: bool | None = None,
+        name: str | None = None,
+        max_players: int | None = None,
+        log=gl_log,
     ) -> None | ServiceError:
         if self.stopped:
             return None
@@ -629,24 +688,35 @@ class GameSystem(System[GameEvent]):
             self.public = new_public
             self.game_name = new_name
             self.max_players = new_max_players
-            self.emit(GameSettingsUpdateEvent(self.id, public=new_public, name=new_name, max_players=new_max_players))
+            self.emit(
+                GameSettingsUpdateEvent(
+                    self.id,
+                    public=new_public,
+                    name=new_name,
+                    max_players=new_max_players,
+                )
+            )
             await log.ainfo("Game settings updated")
             return None
 
     async def start_game(
-            self,
-            conn: asyncpg.Connection,
-            force: bool = False,
-            requester_id: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        force: bool = False,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> None | ServiceError:
         log = log.bind(force=force, game_id=self.id, requester_id=requester_id)
         if self.status != GameStatus.WAITING:
-            return await error(ServiceCode.GAME_ALREADY_STARTED, "Game already started", log=log)
+            return await error(
+                ServiceCode.GAME_ALREADY_STARTED, "Game already started", log=log
+            )
 
         if requester_id is not None:
             if requester_id != self.host_id:
-                return await error(ServiceCode.NOT_HOST, "Only host can start the game", log=log)
+                return await error(
+                    ServiceCode.NOT_HOST, "Only host can start the game", log=log
+                )
 
         async with self.lock:
             not_ready_ids: list[int] = [
@@ -686,14 +756,16 @@ class GameSystem(System[GameEvent]):
 
             await log.ainfo("Game started")
 
-            self.game_loop_task = asyncio.create_task(self.game_loop(), name=f"game_loop_game{self.id}")
+            self.game_loop_task = asyncio.create_task(
+                self.game_loop(), name=f"game_loop_game{self.id}"
+            )
 
             return None
 
     async def terminate(
-            self,
-            conn: asyncpg.Connection,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        log=gl_log,
     ) -> None | ServiceError:
         if self.terminating:
             return None
@@ -724,16 +796,14 @@ class GameSystem(System[GameEvent]):
             return None
 
     async def set_ready(
-            self,
-            conn: asyncpg.Connection,
-            user_id: int,
-            ready: bool,
-            log=gl_log
+        self, conn: asyncpg.Connection, user_id: int, ready: bool, log=gl_log
     ) -> None | ServiceError:
         log = log.bind(game_id=self.id, user_id=user_id)
 
         if user_id not in self.player_states:
-            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
+            return await error(
+                ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log
+            )
 
         async with self.lock:
             game_id = await conn.fetchval(
@@ -749,7 +819,9 @@ class GameSystem(System[GameEvent]):
             )
 
             if game_id is None:
-                return await error(ServiceCode.SERVER_ERROR, "Player not found", log=log)
+                return await error(
+                    ServiceCode.SERVER_ERROR, "Player not found", log=log
+                )
 
             await log.ainfo("Setting ready status", ready=ready)
             self.player_states[user_id].is_ready = ready
@@ -765,19 +837,28 @@ class GameSystem(System[GameEvent]):
     ) -> PlayerOut | ServiceError:
         log = log.bind(user_id=user_id)
         if user_id not in self.player_states:
-            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
+            return await error(
+                ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log
+            )
         return self.player_states[user_id].get_player_out(self.host_id)
 
     async def get_state(
-            self,
-            conn: asyncpg.Connection,
-            requester_id: int,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        requester_id: int,
+        log=gl_log,
     ) -> StateOut | ServiceError:
-        if requester_id not in self.player_states or not self.player_states[requester_id].is_joined:
-            return await error(ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log)
+        if (
+            requester_id not in self.player_states
+            or not self.player_states[requester_id].is_joined
+        ):
+            return await error(
+                ServiceCode.PLAYER_NOT_FOUND, "Player not found", log=log
+            )
 
-        game = await universe.Universe.get_game(conn, self.id, requester_id=requester_id, log=log)
+        game = await universe.Universe.get_game(
+            conn, self.id, requester_id=requester_id, log=log
+        )
         if isinstance(game, ServiceError):
             return game
 
@@ -791,7 +872,9 @@ class GameSystem(System[GameEvent]):
 
         character_creation_chat = None
         if player.character_chat is not None:
-            character_creation_chat = await player.character_chat.get_messages(conn, num_messages, log=log)
+            character_creation_chat = await player.character_chat.get_messages(
+                conn, num_messages, log=log
+            )
             if isinstance(character_creation_chat, ServiceError):
                 return character_creation_chat
 
@@ -800,7 +883,12 @@ class GameSystem(System[GameEvent]):
         if self.status != GameStatus.WAITING:
             for p in game.players:
                 state = self.player_states.get(p.user.id)
-                if state is None or state.is_spectator or state.player_chat is None or state.advice_chat is None:
+                if (
+                    state is None
+                    or state.is_spectator
+                    or state.player_chat is None
+                    or state.advice_chat is None
+                ):
                     continue
 
                 pc = await state.player_chat.get_messages(conn, num_messages, log=log)
@@ -823,18 +911,23 @@ class GameSystem(System[GameEvent]):
         )
 
     async def send_message(
-            self,
-            conn: asyncpg.Connection,
-            sender_id: int,
-            chat_id: int,
-            message: str,
-            special: str | None = None,
-            metadata: dict | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        sender_id: int,
+        chat_id: int,
+        message: str,
+        special: str | None = None,
+        metadata: dict | None = None,
+        log=gl_log,
     ):
         chat_system = ChatSystem.of(chat_id)
         if chat_system is None:
-            return await error(ServiceCode.SERVER_ERROR, "Chat system not loaded", chat_id=chat_id, log=log)
+            return await error(
+                ServiceCode.SERVER_ERROR,
+                "Chat system not loaded",
+                chat_id=chat_id,
+                log=log,
+            )
 
         result = await chat_system.send_message(
             conn,

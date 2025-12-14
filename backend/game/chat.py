@@ -55,6 +55,7 @@ class MessageRef:
             next_id=next_id,
         )
 
+
 class MessageIndex:
     def __init__(self):
         self.head = MessageRef(None)
@@ -89,7 +90,9 @@ class MessageIndex:
         del self.index[id_]
         return ref.msg
 
-    def walk_forward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
+    def walk_forward(
+        self, start_id: int | None, count: int
+    ) -> typing.Generator[MessageRef, None, None]:
         if start_id is None:
             ref = self.head.next
         elif start_id not in self.index:
@@ -102,7 +105,9 @@ class MessageIndex:
             yield ref
             ref = ref.next
 
-    def walk_backward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
+    def walk_backward(
+        self, start_id: int | None, count: int
+    ) -> typing.Generator[MessageRef, None, None]:
         if start_id is None:
             ref = self.tail.prev
         elif start_id not in self.index:
@@ -124,12 +129,12 @@ class ChatSystem(System[ChatEvent]):
 
     @staticmethod
     async def create_or_load(
-            conn: asyncpg.Connection,
-            game_id: int,
-            kind: ChatType,
-            owner_id: int | None = None,
-            interface_type: ChatInterfaceType = ChatInterfaceType.FULL,
-            log=gl_log,
+        conn: asyncpg.Connection,
+        game_id: int,
+        kind: ChatType,
+        owner_id: int | None = None,
+        interface_type: ChatInterfaceType = ChatInterfaceType.FULL,
+        log=gl_log,
     ) -> ChatSystem | ServiceError:
         id_ = await conn.fetchval(
             """
@@ -154,7 +159,9 @@ class ChatSystem(System[ChatEvent]):
             )
 
             if id_ is None:
-                return await error(ServiceCode.SERVER_ERROR, "Failed to create chat", log=log)
+                return await error(
+                    ServiceCode.SERVER_ERROR, "Failed to create chat", log=log
+                )
 
         chat_system = ChatSystem(id_)
 
@@ -188,15 +195,15 @@ class ChatSystem(System[ChatEvent]):
         )
 
     async def send_message(
-            self,
-            conn: asyncpg.Connection,
-            message_kind: MessageKind,
-            text: str,
-            sender_id: int | None,
-            special: str | None = None,
-            metadata: dict[str, typing.Any] | None = None,
-            sent_at: datetime.datetime | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        message_kind: MessageKind,
+        text: str,
+        sender_id: int | None,
+        special: str | None = None,
+        metadata: dict[str, typing.Any] | None = None,
+        sent_at: datetime.datetime | None = None,
+        log=gl_log,
     ) -> MessageOutWithNeighbors | ServiceError:
         if sent_at is None:
             sent_at = datetime.datetime.now()
@@ -216,7 +223,9 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message_id is None:
-            return await error(ServiceCode.SERVER_ERROR, "Failed to send message", log=log)
+            return await error(
+                ServiceCode.SERVER_ERROR, "Failed to send message", log=log
+            )
 
         message = MessageOut(
             id=message_id,
@@ -226,26 +235,31 @@ class ChatSystem(System[ChatEvent]):
             text=text,
             special=special,
             sent_at=sent_at,
-            metadata=metadata
+            metadata=metadata,
         )
 
         ref = self.index.append(message)
         message = ref.to_message_out_with_neighbors()
 
-        await log.ainfo("Sent message", chat_id=self.id, message_id=message_id, message_kind=message_kind)
+        await log.ainfo(
+            "Sent message",
+            chat_id=self.id,
+            message_id=message_id,
+            message_kind=message_kind,
+        )
 
         self.emit(ChatMessageSentEvent(chat_id=self.id, message=message))
 
         return message
 
     async def edit_message(
-            self,
-            conn: asyncpg.Connection,
-            message_id: int,
-            text: str,
-            special: str | None = None,
-            metadata: dict[str, typing.Any] | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        message_id: int,
+        text: str,
+        special: str | None = None,
+        metadata: dict[str, typing.Any] | None = None,
+        log=gl_log,
     ) -> MessageOut | ServiceError:
         message = await conn.fetchrow(
             """
@@ -262,7 +276,9 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return await error(ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log)
+            return await error(
+                ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log
+            )
 
         await log.ainfo("Edited message", chat_id=self.id, message_id=message_id)
 
@@ -274,10 +290,7 @@ class ChatSystem(System[ChatEvent]):
         return message
 
     async def delete_message(
-            self,
-            conn: asyncpg.Connection,
-            message_id: int,
-            log=gl_log
+        self, conn: asyncpg.Connection, message_id: int, log=gl_log
     ) -> MessageOut | ServiceError:
         message = await conn.fetchrow(
             """
@@ -289,7 +302,9 @@ class ChatSystem(System[ChatEvent]):
         )
 
         if message is None:
-            return await error(ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log)
+            return await error(
+                ServiceCode.MESSAGE_NOT_FOUND, "Message not found", log=log
+            )
 
         await log.ainfo("Deleted message", chat_id=self.id, message_id=message_id)
 
@@ -301,21 +316,25 @@ class ChatSystem(System[ChatEvent]):
         return message
 
     async def get_messages(
-            self,
-            conn: asyncpg.Connection,
-            limit: int,
-            *,
-            before_message_id: int | None = None,
-            after_message_id: int | None = None,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        limit: int,
+        *,
+        before_message_id: int | None = None,
+        after_message_id: int | None = None,
+        log=gl_log,
     ) -> ChatSegmentOut | ServiceError:
-        log = log.bind(limit=limit, before_message_id=before_message_id, after_message_id=after_message_id)
+        log = log.bind(
+            limit=limit,
+            before_message_id=before_message_id,
+            after_message_id=after_message_id,
+        )
 
         if before_message_id is not None and after_message_id is not None:
             return await error(
                 ServiceCode.MUTUALLY_EXCLUSIVE_OPTIONS,
                 "before_message_id and after_message_id are mutually exclusive",
-                log=log
+                log=log,
             )
 
         chat_info = await conn.fetchrow(
@@ -339,7 +358,7 @@ class ChatSystem(System[ChatEvent]):
                 return await error(
                     ServiceCode.MESSAGE_NOT_FOUND,
                     "Message with id 'after_message_id' not found",
-                    log=gl_log
+                    log=gl_log,
                 )
         elif before_message_id is not None:
             messages = list(self.index.walk_backward(before_message_id, limit))
@@ -347,7 +366,7 @@ class ChatSystem(System[ChatEvent]):
                 return await error(
                     ServiceCode.MESSAGE_NOT_FOUND,
                     "Message with id 'before_message_id' not found",
-                    log=gl_log
+                    log=gl_log,
                 )
         else:
             messages = list(self.index.walk_backward(None, limit))
@@ -375,8 +394,16 @@ class ChatSystem(System[ChatEvent]):
                 type=chat_info["interface_type"],
                 deadline=chat_info["deadline"],
             ),
-            previous_id=messages[0].prev.msg.id if messages and messages[0].prev and messages[0].prev.msg else None,
-            next_id=messages[-1].next.msg.id if messages and messages[-1].next and messages[-1].next.msg else None,
+            previous_id=(
+                messages[0].prev.msg.id
+                if messages and messages[0].prev and messages[0].prev.msg
+                else None
+            ),
+            next_id=(
+                messages[-1].next.msg.id
+                if messages and messages[-1].next and messages[-1].next.msg
+                else None
+            ),
             messages=[m.msg for m in messages],
             suggestions=self.suggestions,
         )
@@ -403,17 +430,21 @@ class ChatSystem(System[ChatEvent]):
 
     @staticmethod
     async def load_by_id(
-            conn: asyncpg.Connection,
-            chat_id: int,
-            log=gl_log,
+        conn: asyncpg.Connection,
+        chat_id: int,
+        log=gl_log,
     ) -> ChatSystem | ServiceError:
         existing = ChatSystem.of(chat_id)
         if existing is not None:
             return existing
 
-        exists = await conn.fetchval("SELECT EXISTS (SELECT 1 FROM chats WHERE id = $1)", chat_id)
+        exists = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM chats WHERE id = $1)", chat_id
+        )
         if not exists:
-            return await error(ServiceCode.SERVER_ERROR, "Chat not found", chat_id=chat_id, log=log)
+            return await error(
+                ServiceCode.SERVER_ERROR, "Chat not found", chat_id=chat_id, log=log
+            )
 
         chat_system = ChatSystem(chat_id)
         messages = await conn.fetch(

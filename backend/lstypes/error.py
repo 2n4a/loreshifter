@@ -49,7 +49,11 @@ def status_code_from_service_code(code: ServiceCode) -> int:
     match code:
         case ServiceCode.SERVER_ERROR:
             return 500
-        case ServiceCode.UNAUTHORIZED | ServiceCode.NOT_HOST | ServiceCode.CANNOT_ACCESS_CHAT:
+        case (
+            ServiceCode.UNAUTHORIZED
+            | ServiceCode.NOT_HOST
+            | ServiceCode.CANNOT_ACCESS_CHAT
+        ):
             return 401
         case ServiceCode.GAME_FULL:
             return 409
@@ -67,12 +71,14 @@ def status_code_from_service_code(code: ServiceCode) -> int:
 
 
 def raise_service_error(
-        status_code: int,
-        code: ServiceCode,
-        message: str,
-        details: dict[str, typing.Any] | None = None,
+    status_code: int,
+    code: ServiceCode,
+    message: str,
+    details: dict[str, typing.Any] | None = None,
 ) -> typing.NoReturn:
-    raise ServiceErrorException(status_code, ServiceError(code=code, message=message, details=details))
+    raise ServiceErrorException(
+        status_code, ServiceError(code=code, message=message, details=details)
+    )
 
 
 def raise_for_service_error(err: ServiceError) -> typing.NoReturn:
@@ -89,35 +95,42 @@ LOG_STACKTRACE = config.LOG_STACKTRACE
 
 
 async def error(
-        code: ServiceCode, message: str,
-        log: BoundLogger | None = gl_log,
-        cause: Exception | None = None,
-        **kwargs
+    code: ServiceCode,
+    message: str,
+    log: BoundLogger | None = gl_log,
+    cause: Exception | None = None,
+    **kwargs,
 ) -> ServiceError:
     details = {str(k): v for k, v in kwargs.items()}
     if cause is not None:
-        details['cause'] = repr(cause)
+        details["cause"] = repr(cause)
 
     if LOG_STACKTRACE:
         stack = inspect.stack()
 
         if len(stack) > 1:
             caller_frame = stack[1]
-            details['call_site_filename'] = caller_frame.filename
-            details['call_site_lineno'] = caller_frame.lineno
-            details['call_site_function'] = caller_frame.function
+            details["call_site_filename"] = caller_frame.filename
+            details["call_site_lineno"] = caller_frame.lineno
+            details["call_site_function"] = caller_frame.function
             if caller_frame.code_context:
-                details['call_site_code'] = caller_frame.code_context[0].strip()
+                details["call_site_code"] = caller_frame.code_context[0].strip()
 
         trace_list = []
         for frame_info in stack[1:]:
-            trace_list.append({
-                'filename': frame_info.filename,
-                'lineno': frame_info.lineno,
-                'function': frame_info.function,
-                'code': '\n'.join(frame_info.code_context) if frame_info.code_context else None
-            })
-        details['stack_trace'] = trace_list
+            trace_list.append(
+                {
+                    "filename": frame_info.filename,
+                    "lineno": frame_info.lineno,
+                    "function": frame_info.function,
+                    "code": (
+                        "\n".join(frame_info.code_context)
+                        if frame_info.code_context
+                        else None
+                    ),
+                }
+            )
+        details["stack_trace"] = trace_list
 
     if log is not None:
         await log.awarn(message, **details)

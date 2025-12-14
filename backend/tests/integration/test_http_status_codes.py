@@ -86,7 +86,9 @@ async def test_ready_does_not_return_200_when_player_not_found(service):
     async with deps.state.pg_pool.acquire() as conn:
         world = await service.universe.create_world(conn, "world", host_user_id, True)
         assert not isinstance(world, ServiceError)
-        game = await service.universe.create_game(conn, host_user_id, world.id, "room", True, 1)
+        game = await service.universe.create_game(
+            conn, host_user_id, world.id, "room", True, 1
+        )
         assert not isinstance(game, ServiceError)
 
     async with aiohttp.ClientSession(base_url=service.url) as client:
