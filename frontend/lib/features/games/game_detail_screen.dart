@@ -34,6 +34,8 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     } else if (widget.code != null) {
       await context.read<GamesCubit>().loadGameByCode(widget.code!);
     }
+    
+    if (!mounted) return;
   }
 
   Future<void> _joinGame() async {

@@ -316,8 +316,25 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _startGame() async {
     try {
-      await context.read<GameplayCubit>().startGame();
-      await _loadGameState();
+      final cubit = context.read<GameplayCubit>();
+      late final StreamSubscription subscription;
+      
+      subscription = cubit.stream.listen((state) {
+        if (state is GameStarted) {
+          if (!mounted) return;
+          subscription.cancel();
+          _loadGameState();
+        } else if (state is GameplayFailure) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Ошибка при запуске игры: ${state.message}')),
+            );
+          }
+          subscription.cancel();
+        }
+      });
+      
+      await cubit.startGame();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -329,8 +346,25 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _restartGame() async {
     try {
-      await context.read<GameplayCubit>().restartGame();
-      await _loadGameState();
+      final cubit = context.read<GameplayCubit>();
+      late final StreamSubscription subscription;
+      
+      subscription = cubit.stream.listen((state) {
+        if (state is GameRestarted) {
+          if (!mounted) return;
+          subscription.cancel();
+          _loadGameState();
+        } else if (state is GameplayFailure) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Ошибка при перезапуске игры: ${state.message}')),
+            );
+          }
+          subscription.cancel();
+        }
+      });
+      
+      await cubit.restartGame();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

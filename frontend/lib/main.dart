@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '/core/api/api_client.dart';
 import '/core/router/app_router.dart';
 import '/core/services/auth_service_impl.dart';
+import '/core/services/mocks/mock_auth_service.dart';
 import '/core/services/mocks/mock_game_service.dart';
 import '/core/services/mocks/mock_gameplay_service.dart';
 import '/core/services/mocks/mock_world_service.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '/features/auth/auth_cubit.dart';
 import '/features/chat/gameplay_cubit.dart';
 import '/features/games/games_cubit.dart';
@@ -32,8 +34,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Создаем РЕАЛЬНЫЙ сервис авторизации и моковые для остального
-    final authService = AuthServiceImpl(apiClient: apiClient);
+    final useMockAuth = const bool.fromEnvironment('USE_MOCK_AUTH', defaultValue: true);
+    
+    final AuthService authService = useMockAuth 
+        ? MockAuthService(apiClient: apiClient)
+        : AuthServiceImpl(apiClient: apiClient);
+    
     final worldService = MockWorldService(apiClient: apiClient);
     final gameService = MockGameService(apiClient: apiClient);
     final gameplayService = MockGameplayService();
@@ -43,6 +49,10 @@ class MyApp extends StatelessWidget {
 
     // Запускаем проверку авторизации при старте
     authCubit.checkAuth();
+    
+    if (!useMockAuth && kDebugMode) {
+      _tryTestLogin(authService as AuthServiceImpl);
+    }
 
     // Настраиваем маршрутизацию
     final appRouter = AppRouter(authCubit);
@@ -77,5 +87,17 @@ class MyApp extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Пытается выполнить тестовый вход, если бэкенд доступен
+  void _tryTestLogin(AuthServiceImpl authService) {
+    Future.delayed(const Duration(milliseconds: 500), () async {
+      try {
+        await authService.testLogin(username: 'Test User', email: 'test@example.com');
+        debugPrint('✅ Тестовый вход выполнен успешно');
+      } catch (e) {
+        debugPrint('⚠️ Тестовый вход не удался (возможно, бэкенд не запущен): $e');
+      }
+    });
   }
 }

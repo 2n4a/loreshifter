@@ -44,5 +44,5 @@ abstract class GameService {
   Future<Game> joinGameByCode(String code, {bool force = false});
 
   /// Покинуть текущую игру
-  Future<void> leaveGame();
+  Future<void> leaveGame({int? gameId});
 }

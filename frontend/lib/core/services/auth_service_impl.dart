@@ -71,4 +71,24 @@ class AuthServiceImpl extends BaseService implements AuthService {
       fromJson: (data) => data as Map<String, dynamic>,
     );
   }
+
+  Future<User> testLogin({String? username, String? email}) async {
+    developer.log('AuthService: Тестовый вход GET /test-login');
+    final queryParams = <String, dynamic>{};
+    if (username != null) queryParams['username'] = username;
+    if (email != null) queryParams['email'] = email;
+
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        '/test-login',
+        queryParameters: queryParams,
+        fromJson: (data) => data as Map<String, dynamic>,
+      );
+
+      return await getCurrentUser();
+    } catch (e) {
+      developer.log('AuthService: Ошибка тестового входа', error: e);
+      rethrow;
+    }
+  }
 }
