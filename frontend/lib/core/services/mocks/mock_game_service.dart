@@ -409,7 +409,7 @@ class MockGameService extends BaseService implements GameService {
 
   // Покинуть текущую игру
   @override
-  Future<void> leaveGame() async {
+  Future<void> leaveGame({int? gameId}) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
     if (_currentGame == null) {
