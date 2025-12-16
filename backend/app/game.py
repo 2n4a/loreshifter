@@ -549,4 +549,4 @@ async def websocket_endpoint(
 
     player_out = await game.get_player(conn, user.id, log=log)
     if not isinstance(player_out, ServiceError):
-        await ws_controller.connect(websocket, game_id, user.id)
+        await ws_controller.connect(websocket, user.id, game_id)
