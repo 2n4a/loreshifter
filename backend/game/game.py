@@ -239,11 +239,9 @@ class GameSystem(System[GameEvent]):
 
     async def forward_chat_events(self, chat_: ChatSystem, owner_id: int | None):
         async for event in chat_.listen():
-            self.emit(
-                GameChatEvent(
-                    game_id=self.id, chat_id=chat_.id, owner_id=owner_id, event=event
-                )
-            )
+            self.emit(GameChatEvent(
+                game_id=self.id, chat_id=chat_.id, owner_id=owner_id, event=event
+            ))
 
     async def connect_player(
         self,
