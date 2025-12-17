@@ -8,3 +8,5 @@ LoreshifterBackend/bin
 LoreshifterBackend/obj
 frontend/.dart_tool
 frontend/.build
+backend/.venv
+**/README.md

@@ -3,13 +3,14 @@ services:
     build:
       context: .
       dockerfile: ./db/Dockerfile.dev
-    container_name: dev_db
+    container_name: full_dev_db
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: devuser
       POSTGRES_PASSWORD: devpass
       POSTGRES_DB: devdb
+    env_file: ".env"
     volumes:
       - devdb_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,13 +23,14 @@ services:
   backend:
     build:
       context: .
-      dockerfile: ./LoreshifterBackend/dev.Dockerfile
+      dockerfile: ./backend/Dockerfile
     container_name: dev_backend
     ports:
       - "8000:8000"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://0.0.0.0:8000
+      ENVIRONMENT: dev
+      POSTGRES_URL: postgres://devuser:devpass@full_dev_db:5432/devdb
+    env_file: ".env"
     volumes:
       - ./LoreshifterBackend:/app
     depends_on:
@@ -42,6 +44,7 @@ services:
     container_name: dev_frontend
     ports:
       - "8080:80"
+    env_file: ".env"
     depends_on:
       backend:
         condition: service_healthy
