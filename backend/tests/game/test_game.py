@@ -14,6 +14,7 @@ from game.game import (
 from lstypes.game import GameStatus, GameOut
 from game.universe import UniverseGameEvent
 from game.user import create_test_user
+from lstypes.error import ServiceCode
 
 
 @pytest.mark.asyncio
@@ -25,10 +26,13 @@ async def test_game_set_ready(db, universe):
     game_system = GameSystem.of(game.id)
     assert await game_system.set_ready(db, user.id, True) is None
     assert await game_system.set_ready(db, user.id, False) is None
-    assert (await game_system.set_ready(db, -123, False)).code == "PLAYER_NOT_FOUND"
+    assert (
+        await game_system.set_ready(db, -123, False)
+    ).code == ServiceCode.PLAYER_NOT_FOUND
 
     events = [
-        event.event for event in await universe.stop_and_gather_events()
+        event.event
+        for event in await universe.stop_and_gather_events()
         if isinstance(event, UniverseGameEvent)
     ]
     assert events == [
@@ -37,12 +41,14 @@ async def test_game_set_ready(db, universe):
         PlayerReadyEvent(game_id=game.id, player_id=user.id, ready=False),
     ]
 
+
 @pytest.mark.asyncio
 async def test_create_game(db, universe):
     user = await create_test_user(db)
     world = await universe.create_world(db, "test_world", user.id, True)
     game = await universe.create_game(db, user.id, world.id, "test_room", True, 1)
     assert isinstance(game, GameOut)
+
 
 @pytest.mark.asyncio
 async def test_get_games(db, universe):
@@ -55,13 +61,13 @@ async def test_get_games(db, universe):
     await universe.create_game(db, user1.id, world1.id, "g3", False, 2)
     await universe.create_game(db, user2.id, world2.id, "g4", False, 2)
 
-    games = await universe.get_games(db, 10, 0, sort="asc", requester_id=user1.id)
+    games = await universe.get_games(db, 10, 0, order="asc", requester_id=user1.id)
     assert len(games) == 3
     assert games[0].name == "g1"
     assert games[1].name == "g2"
     assert games[2].name == "g3"
 
-    games = await universe.get_games(db, 1, 0, sort="desc", public=True)
+    games = await universe.get_games(db, 1, 0, order="desc", public=True)
     assert len(games) == 1
     assert games[0].name == "g2"
 
@@ -76,7 +82,8 @@ async def test_get_game(db, universe):
     assert game.name == "g1"
 
     game = await universe.get_game(db, -123)
-    assert game.code == "GAME_NOT_FOUND"
+    assert game.code == ServiceCode.GAME_NOT_FOUND
+
 
 @pytest.mark.asyncio
 async def test_get_game_by_code(db, universe):
@@ -88,7 +95,33 @@ async def test_get_game_by_code(db, universe):
     assert game.name == "g1"
 
     game = await universe.get_game_by_code(db, "INVALID_CODE")
-    assert game.code == "GAME_NOT_FOUND"
+    assert game.code == ServiceCode.GAME_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_player_can_join_multiple_games(db, universe):
+    host = await create_test_user(db, "host")
+    player = await create_test_user(db, "player")
+    world = await universe.create_world(db, "world", host.id, True)
+
+    game1 = await universe.create_game(db, host.id, world.id, "g1", True, 2)
+    game2 = await universe.create_game(db, host.id, world.id, "g2", True, 2)
+    game_system1 = GameSystem.of(game1.id)
+    game_system2 = GameSystem.of(game2.id)
+
+    await game_system1.connect_player(db, player.id)
+    await game_system2.connect_player(db, player.id)
+
+    joined_count = await db.fetchval(
+        "SELECT count(*) FROM game_players WHERE user_id = $1 AND is_joined IS TRUE",
+        player.id,
+    )
+    assert joined_count == 2
+
+    joined_games = await universe.get_games(
+        db, 10, 0, requester_id=player.id, joined_only=True
+    )
+    assert {g.name for g in joined_games} == {"g1", "g2"}
 
 
 @pytest.mark.asyncio
@@ -116,7 +149,8 @@ async def test_player_join_and_leave(db, universe):
     assert game_system.status == GameStatus.ARCHIVED
 
     events = [
-        event.event for event in await universe.stop_and_gather_events()
+        event.event
+        for event in await universe.stop_and_gather_events()
         if isinstance(event, UniverseGameEvent)
     ]
 
@@ -127,7 +161,11 @@ async def test_player_join_and_leave(db, universe):
     left_events = [e for e in events if isinstance(e, PlayerLeftEvent)]
     assert len(left_events) == 2  # user1 and user2
 
-    archived_events = [e for e in events if isinstance(e, GameStatusEvent) and e.new_status == GameStatus.ARCHIVED]
+    archived_events = [
+        e
+        for e in events
+        if isinstance(e, GameStatusEvent) and e.new_status == GameStatus.ARCHIVED
+    ]
     assert len(archived_events) > 0
 
 
@@ -150,7 +188,8 @@ async def test_host_migration(db, universe):
     assert game_system.host_id == user2.id
 
     events = [
-        event.event for event in await universe.stop_and_gather_events()
+        event.event
+        for event in await universe.stop_and_gather_events()
         if isinstance(event, UniverseGameEvent)
     ]
 
@@ -183,7 +222,9 @@ async def test_spectator_flow(db, universe):
     assert game_system.player_states[user2.id].is_spectator
 
     # user2 (now host) makes themself a player
-    await game_system.make_spectator(db, user2.id, spectate=False, requester_id=user2.id)
+    await game_system.make_spectator(
+        db, user2.id, spectate=False, requester_id=user2.id
+    )
     assert not game_system.player_states[user2.id].is_spectator
     assert game_system.num_non_spectators == 1
 
@@ -192,6 +233,8 @@ async def test_spectator_flow(db, universe):
     assert game_system.player_states[user3.id].is_spectator
 
     # user2 tries to make user3 a player, but game is full
-    result = await game_system.make_spectator(db, user3.id, spectate=False, requester_id=user2.id)
-    assert result.code == "GAME_FULL"
+    result = await game_system.make_spectator(
+        db, user3.id, spectate=False, requester_id=user2.id
+    )
+    assert result.code == ServiceCode.GAME_FULL
     assert game_system.player_states[user3.id].is_spectator

@@ -8,8 +8,7 @@ class WebSocketController:
     def __init__(self):
         self.game_listening_websockets: dict[int, dict[int, WebSocket]] = {}
 
-    def add_game_websocket(self, websocket: WebSocket, game_id: int, user_id: int):
-        ...
+    def add_game_websocket(self, websocket: WebSocket, game_id: int, user_id: int): ...
 
     async def listen(self, universe: Universe, log=gl_log):
         try:

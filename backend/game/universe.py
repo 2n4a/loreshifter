@@ -11,7 +11,7 @@ from game.logger import gl_log
 from game.user import check_user_exists
 from lstypes.chat import ChatType
 from game.game import GameSystem, GameEvent, GameStatusEvent
-from lstypes.error import ServiceError, error
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.game import GameStatus, GameOut
 from lstypes.player import PlayerOut
 from lstypes.user import UserOut
@@ -20,16 +20,18 @@ from game.system import System
 
 
 @dataclasses.dataclass
-class UniverseEvent:
-    ...
+class UniverseEvent: ...
+
 
 @dataclasses.dataclass()
 class UniverseGameEvent(UniverseEvent):
     event: GameEvent
 
+
 @dataclasses.dataclass()
 class UniverseNewWorldEvent(UniverseEvent):
     world: WorldOut
+
 
 @dataclasses.dataclass()
 class UniverseWorldUpdateEvent(UniverseEvent):
@@ -55,14 +57,14 @@ class Universe(System[UniverseEvent, None]):
         self.add_pipe(forward_game_events())
 
     async def create_world(
-            self,
-            conn: asyncpg.Connection,
-            name: str,
-            owner_id: int,
-            public: bool,
-            description: str | None = None,
-            data: typing.Any = None,
-            log = gl_log,
+        self,
+        conn: asyncpg.Connection,
+        name: str,
+        owner_id: int,
+        public: bool,
+        description: str | None = None,
+        data: typing.Any = None,
+        log=gl_log,
     ) -> WorldOut | ServiceError:
         log = log.bind(world_name=name, world_owner_id=owner_id, world_public=public)
 
@@ -98,14 +100,14 @@ class Universe(System[UniverseEvent, None]):
         )
 
         if row is None:
-            if check_user_exists(conn, owner_id):
+            if not await check_user_exists(conn, owner_id):
                 return await error(
-                    "USER_NOT_FOUND",
+                    ServiceCode.USER_NOT_FOUND,
                     "User not found",
                     log=log,
                 )
             return await error(
-                "SERVER_ERROR",
+                ServiceCode.SERVER_ERROR,
                 "Failed to create the world",
                 log=log,
             )
@@ -132,35 +134,39 @@ class Universe(System[UniverseEvent, None]):
     @staticmethod
     async def check_world_exists(conn: asyncpg.Connection, world_id: int):
         return await conn.fetchval(
-            "SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1)",
-            world_id
+            "SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1)", world_id
         )
 
     @staticmethod
     async def check_world_exists_not_deleted(conn: asyncpg.Connection, world_id: int):
         return await conn.fetchval(
             "SELECT EXISTS (SELECT 1 FROM worlds WHERE id = $1 AND NOT deleted)",
-            world_id
+            world_id,
         )
 
     async def create_game(
-            self,
-            conn: asyncpg.Connection,
-            host_id: int,
-            world_id: int,
-            name: str,
-            public: bool,
-            max_players: int,
-            log=gl_log,
+        self,
+        conn: asyncpg.Connection,
+        host_id: int,
+        world_id: int,
+        name: str,
+        public: bool,
+        max_players: int,
+        log=gl_log,
     ) -> GameOut | ServiceError:
         log = log.bind(
-            game_host_id=host_id, game_world_id=world_id, game_name=name,
-            game_public=public, game_max_players=max_players
+            game_host_id=host_id,
+            game_world_id=world_id,
+            game_name=name,
+            game_public=public,
+            game_max_players=max_players,
         )
         try:
             async with conn.transaction(isolation="serializable"):
                 while True:
-                    code: str = "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=4))
+                    code: str = "".join(
+                        random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=4)
+                    )
                     old_game_id = await conn.fetchval(
                         """
                         SELECT id FROM games WHERE code = $1 AND status != 'archived'
@@ -231,20 +237,20 @@ class Universe(System[UniverseEvent, None]):
                 if row is None:
                     if not await check_user_exists(conn, host_id):
                         return await error(
-                            "USER_NOT_FOUND",
+                            ServiceCode.USER_NOT_FOUND,
                             "Host user not found",
                             user_id=host_id,
                             log=log,
                         )
                     if not await self.check_world_exists(conn, world_id):
                         return await error(
-                            "WORLD_NOT_FOUND",
+                            ServiceCode.WORLD_NOT_FOUND,
                             "World not found",
                             world_id=world_id,
                             log=log,
                         )
                     return await error(
-                        "SERVER_ERROR",
+                        ServiceCode.SERVER_ERROR,
                         "Failed to create the game",
                         log=log,
                     )
@@ -295,7 +301,7 @@ class Universe(System[UniverseEvent, None]):
 
         except asyncpg.DeadlockDetectedError as e:
             return await error(
-                "SERVER_ERROR",
+                ServiceCode.SERVER_ERROR,
                 "Failed to create the game due to transaction failure",
                 cause=e,
                 log=log,
@@ -303,17 +309,16 @@ class Universe(System[UniverseEvent, None]):
 
     @staticmethod
     async def get_worlds(
-            conn: asyncpg.Connection,
-            limit: int,
-            offset: int,
-            sort: Literal["asc", "desc"],
-            # order: Literal["lastUpdatedAt"] = "lastUpdatedAt",
-            # search: str | None = None,
-            public: bool = False,
-            # filter_: str | None = None,
-            requester_id: int | None = None,
-            log = gl_log,
-
+        conn: asyncpg.Connection,
+        limit: int,
+        offset: int,
+        sort: Literal["asc", "desc"],
+        # order: Literal["lastUpdatedAt"] = "lastUpdatedAt",
+        # search: str | None = None,
+        public: bool = False,
+        # filter_: str | None = None,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> list[WorldOut] | ServiceError:
         log = log.bind(limit=limit, offset=offset, sort=sort)
         rows = await conn.fetch(
@@ -323,7 +328,7 @@ class Universe(System[UniverseEvent, None]):
                 o.name as owner_name, o.created_at as owner_created_at, o.deleted as owner_deleted
             FROM worlds AS w
             JOIN users AS o ON w.owner_id = o.id
-            WHERE w.public OR (w.owner_id = $3 AND NOT $4) AND NOT w.deleted
+            WHERE (w.public OR (w.owner_id = $3 AND NOT $4)) AND NOT w.deleted
             ORDER BY last_updated_at {'ASC' if sort == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
@@ -337,31 +342,33 @@ class Universe(System[UniverseEvent, None]):
 
         worlds = []
         for row in rows:
-            worlds.append(WorldOut(
-                id=row["id"],
-                name=row["name"],
-                public=row["public"],
-                owner=UserOut(
-                    id=row["owner_id"],
-                    name=row["owner_name"],
-                    created_at=row["owner_created_at"],
-                    deleted=row["owner_deleted"],
-                ),
-                description=row["description"],
-                data=None,
-                created_at=row["created_at"],
-                last_updated_at=row["last_updated_at"],
-                deleted=row["deleted"],
-            ))
+            worlds.append(
+                WorldOut(
+                    id=row["id"],
+                    name=row["name"],
+                    public=row["public"],
+                    owner=UserOut(
+                        id=row["owner_id"],
+                        name=row["owner_name"],
+                        created_at=row["owner_created_at"],
+                        deleted=row["owner_deleted"],
+                    ),
+                    description=row["description"],
+                    data=None,
+                    created_at=row["created_at"],
+                    last_updated_at=row["last_updated_at"],
+                    deleted=row["deleted"],
+                )
+            )
 
         return worlds
 
     @staticmethod
     async def get_world(
-            conn: asyncpg.Connection,
-            id_: int,
-            requester_user_id: int | None = None,
-            log = gl_log,
+        conn: asyncpg.Connection,
+        id_: int,
+        requester_user_id: int | None = None,
+        log=gl_log,
     ) -> WorldOut | ServiceError:
         log = log.bind(id=id_)
 
@@ -381,7 +388,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "WORLD_NOT_FOUND",
+                ServiceCode.WORLD_NOT_FOUND,
                 "World with given id not found",
                 id=id_,
                 log=log,
@@ -415,19 +422,30 @@ class Universe(System[UniverseEvent, None]):
             name=row["name"],
             world=Universe.row_to_short_world_out(row),
             host_id=row["host_id"],
-            players=[PlayerOut(
-                user=UserOut(
-                    id=p["user"]["id"],
-                    name=p["user"]["name"],
-                    created_at=p["user"]["created_at"],
-                    deleted=p["user"]["deleted"],
-                ),
-                is_ready=p["is_ready"],
-                is_host=p["is_host"],
-                is_spectator=p["is_spectator"],
-                is_joined=p["is_joined"],
-                joined_at=datetime.datetime.fromisoformat(p["joined_at"]),
-            ) for p in (row["players"] or [])],
+            players=[
+                PlayerOut(
+                    user=UserOut(
+                        id=p["user"]["id"],
+                        name=p["user"]["name"],
+                        created_at=(
+                            datetime.datetime.fromisoformat(p["user"]["created_at"])
+                            if isinstance(p["user"]["created_at"], str)
+                            else p["user"]["created_at"]
+                        ),
+                        deleted=p["user"]["deleted"],
+                    ),
+                    is_ready=p["is_ready"],
+                    is_host=p["is_host"],
+                    is_spectator=p["is_spectator"],
+                    is_joined=p["is_joined"],
+                    joined_at=(
+                        datetime.datetime.fromisoformat(p["joined_at"])
+                        if isinstance(p["joined_at"], str)
+                        else p["joined_at"]
+                    ),
+                )
+                for p in (row["players"] or [])
+            ],
             created_at=row["created_at"],
             max_players=row["max_players"],
             status=row["status"],
@@ -453,17 +471,26 @@ class Universe(System[UniverseEvent, None]):
 
     @staticmethod
     async def get_games(
-            conn: asyncpg.Connection,
-            limit: int,
-            offset: int,
-            order: Literal["createdAt"] = "createdAt",
-            sort: Literal["asc", "desc"] = "desc",
-            public: bool = False,
-            requester_id: int | None = None,
-            include_archived: bool = False,
-            log=gl_log,
+        conn: asyncpg.Connection,
+        limit: int,
+        offset: int,
+        sort: Literal["createdAt"] = "createdAt",
+        order: Literal["asc", "desc"] = "desc",
+        public: bool = False,
+        joined_only: bool = False,
+        requester_id: int | None = None,
+        include_archived: bool = False,
+        log=gl_log,
     ) -> list[GameOut] | ServiceError:
-        log = log.bind(limit=limit, offset=offset, sort=sort, order=order, public=public, requester_id=requester_id)
+        log = log.bind(
+            limit=limit,
+            offset=offset,
+            sort=sort,
+            order=order,
+            public=public,
+            joined_only=joined_only,
+            requester_id=requester_id,
+        )
 
         rows = await conn.fetch(
             f"""
@@ -482,7 +509,10 @@ class Universe(System[UniverseEvent, None]):
                 (g.public IS TRUE OR (g.id IN (SELECT game_id FROM game_players WHERE user_id = $3)))
                 AND (g.public OR NOT $4)
                 AND (g.status != 'archived' OR $5)
-            ORDER BY g.created_at {'ASC' if sort == 'asc' else 'DESC'}
+                AND (NOT $6 OR g.id IN (
+                    SELECT game_id FROM game_players WHERE user_id = $3 AND is_joined IS TRUE
+                ))
+            ORDER BY g.created_at {'ASC' if order == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
             limit,
@@ -490,6 +520,7 @@ class Universe(System[UniverseEvent, None]):
             requester_id if requester_id is not None else -1,
             public,
             include_archived,
+            joined_only,
         )
 
         await log.ainfo("Fetching games: got %s games", len(rows))
@@ -502,10 +533,10 @@ class Universe(System[UniverseEvent, None]):
 
     @staticmethod
     async def get_game(
-            conn: asyncpg.Connection,
-            game_id: int,
-            requester_id: int | None = None,
-            log=gl_log,
+        conn: asyncpg.Connection,
+        game_id: int,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> GameOut | ServiceError:
         log = log.bind(game_id=game_id, requester_id=requester_id)
 
@@ -532,7 +563,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "GAME_NOT_FOUND",
+                ServiceCode.GAME_NOT_FOUND,
                 "Game with given id not found",
                 game_id=game_id,
                 log=log,
@@ -544,10 +575,10 @@ class Universe(System[UniverseEvent, None]):
 
     @staticmethod
     async def get_game_by_code(
-            conn: asyncpg.Connection,
-            game_code: str,
-            requester_id: int | None = None,
-            log=gl_log,
+        conn: asyncpg.Connection,
+        game_code: str,
+        requester_id: int | None = None,
+        log=gl_log,
     ) -> GameOut | ServiceError:
         log = log.bind(game_code=game_code, requester_id=requester_id)
 
@@ -573,7 +604,7 @@ class Universe(System[UniverseEvent, None]):
 
         if row is None:
             return await error(
-                "GAME_NOT_FOUND",
+                ServiceCode.GAME_NOT_FOUND,
                 "Game with given code not found",
                 game_code=game_code,
                 log=log,

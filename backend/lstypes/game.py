@@ -34,7 +34,7 @@ class GameOut:
 class StateOut:
     game: GameOut
     status: GameStatus
-    character_creation_chat: ChatSegmentOut
-    game_chat: ChatSegmentOut
-    player_chats: list[ChatSegmentOut]
-    advice_chats: list[ChatSegmentOut]
+    character_creation_chat: ChatSegmentOut | None = None
+    game_chat: ChatSegmentOut | None = None
+    player_chats: list[ChatSegmentOut] = dataclasses.field(default_factory=list)
+    advice_chats: list[ChatSegmentOut] = dataclasses.field(default_factory=list)

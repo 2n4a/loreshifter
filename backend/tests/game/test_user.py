@@ -1,8 +1,14 @@
 import pytest
 
-from game.user import get_or_create_user, get_user, delete_user, create_test_user, check_user_exists, \
-    check_user_exists_not_deleted
-from lstypes.error import ServiceError
+from game.user import (
+    get_or_create_user,
+    get_user,
+    delete_user,
+    create_test_user,
+    check_user_exists,
+    check_user_exists_not_deleted,
+)
+from lstypes.error import ServiceCode, ServiceError
 from lstypes.user import FullUserOut
 
 
@@ -39,7 +45,7 @@ async def test_get_user(db):
 
     fail = await get_user(db, -123)
     assert isinstance(fail, ServiceError)
-    assert fail.code == "USER_NOT_FOUND"
+    assert fail.code == ServiceCode.USER_NOT_FOUND
 
     user = await create_test_user(db, "test_user2")
     await delete_user(db, user.id)
@@ -53,7 +59,7 @@ async def test_get_user(db):
     await delete_user(db, user.id)
     retrieved_user = await get_user(db, user.id, deleted_ok=False)
     assert isinstance(retrieved_user, ServiceError)
-    assert fail.code == "USER_NOT_FOUND"
+    assert fail.code == ServiceCode.USER_NOT_FOUND
 
 
 @pytest.mark.asyncio

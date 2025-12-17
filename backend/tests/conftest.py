@@ -19,7 +19,9 @@ async def postgres_connection_string():
         await primary_connection.execute("CREATE DATABASE test")
         await primary_connection.execute("DROP USER IF EXISTS test")
         await primary_connection.execute("CREATE USER test WITH PASSWORD 'test'")
-        await primary_connection.execute("GRANT ALL PRIVILEGES ON DATABASE test TO test")
+        await primary_connection.execute(
+            "GRANT ALL PRIVILEGES ON DATABASE test TO test"
+        )
         await primary_connection.execute("ALTER DATABASE test OWNER TO test")
         connection = await asyncpg.connect(test_dsn)
         try:

@@ -29,5 +29,5 @@ class PgEnum(enum.EnumMeta):
                 enum_name,
                 schema=enum_cls.__pg_schema__,
                 encoder=lambda x: x.value,
-                decoder=lambda x: enum_cls(x),
+                decoder=lambda x, enum_cls=enum_cls: enum_cls(x),
             )

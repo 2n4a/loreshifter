@@ -15,8 +15,7 @@ class MessageIn:
 
 
 @dataclasses.dataclass
-class InferenceEvent:
-    ...
+class InferenceEvent: ...
 
 
 @dataclasses.dataclass
@@ -33,7 +32,9 @@ class OpenaiChat(LlmChat):
     def __init__(self, model: str):
         super().__init__()
         api_key = config.PROXY_API_KEY
-        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.proxyapi.ru/openai/v1/")
+        self.client = AsyncOpenAI(
+            api_key=api_key, base_url="https://api.proxyapi.ru/openai/v1/"
+        )
         self.messages = []
         self.completion = None
 
@@ -54,20 +55,14 @@ class OpenaiChat(LlmChat):
         self.messages.append()
 
 
-
-
 if __name__ == "__main__":
     import dotenv
+
     dotenv.load_dotenv()
 
     completion = client.chat.completions.create(
         model="gpt-5-nano",
-        messages=[
-            {
-                "role": "user",
-                "content": "Hello, how are you?"
-            }
-        ],
+        messages=[{"role": "user", "content": "Hello, how are you?"}],
         stream=True,
     )
     for chunk in completion:

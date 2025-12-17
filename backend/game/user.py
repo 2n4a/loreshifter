@@ -4,17 +4,17 @@ import random
 import asyncpg
 
 from game.logger import gl_log
-from lstypes.error import ServiceError, error
+from lstypes.error import ServiceCode, ServiceError, error
 from lstypes.user import FullUserOut
 
 
 async def get_or_create_user(
-        conn: asyncpg.Connection,
-        name: str,
-        email: str,
-        auth_id: int,
-        log=gl_log,
-    ) -> FullUserOut | ServiceError:
+    conn: asyncpg.Connection,
+    name: str,
+    email: str,
+    auth_id: int,
+    log=gl_log,
+) -> FullUserOut | ServiceError:
     log = log.bind(user_name=name, user_email=email, user_auth_id=auth_id)
     user = await conn.fetchrow(
         """
@@ -50,7 +50,9 @@ async def get_or_create_user(
             email,
             user["id"],
         )
-        await log.ainfo("Updated user info", user_id=user["id"], user_name=name, user_email=email)
+        await log.ainfo(
+            "Updated user info", user_id=user["id"], user_name=name, user_email=email
+        )
     else:
         await log.ainfo("User exists, fetched info", user_id=user["id"])
     return FullUserOut(
@@ -63,10 +65,10 @@ async def get_or_create_user(
 
 
 async def create_test_user(
-        conn: asyncpg.Connection,
-        name: str | None = None,
-        email: str | None = None,
-        log=gl_log,
+    conn: asyncpg.Connection,
+    name: str | None = None,
+    email: str | None = None,
+    log=gl_log,
 ) -> FullUserOut | ServiceError:
     if name is None or email is None:
         nonce = random.randbytes(8).hex()
@@ -88,7 +90,9 @@ async def create_test_user(
         False,
     )
 
-    await log.ainfo("Created new test user", user_id=user["id"], user_name=name, user_email=email)
+    await log.ainfo(
+        "Created new test user", user_id=user["id"], user_name=name, user_email=email
+    )
 
     return FullUserOut(
         id=user["id"],
@@ -100,10 +104,10 @@ async def create_test_user(
 
 
 async def get_user(
-        conn: asyncpg.Connection,
-        id_: int,
-        deleted_ok: bool = True,
-        log=gl_log,
+    conn: asyncpg.Connection,
+    id_: int,
+    deleted_ok: bool = True,
+    log=gl_log,
 ) -> FullUserOut | ServiceError:
     if deleted_ok:
         user = await conn.fetchrow(
@@ -125,7 +129,7 @@ async def get_user(
         )
     if user is None:
         return await error(
-            "USER_NOT_FOUND",
+            ServiceCode.USER_NOT_FOUND,
             "User not found",
             user_id=id_,
             log=log,
@@ -177,7 +181,9 @@ async def check_user_exists_not_deleted(conn: asyncpg.Connection, id_: int) -> b
 #     )
 
 
-async def delete_user(conn: asyncpg.Connection, id_: int, log=gl_log) -> None | ServiceError:
+async def delete_user(
+    conn: asyncpg.Connection, id_: int, log=gl_log
+) -> None | ServiceError:
     deleted_id = await conn.fetchval(
         """
         UPDATE users
@@ -189,7 +195,7 @@ async def delete_user(conn: asyncpg.Connection, id_: int, log=gl_log) -> None | 
     )
     if deleted_id is None:
         return await error(
-            "USER_NOT_FOUND",
+            ServiceCode.USER_NOT_FOUND,
             "User not found",
             user_id=id_,
             log=log,

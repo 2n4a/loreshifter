@@ -22,10 +22,11 @@ class Timer:
 
 class AsyncReentrantLock:
     """A reentrant lock that can be acquired multiple times by the same task.
-    
+
     This lock can be acquired multiple times by the same task without blocking.
     The lock will only be released when the outermost release() is called.
     """
+
     def __init__(self):
         self._lock = asyncio.Lock()
         self._task = None
@@ -40,7 +41,7 @@ class AsyncReentrantLock:
 
     async def acquire(self):
         """Acquire the lock.
-        
+
         If the lock is already held by the current task, increment the depth counter.
         If the lock is held by a different task, block until it is released.
         """
@@ -48,22 +49,22 @@ class AsyncReentrantLock:
         if self._task == current_task:
             self._depth += 1
             return
-        
+
         await self._lock.acquire()
         self._task = current_task
         self._depth = 1
 
     def release(self):
         """Release the lock.
-        
+
         Decrements the depth counter. If the counter reaches zero, releases the lock.
-        
+
         Raises:
             RuntimeError: If the lock is not acquired or is released too many times.
         """
         if self._task is None or self._task != asyncio.current_task():
             raise RuntimeError("Cannot release a lock that's not acquired by this task")
-            
+
         self._depth -= 1
         if self._depth == 0:
             self._task = None
