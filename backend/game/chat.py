@@ -39,8 +39,9 @@ class ChatUpdatedSuggestions(ChatEvent):
 @dataclasses.dataclass
 class MessageRef:
     msg: MessageOut | None
-    prev: MessageRef | None = None
-    next: MessageRef | None = None
+    prev: "MessageRef | None" = None
+    next: "MessageRef | None" = None
+
 
     def to_message_out_with_neighbors(self) -> MessageOutWithNeighbors:
         prev_id = None
@@ -56,66 +57,113 @@ class MessageRef:
         )
 
 class MessageIndex:
+    """
+    Stable doubly-linked list for messages with dummy head AND dummy tail.
+    Public API is unchanged:
+      - append(msg) -> MessageRef
+      - edit(msg) -> bool
+      - delete(id_) -> MessageOut | None
+      - walk_forward(start_id, count) -> generator[MessageRef]
+      - walk_backward(start_id, count) -> generator[MessageRef]
+    """
+
     def __init__(self):
-        dummy = MessageRef(None)
-        self.first = dummy
-        self.last = dummy
-        self.index: dict[int, MessageRef] = {-1: dummy}
+        self._head = MessageRef(None)
+        self._tail = MessageRef(None)
+        self._head.next = self._tail
+        self._tail.prev = self._head
+
+        self.first = self._head
+        self.last = self._tail
+        self.index: dict[int, MessageRef] = {}
+
+    def _is_empty(self) -> bool:
+        return self._head.next is self._tail
+
+    def _refresh_first_last(self) -> None:
+        if self._is_empty():
+            self.first = self._head
+            self.last = self._tail
+        else:
+            self.first = self._head.next
+            self.last = self._tail.prev
 
     def append(self, msg: MessageOut) -> MessageRef:
         ref = MessageRef(msg)
-        self.last.next = ref
-        ref.prev = self.last
-        self.last = ref
+
+        prev = self._tail.prev
+        assert prev is not None
+
+        prev.next = ref
+        ref.prev = prev
+        ref.next = self._tail
+        self._tail.prev = ref
+
         self.index[msg.id] = ref
+        self._refresh_first_last()
         return ref
 
     def edit(self, msg: MessageOut) -> bool:
-        if msg.id not in self.index:
+        ref = self.index.get(msg.id)
+        if ref is None:
             return False
-        ref = self.index[msg.id]
         ref.msg = msg
         return True
 
     def delete(self, id_: int) -> MessageOut | None:
-        if id_ not in self.index:
+        ref = self.index.get(id_)
+        if ref is None:
             return None
-        ref = self.index[id_]
+
+        assert ref.prev is not None and ref.next is not None
         ref.prev.next = ref.next
         ref.next.prev = ref.prev
-        del self.index[id_]
 
-        if self.first.msg.id == id_:
-            self.first = ref.next
-        if self.last.msg.id == id_:
-            self.last = ref.prev
+        del self.index[id_]
+        self._refresh_first_last()
         return ref.msg
 
     def walk_forward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
-        if start_id is None:
-            ref = self.first
-        elif start_id not in self.index:
+        """
+        - start_id is None -> from first message
+        - start_id provided -> strictly after start_id
+        """
+        if count <= 0 or self._is_empty():
             return
+
+        if start_id is None:
+            cur = self._head.next
         else:
-            ref =self.index[start_id].prev
-        for _ in range(count):
-            ref = ref.next
-            if ref is None:
-                break
-            yield ref
+            start = self.index.get(start_id)
+            if start is None:
+                return
+            cur = start.next
+
+        while cur is not None and cur is not self._tail and count > 0:
+            yield cur
+            cur = cur.next
+            count -= 1
 
     def walk_backward(self, start_id: int | None, count: int) -> typing.Generator[MessageRef, None, None]:
-        if start_id is None:
-            ref = self.last
-        elif start_id not in self.index:
+        """
+        - start_id is None -> from last message
+        - start_id provided -> inclusive, then backwards
+        """
+        if count <= 0 or self._is_empty():
             return
+
+        if start_id is None:
+            cur = self._tail.prev
         else:
-            ref = self.index[start_id]
-        for _ in range(count):
-            yield ref
-            ref = ref.prev
-            if ref is None or ref.msg is None:
-                break
+            cur = self.index.get(start_id)
+            if cur is None:
+                return
+
+        while cur is not None and cur is not self._head and count > 0:
+            yield cur
+            cur = cur.prev
+            count -= 1
+
 
 
 class ChatSystem(System[ChatEvent]):
@@ -334,25 +382,53 @@ class ChatSystem(System[ChatEvent]):
 
         if not chat_info:
             return await error("SERVER_ERROR", "Chat not found", log=gl_log)
+                # empty chat -> return empty segment
+        if len(self.index.index) == 0:
+            return ChatSegmentOut(
+                chat_id=chat_info["chat_id"],
+                chat_owner=chat_info["owner_id"],
+                interface=ChatInterface(
+                    type=chat_info["interface_type"],
+                    deadline=chat_info["deadline"],
+                ),
+                previous_id=None,
+                next_id=None,
+                messages=[],
+                suggestions=self.suggestions,
+            )
+
 
         if after_message_id is not None:
-            messages = list(self.index.walk_forward(after_message_id, limit))
-            if not messages:
+            if after_message_id not in self.index.index:
                 return await error(
                     "MESSAGE_NOT_FOUND",
                     "Message with id 'after_message_id' not found",
                     log=gl_log
                 )
-        else:
-            messages = list(self.index.walk_backward(before_message_id, limit))
+            messages = list(self.index.walk_forward(after_message_id, limit))
             if not messages:
+                return ChatSegmentOut(
+                    chat_id=chat_info["chat_id"],
+                    chat_owner=chat_info["owner_id"],
+                    interface=ChatInterface(
+                        type=chat_info["interface_type"],
+                        deadline=chat_info["deadline"],
+                    ),
+                    previous_id=after_message_id,
+                    next_id=None,
+                    messages=[],
+                    suggestions=self.suggestions,
+                )
+
+        else:
+            if before_message_id is not None and before_message_id not in self.index.index:
                 return await error(
                     "MESSAGE_NOT_FOUND",
                     "Message with id 'before_message_id' not found",
                     log=gl_log
                 )
+            messages = list(self.index.walk_backward(before_message_id, limit))
 
-        messages.sort(key=lambda ref: ref.msg.id)
 
         return ChatSegmentOut(
             chat_id=chat_info["chat_id"],
@@ -363,7 +439,7 @@ class ChatSystem(System[ChatEvent]):
             ),
             previous_id=messages[0].prev.msg.id if messages and messages[0].prev and messages[0].prev.msg else None,
             next_id=messages[-1].next.msg.id if messages and messages[-1].next and messages[-1].next.msg else None,
-            messages=[m.msg for m in messages],
+            messages=[m.msg for m in messages if m.msg is not None],
             suggestions=self.suggestions,
         )
 
