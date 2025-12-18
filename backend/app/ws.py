@@ -9,6 +9,7 @@ from game.universe import Universe, UniverseNewWorldEvent, UniverseWorldUpdateEv
 from game.game import GameSystem, GameEvent, GameStatusEvent, PlayerLeftEvent, PlayerJoinedEvent, PlayerKickedEvent
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from lstypes.game import GameStatus
+from fastapi.encoders import jsonable_encoder
 
 HEARTBEAT_TIMEOUT = 30
 DISCONNECT_TIMEOUT = 30
@@ -16,6 +17,7 @@ DISCONNECT_TIMEOUT = 30
 
 class WebSocketController:
     def __init__(self, pg_pool: asyncpg.Pool):
+        self._lock = asyncio.Lock()
         self.pg_pool = pg_pool
         self.user_to_ws: dict[int, dict[int, WebSocket]] = {}
         self.pending_disconnect: dict[tuple[int, int], asyncio.Task] = {}
@@ -26,11 +28,14 @@ class WebSocketController:
         try:
             await asyncio.sleep(self.disconnect_timeout)
 
-            game_map = self.user_to_ws.get(game_id) or {}
-            websocket = game_map.get(user_id)
+            async with self._lock:
+                game_map = self.user_to_ws.get(game_id) or {}
+                websocket = game_map.get(user_id)
 
             if websocket is None:
                 game = GameSystem.of(game_id)
+                if game is None:
+                    return
                 async with self.pg_pool.acquire() as conn:
                     await game.disconnect_player(
                         conn=conn,
@@ -42,9 +47,10 @@ class WebSocketController:
             return
         finally:
             key = (game_id, user_id)
-            self.pending_disconnect.pop(key, None)
+            async with self._lock:
+                self.pending_disconnect.pop(key, None)
 
-    async def ws_loop(self, game_id, user_id):
+    async def ws_loop(self, game_id, user_id, websocket: WebSocket):
         last_seen = time.monotonic()
         websocket = self.user_to_ws[game_id][user_id]
         while True:
@@ -65,63 +71,89 @@ class WebSocketController:
     async def connect(self, websocket: WebSocket, user_id: int, game_id: int):
         key = (game_id, user_id)
 
-        task = self.pending_disconnect.pop(key, None)
+        async with self._lock:
+            task = self.pending_disconnect.pop(key, None)
+
         if task:
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+            except Exception:
+                pass
 
         await websocket.accept()
-        self.user_to_ws.setdefault(game_id, {})[user_id] = websocket
+
+        async with self._lock:
+            self.user_to_ws.setdefault(game_id, {})[user_id] = websocket
 
         try:
-            await self.ws_loop(game_id, user_id)
+            await self.ws_loop(game_id, user_id, websocket)
         finally:
-            if self.user_to_ws.get(game_id).get(user_id) is websocket:
-                self.user_to_ws[game_id].pop(user_id, None)
+            need_schedule = False
+            async with self._lock:
+                game_map = self.user_to_ws.get(game_id)
+                if game_map and game_map.get(user_id) is websocket:
+                    game_map.pop(user_id, None)
+                    if not game_map:
+                        self.user_to_ws.pop(game_id, None)
+                    need_schedule = True
+
+            if need_schedule:
                 await self.on_disconnect(game_id, user_id)
 
     async def on_disconnect(self, game_id: int, user_id: int):
         key = (game_id, user_id)
 
-        if key in self.pending_disconnect:
-            return
+        async with self._lock:
+            if key in self.pending_disconnect:
+                return
+            task = asyncio.create_task(self.delayed_disconnect(game_id, user_id))
+            self.pending_disconnect[key] = task
 
-        task = asyncio.create_task(self.delayed_disconnect(game_id, user_id))
-        self.pending_disconnect[key] = task
+    async def disconnect(self, game_id: int, user_id: int, code: int = 1000, purge: bool = False):
+        async with self._lock:
+            game_map = self.user_to_ws.get(game_id)
+            ws = game_map.get(user_id) if game_map else None
 
-    async def disconnect(self, game_id: int, user_id: int, code: int = 1000):
-        game_map = self.user_to_ws.get(game_id) or {}
-        websocket = game_map.get(user_id)
-        if websocket is not None:
+            if purge and ws is not None:
+                game_map.pop(user_id, None)
+                if not game_map:
+                    self.user_to_ws.pop(game_id, None)
+
+        if ws is not None:
             try:
-                await websocket.close(code=code)
-                del websocket
+                await ws.close(code=code)
             except Exception:
                 pass
 
     async def send_json_all(self, message: dict, game_id):
-        for connection in (self.user_to_ws.get(game_id) or {}).values():
-            await connection.send_json(message)
+        async with self._lock:
+            connections = list((self.user_to_ws.get(game_id) or {}).values())
+
+        for connection in connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
 
     async def send_json_users(self, message: dict, game_id: int, user_ids: list[int]):
-        game_map = self.user_to_ws.get(game_id)
-        if not game_map:
-            return
+        async with self._lock:
+            game_map = self.user_to_ws.get(game_id)
+            if not game_map:
+                return
+            conns = [game_map.get(uid) for uid in user_ids]
+            conns = [ws for ws in conns if ws is not None]
 
-        for user_id in user_ids:
-            ws = game_map.get(user_id)
-            if ws is None:
-                continue
+        for ws in conns:
             try:
                 await ws.send_json(message)
             except Exception:
                 pass
 
-    def remove_game(self, game_id: int):
-        if self.user_to_ws.get(game_id) is not None:
+    async def remove_game(self, game_id: int):
+        async with self._lock:
             self.user_to_ws.pop(game_id, None)
 
     async def listen(self, universe: Universe):
@@ -141,32 +173,32 @@ class WebSocketController:
                             case PlayerJoinedEvent(game_id=gid, player=player_out):
                                 await self.send_json_all({
                                     "type": type(ev).__name__,
-                                    "payload": dataclasses.asdict(ev),
+                                    "payload": jsonable_encoder(ev),
                                 },
                                     gid
                                 )
 
                             case PlayerLeftEvent(game_id=gid, player=player_out):
-                                await self.disconnect(game_id=gid, user_id=player_out.user.id)
+                                await self.disconnect(game_id=gid, user_id=player_out.user.id, purge=True)
                                 await self.send_json_all({
                                     "type": type(ev).__name__,
-                                    "payload": dataclasses.asdict(ev),
+                                    "payload": jsonable_encoder(ev),
                                 },
                                     gid
                                 )
 
                             case PlayerKickedEvent(game_id=gid, player=player_out):
-                                await self.disconnect(game_id=gid, user_id=player_out.user.id)
+                                await self.disconnect(game_id=gid, user_id=player_out.user.id, purge=True)
                                 await self.send_json_all({
                                     "type": type(ev).__name__,
-                                    "payload": dataclasses.asdict(ev),
+                                    "payload": jsonable_encoder(ev),
                                 },
                                     gid
                                 )
 
                             case GameStatusEvent(game_id=gid, new_status=new_s):
                                 if new_s == GameStatus.ARCHIVED:
-                                    self.remove_game(gid)
+                                    await self.remove_game(gid)
 
                                 await self.send_json_all({
                                     "type": type(ev).__name__,
@@ -180,7 +212,7 @@ class WebSocketController:
                                 gid = ev.game_id
                                 await self.send_json_all({
                                     "type": type(ev).__name__,
-                                    "payload": dataclasses.asdict(ev),
+                                    "payload": jsonable_encoder(ev),
                                 },
                                     gid
                                 )
