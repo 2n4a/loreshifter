@@ -3,6 +3,8 @@ import contextlib
 import dataclasses
 import datetime
 from mimetypes import guess_all_extensions
+from lstypes.chat import ChatSegmentOut
+from lstypes.message import MessageKind
 
 import asyncpg
 
@@ -751,7 +753,104 @@ class GameSystem(System[GameEvent]):
             metadata: dict | None = None,
             log=gl_log,
     ):
-        raise NotImplementedError("send_message")
+        if sender_id not in self.player_states:
+            return await error("PlayerNotInGame", "Player not in game", log=log)
+
+        # 2) find chat by id (room or per-player chats)
+        chat: ChatSystem | None = None
+        owner_id: int | None = None
+
+        if chat_id == self.game_chat.id:
+            chat = self.game_chat
+            owner_id = None
+        else:
+            for uid, p in self.player_states.items():
+                for c in (p.character_chat, p.player_chat, p.advice_chat):
+                    if c is not None and c.id == chat_id:
+                        chat = c
+                        owner_id = uid
+                        break
+                if chat is not None:
+                    break
+
+        if chat is None:
+            return await error("ChatNotFound", "Chat not found", log=log)
+
+        # 3) access control: private chats only for their owner
+        if owner_id is not None and owner_id != sender_id:
+            return await error("CannotAccessChat", "Cannot access chat", log=log)
+
+        # 4) validate message
+        text = (message or "").strip()
+        if not text:
+            return await error("EmptyMessage", "Message is empty", log=log)
+
+        # 5) enforce writable interfaces (players write only to FULL chats)
+        if chat.interface_type in (
+                ChatInterfaceType.READONLY,
+                ChatInterfaceType.FOREIGN,
+                ChatInterfaceType.FOREIGN_TIMED,
+        ):
+            return await error("CannotAccessChat", "Chat is not writable", log=log)
+
+        # 6) send
+        return await chat.send_message(
+            conn=conn,
+            message_kind=MessageKind.PLAYER,
+            text=text,
+            sender_id=sender_id,
+            special=special,
+            metadata=metadata,
+            log=log,
+        )
+
+    async def get_chat_segment(
+            self,
+            conn: asyncpg.Connection,
+            requester_id: int,
+            chat_id: int,
+            limit: int = 50,
+            before: int | None = None,
+            after: int | None = None,
+            log=gl_log,
+    ) -> ChatSegmentOut | ServiceError:
+        if requester_id not in self.player_states:
+            return await error("PlayerNotInGame", "Player not in game", log=log)
+
+        # find chat by id (same lookup as send_message)
+        chat: ChatSystem | None = None
+        owner_id: int | None = None
+
+        if chat_id == self.game_chat.id:
+            chat = self.game_chat
+            owner_id = None
+        else:
+            for uid, p in self.player_states.items():
+                for c in (p.character_chat, p.player_chat, p.advice_chat):
+                    if c is not None and c.id == chat_id:
+                        chat = c
+                        owner_id = uid
+                        break
+                if chat is not None:
+                    break
+
+        if chat is None:
+            return await error("ChatNotFound", "Chat not found", log=log)
+
+        # private chats: only owner can read
+        if owner_id is not None and owner_id != requester_id:
+            return await error("CannotAccessChat", "Cannot access chat", log=log)
+
+        limit = min(max(limit, 1), 500)
+
+        return await chat.get_messages(
+            conn,
+            limit,
+            before_message_id=before,
+            after_message_id=after,
+            log=log,
+        )
 
     async def game_loop(self):
         raise NotImplementedError("game_loop")
+
