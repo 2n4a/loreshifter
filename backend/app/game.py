@@ -11,7 +11,7 @@ from lstypes.error import (
     ServiceCode,
     raise_for_service_error,
     raise_service_error,
-    unwrap,
+    unwrap, ServiceError,
 )
 from lstypes.player import PlayerOut
 from game.game import GameSystem

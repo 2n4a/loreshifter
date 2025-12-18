@@ -4,7 +4,7 @@ import asyncpg
 
 import dataclasses
 
-from app.logger import log
+from game.logger import gl_log
 from game.universe import Universe, UniverseNewWorldEvent, UniverseWorldUpdateEvent, UniverseGameEvent
 from game.game import GameSystem, GameEvent, GameStatusEvent, PlayerLeftEvent, PlayerJoinedEvent, PlayerKickedEvent
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -18,13 +18,14 @@ DISCONNECT_TIMEOUT = 30
 
 
 class WebSocketController:
-    def __init__(self, pg_pool: asyncpg.Pool):
+    def __init__(self, pg_pool: asyncpg.Pool, log=gl_log):
         self._lock = asyncio.Lock()
         self.pg_pool = pg_pool
         self.user_to_ws: dict[int, dict[int, WebSocket]] = {}
         self.pending_disconnect: dict[tuple[int, int], asyncio.Task] = {}
         self.disconnect_timeout = DISCONNECT_TIMEOUT
         self.heartbeat_timeout = HEARTBEAT_TIMEOUT
+        self.log = log
 
     async def delayed_disconnect(self, game_id: int, user_id: int):
         try:
@@ -50,7 +51,7 @@ class WebSocketController:
         finally:
             key = (game_id, user_id)
             async with self._lock:
-                self.pending_disconnect.pop(key, None)
+                _ = self.pending_disconnect.pop(key, None)
 
     async def ws_loop(self, game_id, user_id, websocket: WebSocket):
         last_seen = time.monotonic()
@@ -82,8 +83,8 @@ class WebSocketController:
                 await task
             except asyncio.CancelledError:
                 pass
-            except Exception:
-                pass
+            except Exception as e:
+                await self.log.awarning("Failed to cancel pending disconnect", e)
 
         await websocket.accept()
 
@@ -139,7 +140,7 @@ class WebSocketController:
             return True
 
         except Exception as e:
-            log.warning("WebSocketController send failed", game_id=game_id, user_id=user_id, err=str(e))
+            await self.log.awarning("WebSocketController send failed", game_id=game_id, user_id=user_id, err=str(e))
 
             removed = False
             async with self._lock:
@@ -184,7 +185,7 @@ class WebSocketController:
     async def listen(self, universe: Universe):
         try:
             async for event in universe.listen():
-                log.info("Received %s", event)
+                await self.log.ainfo("Received %s", event)
 
                 match event:
                     case UniverseNewWorldEvent(world=world):
@@ -243,7 +244,7 @@ class WebSocketController:
                                 )
 
                     case _:
-                        log.warning("Unhandled UniverseEvent: %s (%s)", event, type(event))
+                        await self.log.awarning("Unhandled UniverseEvent: %s (%s)", event, type(event))
         except Exception as e:
-            log.error("Listen task failed: %s", e)
+            await self.log.aerror("Listen task failed: %s", e)
             raise
