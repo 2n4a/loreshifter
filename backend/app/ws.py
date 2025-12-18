@@ -11,6 +11,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from lstypes.game import GameStatus
 from fastapi.encoders import jsonable_encoder
 
+from starlette.websockets import WebSocketState
+
 HEARTBEAT_TIMEOUT = 30
 DISCONNECT_TIMEOUT = 30
 
@@ -128,29 +130,52 @@ class WebSocketController:
             except Exception:
                 pass
 
-    async def send_json_all(self, message: dict, game_id):
-        async with self._lock:
-            connections = list((self.user_to_ws.get(game_id) or {}).values())
+    async def _safe_send(self, game_id: int, user_id: int, ws: WebSocket, message: dict) -> bool:
+        try:
+            if getattr(ws, "client_state", None) == WebSocketState.DISCONNECTED:
+                raise RuntimeError("WebSocket already disconnected")
 
-        for connection in connections:
+            await ws.send_json(message)
+            return True
+
+        except Exception as e:
+            log.warning("WebSocketController send failed", game_id=game_id, user_id=user_id, err=str(e))
+
+            removed = False
+            async with self._lock:
+                game_map = self.user_to_ws.get(game_id)
+                if game_map and game_map.get(user_id) is ws:
+                    game_map.pop(user_id, None)
+                    if not game_map:
+                        self.user_to_ws.pop(game_id, None)
+                    removed = True
+
             try:
-                await connection.send_json(message)
+                await ws.close(code=1011)
             except Exception:
                 pass
+
+            if removed:
+                await self.on_disconnect(game_id, user_id)
+
+            return False
+
+    async def send_json_all(self, message: dict, game_id):
+        async with self._lock:
+            game_map = self.user_to_ws.get(game_id) or {}
+            conns = list(game_map.items())
+
+        for user_id, ws in conns:
+            await self._safe_send(game_id, user_id, ws, message)
 
     async def send_json_users(self, message: dict, game_id: int, user_ids: list[int]):
         async with self._lock:
-            game_map = self.user_to_ws.get(game_id)
-            if not game_map:
-                return
-            conns = [game_map.get(uid) for uid in user_ids]
-            conns = [ws for ws in conns if ws is not None]
+            game_map = self.user_to_ws.get(game_id) or {}
+            conns = [(uid, game_map.get(uid)) for uid in user_ids]
+            conns = [(uid, ws) for uid, ws in conns if ws is not None]
 
-        for ws in conns:
-            try:
-                await ws.send_json(message)
-            except Exception:
-                pass
+        for user_id, ws in conns:
+            await self._safe_send(game_id, user_id, ws, message)
 
     async def remove_game(self, game_id: int):
         async with self._lock:
