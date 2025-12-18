@@ -1,16 +1,17 @@
 import typing
 from typing import Literal, Annotated
 
-from fastapi import APIRouter, Query
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel, Field
+from fastapi.websockets import WebSocket
 
-from app.dependencies import Conn, AuthDep, U, UserDep, Log
+from app.dependencies import Conn, AuthDep, U, W, UserDep, Log
 from game.chat import ChatSystem
 from lstypes.error import (
     ServiceCode,
     raise_for_service_error,
     raise_service_error,
-    unwrap,
+    unwrap, ServiceError,
 )
 from lstypes.player import PlayerOut
 from game.game import GameSystem
@@ -529,3 +530,23 @@ async def leave_game(
     if result is not None:
         raise_for_service_error(result)
     return {}
+
+
+@router.websocket("/api/v0/game/{game_id}/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    game_id: int,
+    conn: Conn,
+    user: AuthDep,
+    ws_controller: W,
+    log: Log
+):
+    if user is None:
+        raise HTTPException(status_code=401, detail="User is not authenticated")
+    game = GameSystem.of(game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    player_out = await game.get_player(conn, user.id, log=log)
+    if not isinstance(player_out, ServiceError):
+        await ws_controller.connect(websocket, user.id, game_id)

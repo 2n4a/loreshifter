@@ -51,7 +51,13 @@ async def get_universe():
     return state.universe
 
 
+async def get_ws_controller():
+    if state is None:
+        raise Exception("State is not initialized")
+    return state.ws_controller
+
 U = Annotated[Universe, Depends(get_universe)]
+W = Annotated[WebSocketController, Depends(get_ws_controller)]
 
 
 async def get_jwt(
@@ -142,7 +148,7 @@ async def livespan(_app: FastAPI):
         dsn=config.POSTGRES_URL, init=init_connection
     ) as pg_pool:
         universe = Universe()
-        ws_controller = WebSocketController()
+        ws_controller = WebSocketController(pg_pool)
         async with asyncio.TaskGroup() as bg_tasks:
             bg_tasks.create_task(ws_controller.listen(universe))
 
