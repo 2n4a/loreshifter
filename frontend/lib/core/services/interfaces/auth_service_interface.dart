@@ -14,8 +14,11 @@ abstract class AuthService {
   /// Проверка авторизации
   Future<bool> isAuthenticated();
 
-  /// URL для авторизации
-  String getLoginUrl();
+  /// Получить URL для OAuth2 авторизации
+  Future<String> getLoginUrl({String? provider});
+
+  /// Создать временного пользователя для тестирования (устанавливает cookie)
+  Future<void> testLogin({String? name, String? email});
 
   /// Выход из системы
   Future<void> logout();

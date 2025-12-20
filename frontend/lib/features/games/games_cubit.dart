@@ -93,14 +93,14 @@ class GamesCubit extends Cubit<GamesState> {
   }
 
   // Присоединиться к игре
-  Future<void> joinGame({int? gameId, String? code, bool force = false}) async {
+  Future<void> joinGame({int? gameId, String? code}) async {
     emit(GamesLoading());
     try {
       Game game;
       if (gameId != null) {
-        game = await _gameService.joinGameById(gameId, force: force);
+        game = await _gameService.joinGameById(gameId);
       } else if (code != null) {
-        game = await _gameService.joinGameByCode(code, force: force);
+        game = await _gameService.joinGameByCode(code);
       } else {
         throw Exception('Необходимо указать gameId или code');
       }
@@ -111,10 +111,10 @@ class GamesCubit extends Cubit<GamesState> {
   }
 
   // Покинуть игру
-  Future<void> leaveGame() async {
+  Future<void> leaveGame(int gameId) async {
     emit(GamesLoading());
     try {
-      await _gameService.leaveGame();
+      await _gameService.leaveGame(gameId);
       emit(GameLeft());
     } catch (e) {
       emit(GamesFailure(e.toString()));
@@ -125,7 +125,7 @@ class GamesCubit extends Cubit<GamesState> {
   Future<Game> createGame({
     required int worldId,
     required String name,
-    required bool isPublic,
+    required bool public,
     required int maxPlayers,
   }) async {
     emit(GamesLoading());
@@ -133,7 +133,32 @@ class GamesCubit extends Cubit<GamesState> {
       final game = await _gameService.createGame(
         worldId: worldId,
         name: name,
-        isPublic: isPublic,
+        public: public,
+        maxPlayers: maxPlayers,
+      );
+      emit(GameLoaded(game));
+      return game;
+    } catch (e) {
+      emit(GamesFailure(e.toString()));
+      rethrow;
+    }
+  }
+
+  // Обновить игру
+  Future<Game> updateGame({
+    required int id,
+    bool? public,
+    String? name,
+    int? hostId,
+    int? maxPlayers,
+  }) async {
+    emit(GamesLoading());
+    try {
+      final game = await _gameService.updateGame(
+        id: id,
+        public: public,
+        name: name,
+        hostId: hostId,
         maxPlayers: maxPlayers,
       );
       emit(GameLoaded(game));

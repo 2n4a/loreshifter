@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/core/services/world_service.dart';
 import '/features/auth/auth_cubit.dart';
+import '/features/worlds/worlds_cubit.dart';
 
 class CreateWorldScreen extends StatefulWidget {
   const CreateWorldScreen({super.key});
@@ -41,7 +42,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
       final worldService = context.read<WorldService>();
       final world = await worldService.createWorld(
         name: _nameController.text,
-        isPublic: _isPublic,
+        public: _isPublic,
         description:
             _descriptionController.text.isNotEmpty
                 ? _descriptionController.text
@@ -49,6 +50,12 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
       );
 
       if (!mounted) return;
+
+      // Refresh the user worlds list
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated) {
+        context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+      }
 
   // После создания возвращаемся в домашний экран и показываем вкладку "Мои миры"
   // (Tab index 1 соответствует второй вкладке — "МОИ МИРЫ")

@@ -35,12 +35,12 @@ class Game {
       public: json['public'] as bool,
       name: json['name'] as String,
       world: World.fromJson(json['world']),
-      hostId: json['hostId'] as int,
+      hostId: json['host_id'] as int,
       players: (json['players'] as List)
           .map((e) => Player.fromJson(e as Map<String, dynamic>))
           .toList(),
-      createdAt: DateTime.parse(json['createdAt']),
-      maxPlayers: json['maxPlayers'] as int,
+      createdAt: DateTime.parse(json['created_at']),
+      maxPlayers: json['max_players'] as int,
       status: _parseGameStatus(json['status'] as String),
     );
   }
@@ -67,10 +67,10 @@ class Game {
       'public': public,
       'name': name,
       'world': world.toJson(),
-      'hostId': hostId,
+      'host_id': hostId,
       'players': players.map((e) => e.toJson()).toList(),
-      'createdAt': createdAt.toIso8601String(),
-      'maxPlayers': maxPlayers,
+      'created_at': createdAt.toIso8601String(),
+      'max_players': maxPlayers,
       'status': status.toString().split('.').last,
     };
   }

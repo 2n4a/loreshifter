@@ -37,7 +37,7 @@ class MockWorldService extends BaseService implements WorldService {
     int offset = 0,
     String? sort,
     String? order,
-    bool? isPublic,
+    bool? public,
     String? filter,
   }) async {
     await Future.delayed(const Duration(milliseconds: 1000));
@@ -46,9 +46,9 @@ class MockWorldService extends BaseService implements WorldService {
     var filteredWorlds = List<World>.from(_mockWorlds);
 
     // Фильтрация по публичности
-    if (isPublic != null) {
+    if (public != null) {
       filteredWorlds =
-          filteredWorlds.where((world) => world.public == isPublic).toList();
+          filteredWorlds.where((world) => world.public == public).toList();
     }
 
     // Фильтрация по owner_id
@@ -114,7 +114,7 @@ class MockWorldService extends BaseService implements WorldService {
   @override
   Future<World> createWorld({
     required String name,
-    required bool isPublic,
+    required bool public,
     String? description,
     dynamic data,
   }) async {
@@ -126,7 +126,7 @@ class MockWorldService extends BaseService implements WorldService {
     final newWorld = World(
       id: newId,
       name: name,
-      public: isPublic,
+      public: public,
       createdAt: now,
       lastUpdatedAt: now,
       owner: _mockUser,
@@ -145,7 +145,7 @@ class MockWorldService extends BaseService implements WorldService {
   Future<World> updateWorld({
     required int id,
     String? name,
-    bool? isPublic,
+    bool? public,
     String? description,
     dynamic data,
   }) async {
@@ -160,7 +160,7 @@ class MockWorldService extends BaseService implements WorldService {
     final updatedWorld = World(
       id: id,
       name: name ?? oldWorld.name,
-      public: isPublic ?? oldWorld.public,
+      public: public ?? oldWorld.public,
       createdAt: oldWorld.createdAt,
       lastUpdatedAt: DateTime.now(),
       owner: oldWorld.owner,
@@ -198,7 +198,7 @@ class MockWorldService extends BaseService implements WorldService {
 
     return createWorld(
       name: "${originalWorld.name} (копия)",
-      isPublic: originalWorld.public,
+      public: originalWorld.public,
       description: originalWorld.description,
       data: originalWorld.data,
     );

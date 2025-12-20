@@ -16,18 +16,18 @@ class Player {
   factory Player.fromJson(Map<String, dynamic> json) {
     return Player(
       user: User.fromJson(json['user']),
-      isReady: json['isReady'] as bool,
-      isHost: json['isHost'] as bool,
-      isSpectator: json['isSpectator'] as bool,
+      isReady: json['is_ready'] as bool,
+      isHost: json['is_host'] as bool,
+      isSpectator: json['is_spectator'] as bool,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'user': user.toJson(),
-      'isReady': isReady,
-      'isHost': isHost,
-      'isSpectator': isSpectator,
+      'is_ready': isReady,
+      'is_host': isHost,
+      'is_spectator': isSpectator,
     };
   }
 }

@@ -17,14 +17,14 @@ class MockAuthService extends BaseService implements AuthService {
   @override
   Future<User> getCurrentUser() async {
     // Эмулируем задержку сети
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 100));
     return _mockUser;
   }
 
   // Получить данные пользователя по id
   @override
   Future<User> getUserById(int id) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 100));
 
     if (id == 1) return _mockUser;
 
@@ -41,20 +41,28 @@ class MockAuthService extends BaseService implements AuthService {
   // Проверка авторизации
   @override
   Future<bool> isAuthenticated() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 100));
     return true; // Для демо всегда считаем, что пользователь авторизован
   }
 
   // URL для авторизации (заглушка)
   @override
-  String getLoginUrl() {
-    return "${apiClient.baseUrl}/login";
+  Future<String> getLoginUrl({String? provider}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return "${apiClient.baseUrl}/login?provider=${provider ?? 'github'}";
+  }
+
+  // Создать временного пользователя (в моке просто эмулируем задержку)
+  @override
+  Future<void> testLogin({String? name, String? email}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // В реальной реализации здесь устанавливается cookie
   }
 
   // Выход из системы
   @override
   Future<void> logout() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 100));
     // Заглушка - ничего не делаем
   }
 }

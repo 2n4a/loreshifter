@@ -66,7 +66,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             _nameController.text.isNotEmpty
                 ? _nameController.text
                 : 'Игра в мире ${_selectedWorld!.name}',
-        isPublic: _isPublic,
+        public: _isPublic,
         maxPlayers: _maxPlayers,
       );
 

@@ -72,7 +72,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
       final updatedWorld = await worldService.updateWorld(
         id: widget.worldId,
         name: _nameController.text,
-        isPublic: _isPublic,
+        public: _isPublic,
         description:
             _descriptionController.text.isNotEmpty
                 ? _descriptionController.text

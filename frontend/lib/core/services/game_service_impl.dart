@@ -14,6 +14,8 @@ class GameServiceImpl extends BaseService implements GameService {
     String? sort,
     String? order,
     String? filter,
+    bool? public,
+    bool? joined,
   }) async {
     developer.log('GameService: Запрос списка игр');
     final queryParams = <String, dynamic>{
@@ -22,6 +24,8 @@ class GameServiceImpl extends BaseService implements GameService {
       if (sort != null) 'sort': sort,
       if (order != null) 'order': order,
       if (filter != null) 'filter': filter,
+      if (public != null) 'public': public,
+      if (joined != null) 'joined': joined,
     };
 
     return apiClient.get<List<Game>>(
@@ -63,7 +67,7 @@ class GameServiceImpl extends BaseService implements GameService {
   @override
   Future<Game> createGame({
     required int worldId,
-    required bool isPublic,
+    required bool public,
     String? name,
     int? maxPlayers,
   }) async {
@@ -71,10 +75,10 @@ class GameServiceImpl extends BaseService implements GameService {
     return apiClient.post<Game>(
       '/game',
       data: {
-        'worldId': worldId,
-        'public': isPublic,
+        'world_id': worldId,
+        'public': public,
         if (name != null) 'name': name,
-        if (maxPlayers != null) 'maxPlayers': maxPlayers,
+        if (maxPlayers != null) 'max_players': maxPlayers,
       },
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
     );
@@ -83,7 +87,7 @@ class GameServiceImpl extends BaseService implements GameService {
   @override
   Future<Game> updateGame({
     required int id,
-    bool? isPublic,
+    bool? public,
     String? name,
     int? hostId,
     int? maxPlayers,
@@ -92,48 +96,38 @@ class GameServiceImpl extends BaseService implements GameService {
     return apiClient.put<Game>(
       '/game/$id',
       data: {
-        if (isPublic != null) 'public': isPublic,
+        if (public != null) 'public': public,
         if (name != null) 'name': name,
-        if (hostId != null) 'hostId': hostId,
-        if (maxPlayers != null) 'maxPlayers': maxPlayers,
+        if (hostId != null) 'host_id': hostId,
+        if (maxPlayers != null) 'max_players': maxPlayers,
       },
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
     );
   }
 
   @override
-  Future<Game> joinGameById(int id, {bool force = false}) async {
-    developer.log('GameService: Присоединение к игре $id (force: $force)');
+  Future<Game> joinGameById(int id) async {
+    developer.log('GameService: Присоединение к игре $id');
     return apiClient.post<Game>(
       '/game/$id/join',
-      queryParameters: {'force': force ? 1 : 0},
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
     );
   }
 
   @override
-  Future<Game> joinGameByCode(String code, {bool force = false}) async {
-    developer.log('GameService: Присоединение к игре по коду $code (force: $force)');
+  Future<Game> joinGameByCode(String code) async {
+    developer.log('GameService: Присоединение к игре по коду $code');
     return apiClient.post<Game>(
       '/game/code/$code/join',
-      queryParameters: {'force': force ? 1 : 0},
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
     );
   }
 
   @override
-  Future<void> leaveGame({int? gameId}) async {
-    developer.log('GameService: Выход из игры');
-    int id;
-    if (gameId != null) {
-      id = gameId;
-    } else {
-      // Нужно получить текущую игру, чтобы знать ID
-      final currentGame = await getCurrentGame();
-      id = currentGame.id;
-    }
+  Future<void> leaveGame(int gameId) async {
+    developer.log('GameService: Выход из игры $gameId');
     await apiClient.post<Map<String, dynamic>>(
-      '/game/$id/leave',
+      '/game/$gameId/leave',
       fromJson: (data) => data as Map<String, dynamic>,
     );
   }

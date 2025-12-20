@@ -9,6 +9,8 @@ abstract class GameService {
     String? sort,
     String? order,
     String? filter,
+    bool? public,
+    bool? joined,
   });
 
   /// Получить информацию о игре по ID
@@ -23,7 +25,7 @@ abstract class GameService {
   /// Создать новую игру
   Future<Game> createGame({
     required int worldId,
-    required bool isPublic,
+    required bool public,
     String? name,
     int? maxPlayers,
   });
@@ -31,18 +33,18 @@ abstract class GameService {
   /// Обновить информацию об игре
   Future<Game> updateGame({
     required int id,
-    bool? isPublic,
+    bool? public,
     String? name,
     int? hostId,
     int? maxPlayers,
   });
 
   /// Присоединиться к игре по ID
-  Future<Game> joinGameById(int id, {bool force = false});
+  Future<Game> joinGameById(int id);
 
   /// Присоединиться к игре по коду
-  Future<Game> joinGameByCode(String code, {bool force = false});
+  Future<Game> joinGameByCode(String code);
 
-  /// Покинуть текущую игру
-  Future<void> leaveGame({int? gameId});
+  /// Покинуть игру
+  Future<void> leaveGame(int gameId);
 }

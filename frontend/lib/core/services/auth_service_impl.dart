@@ -56,38 +56,66 @@ class AuthServiceImpl extends BaseService implements AuthService {
   }
 
   @override
-  String getLoginUrl() {
-    // GitHub OAuth - согласно бекенду
-    final url = "${apiClient.baseUrl}/login?provider=github";
-    developer.log('AuthService: URL для входа: $url');
-    return url;
+  Future<String> getLoginUrl({String? provider}) async {
+    developer.log('AuthService: Получение URL для OAuth2 авторизации');
+    
+    // Определяем URL для редиректа обратно в приложение
+    final callbackUrl = Uri.base.origin;
+    
+    final queryParams = <String, String>{
+      'provider': provider ?? 'github',
+      'redirect': 'false', // Получаем URL в JSON, а не делаем редирект сразу
+      'to': callbackUrl, // Куда редиректить после авторизации
+    };
+
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        '/login',
+        queryParameters: queryParams,
+        fromJson: (data) => data as Map<String, dynamic>,
+      );
+      
+      final loginUrl = response['url'] as String;
+      developer.log('AuthService: Получен URL для входа: $loginUrl (redirect to: ${queryParams['to']})');
+      return loginUrl;
+    } catch (e, stackTrace) {
+      developer.log('AuthService: Ошибка при получении URL для входа', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> testLogin({String? name, String? email}) async {
+    developer.log('AuthService: Создание временного пользователя');
+    
+    final queryParams = <String, String>{};
+    if (name != null) queryParams['name'] = name;
+    if (email != null) queryParams['email'] = email;
+    
+    try {
+      await apiClient.get<Map<String, dynamic>>(
+        '/test-login',
+        queryParameters: queryParams,
+        fromJson: (data) => data as Map<String, dynamic>,
+      );
+      developer.log('AuthService: Временный пользователь создан и cookie установлена');
+    } catch (e, stackTrace) {
+      developer.log('AuthService: Ошибка при создании временного пользователя', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
   }
 
   @override
   Future<void> logout() async {
     developer.log('AuthService: Выход из системы GET /logout');
-    await apiClient.get<Map<String, dynamic>>(
-      '/logout',
-      fromJson: (data) => data as Map<String, dynamic>,
-    );
-  }
-
-  Future<User> testLogin({String? username, String? email}) async {
-    developer.log('AuthService: Тестовый вход GET /test-login');
-    final queryParams = <String, dynamic>{};
-    if (username != null) queryParams['username'] = username;
-    if (email != null) queryParams['email'] = email;
-
     try {
-      final response = await apiClient.get<Map<String, dynamic>>(
-        '/test-login',
-        queryParameters: queryParams,
+      await apiClient.get<Map<String, dynamic>>(
+        '/logout',
         fromJson: (data) => data as Map<String, dynamic>,
       );
-
-      return await getCurrentUser();
-    } catch (e) {
-      developer.log('AuthService: Ошибка тестового входа', error: e);
+      developer.log('AuthService: Успешный выход из системы');
+    } catch (e, stackTrace) {
+      developer.log('AuthService: Ошибка при выходе из системы', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }

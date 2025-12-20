@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '/features/chat/domain/models/game_state.dart';
 import '/features/chat/domain/models/chat.dart';
 import '/features/chat/domain/models/message.dart';
 import '/features/auth/auth_cubit.dart';
@@ -19,20 +20,24 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  dynamic _gameState;
+  GameState? _gameState;
   ChatSegment? _currentChat;
   bool _isSending = false;
   int _selectedTabIndex = 0;
   int? _currentUserId;
+  late TabController _tabController;
+  StreamSubscription<Map<String, dynamic>>? _wsSubscription;
 
   @override
   void initState() {
     super.initState();
     _getCurrentUserId();
+    _tabController = TabController(length: 1, vsync: this); // Default to 1 tab
     _loadGameState();
   }
 
@@ -43,116 +48,129 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+
   Future<void> _loadGameState() async {
     try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is GameStateLoaded) {
-          if (!mounted) return;
-          setState(() {
-            _gameState = state.gameState;
-          });
-          if (_gameState['gameChat'] != null) {
-            _loadChat(0);
-          }
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
+      await context.read<GameplayCubit>().loadGameState(widget.gameId);
+      final state = context.read<GameplayCubit>().state;
+      if (state is GameStateLoaded) {
+        setState(() {
+          _gameState = state.gameState;
+          _updateTabController();
+        });
+        // Load the first chat by default
+        if (_gameState != null) {
+          _loadChat(0);
         }
-      });
-      await cubit.loadGameState();
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки игры: $e')),
+        );
       }
     }
   }
 
-  Future<void> _loadChat(int chatIndex) async {
-    final chatId = _getChatIdFromIndex(chatIndex);
-    if (chatId != null) {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is ChatLoaded) {
-          if (!mounted) return;
-          setState(() {
-            _currentChat = state.chatSegment;
-            _selectedTabIndex = chatIndex;
-          });
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _scrollToBottom(),
-          );
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка загрузки чата: ${state.message}')),
-            );
-          }
-          subscription.cancel();
+  void _updateTabController() {
+    if (_gameState == null) return;
+
+    // Calculate number of tabs: General chat + Game chat + n player chats
+    int tabCount = 2; // General + Game chat
+    tabCount += _gameState!.playerChats.length; // + player chats
+
+    if (_tabController.length != tabCount) {
+      _tabController.dispose();
+      _tabController = TabController(length: tabCount, vsync: this);
+      _tabController.addListener(() {
+        if (!_tabController.indexIsChanging) {
+          _loadChat(_tabController.index);
         }
       });
-      await cubit.loadChat(chatId: chatId);
     }
   }
 
-  int? _getChatIdFromIndex(int index) {
+  Future<void> _loadChat(int index) async {
+    final chatSegment = _getChatFromIndex(index);
+    if (chatSegment != null) {
+      setState(() {
+        _currentChat = chatSegment;
+        _selectedTabIndex = index;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
+  }
+
+  ChatSegment? _getChatFromIndex(int index) {
     if (_gameState == null) return null;
+
     if (index == 0) {
-      return _gameState['gameChat']?['chatId'];
-    } else if (_gameState['playerChats'] != null &&
-        index - 1 < (_gameState['playerChats'] as List).length) {
-      return _gameState['playerChats']?[index - 1]?['chatId'];
-    } else if (_gameState['adviceChats'] != null) {
-      final playerChatsCount =
-          (_gameState['playerChats'] as List?)?.length ?? 0;
-      if (index - 1 - playerChatsCount <
-          (_gameState['adviceChats'] as List).length) {
-        return _gameState['adviceChats']?[index -
-            1 -
-            playerChatsCount]?['chatId'];
+      // General chat - use character creation chat or game chat as fallback
+      return _gameState!.gameChat ?? _gameState!.characterCreationChat;
+    } else if (index == 1) {
+      // Game chat
+      return _gameState!.gameChat;
+    } else {
+      // Player chats (index - 2)
+      final playerChatIndex = index - 2;
+      if (playerChatIndex < _gameState!.playerChats.length) {
+        return _gameState!.playerChats[playerChatIndex];
       }
     }
     return null;
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.isEmpty || _currentChat == null) return;
-    final text = _messageController.text;
-    _messageController.clear();
-    if (!mounted) return;
-    setState(() => _isSending = true);
+  Future<void> _loadChatById(int chatId) async {
     try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is MessageSent) {
-          _loadChat(_selectedTabIndex);
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка отправки: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      await cubit.sendMessage(chatId: _currentChat!.chatId, text: text);
+      await context.read<GameplayCubit>().loadChat(
+        gameId: widget.gameId,
+        chatId: chatId,
+      );
+      final state = context.read<GameplayCubit>().state;
+      if (state is ChatLoaded) {
+        setState(() {
+          _currentChat = state.chatSegment;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки чата: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.isEmpty || _currentChat == null) return;
+    
+    final text = _messageController.text;
+    _messageController.clear();
+    
+    setState(() => _isSending = true);
+    
+    try {
+      await context.read<GameplayCubit>().sendMessage(
+        gameId: widget.gameId,
+        chatId: _currentChat!.chatId,
+        text: text,
+      );
+      
+      // Reload the current chat
+      if (_selectedTabIndex == 0) {
+        // General chat - reload game state
+        await _loadGameState();
+      } else {
+        // Reload game state to get updated chats
+        await _loadGameState();
+        _loadChat(_selectedTabIndex);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -172,20 +190,41 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _selectSuggestion(String suggestion) {
-    _messageController.text = suggestion;
-  }
+  bool _canWriteInCurrentChat() {
+    if (_gameState == null || _currentChat == null) return false;
 
-  Future<void> _leaveGame() async {
-    await context.read<GamesCubit>().leaveGame();
-    if (!mounted) return;
-    context.go('/');
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) return false;
+
+    final currentPlayer = _gameState!.game.players.firstWhere(
+      (p) => p.user.id == authState.user.id,
+      orElse: () => _gameState!.game.players.first,
+    );
+
+    // Spectators can't write in game chat (index 1)
+    if (_selectedTabIndex == 1 && currentPlayer.isSpectator) {
+      return false;
+    }
+
+    // Player chats: only owner can write
+    if (_selectedTabIndex >= 2) {
+      final playerChatIndex = _selectedTabIndex - 2;
+      if (playerChatIndex < _gameState!.playerChats.length) {
+        final playerChat = _gameState!.playerChats[playerChatIndex];
+        return playerChat.chatOwner == authState.user.id;
+      }
+    }
+
+    // General chat: everyone can write
+    return true;
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _tabController.dispose();
+    _wsSubscription?.cancel();
     super.dispose();
   }
 
@@ -195,243 +234,74 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Игра'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: _leaveGame,
-            tooltip: 'Выйти из игры',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildGameStatusBar(cs),
-          if (_gameState == null)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else
-            Expanded(
-              child: Column(
-                children: [
-                  _buildChatTabs(cs),
-                  Expanded(
-                    child:
-                        _currentChat == null
-                            ? _buildEmptyChat(cs)
-                            : _buildChatMessages(cs),
-                  ),
-                  if (_currentChat != null) _buildSuggestions(cs),
-                  _buildMessageInput(cs),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGameStatusBar(ColorScheme cs) {
-    if (_gameState == null) return const SizedBox.shrink();
-    final status = _gameState['status'] as String? ?? 'waiting';
-    String statusText;
-    Color statusColor;
-    switch (status) {
-      case 'waiting':
-        statusText = 'Ожидание игроков';
-        statusColor = Colors.blue;
-        break;
-      case 'playing':
-        statusText = 'Игра идет';
-        statusColor = Colors.green;
-        break;
-      case 'finished':
-        statusText = 'Игра завершена';
-        statusColor = Colors.orange;
-        break;
-      default:
-        statusText = 'Статус неизвестен';
-        statusColor = cs.onSurfaceVariant;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: statusColor.withValues(alpha: 0.5),
-            width: 1,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+          tooltip: 'На главную',
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            statusText,
-            style: TextStyle(
-              color: cs.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          if (status == 'waiting' && _isPlayerHost())
-            SizedBox(
-              width: 148,
-              child: NeonButton(
-                text: 'Начать игру',
-                onPressed: _startGame,
-                style: NeonButtonStyle.filled,
-                color: Colors.green,
+      body: BlocListener<GameplayCubit, GameplayState>(
+        listener: (context, state) {
+          if (state is GameStateLoaded) {
+            setState(() {
+              _gameState = state.gameState;
+              _updateTabController();
+            });
+          } else if (state is ChatLoaded && _selectedTabIndex == 0) {
+            setState(() {
+              _currentChat = state.chatSegment;
+            });
+          }
+        },
+        child: Column(
+          children: [
+            if (_gameState == null)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildChatTabs(cs),
+                    Expanded(
+                      child: _currentChat == null
+                          ? _buildEmptyChat(cs)
+                          : _buildChatMessages(cs),
+                    ),
+                    if (_currentChat != null) _buildSuggestions(cs),
+                    _buildMessageInput(cs),
+                  ],
+                ),
               ),
-            ),
-          if (status == 'finished' && _isPlayerHost())
-            SizedBox(
-              width: 168,
-              child: NeonButton(
-                text: 'Начать заново',
-                onPressed: _restartGame,
-                style: NeonButtonStyle.filled,
-                color: Colors.green,
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
-  }
-
-  bool _isPlayerHost() {
-    if (_gameState == null || _currentUserId == null) return false;
-    final hostId = _gameState['game']?['hostId'];
-    return hostId == _currentUserId;
-  }
-
-  Future<void> _startGame() async {
-    try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      
-      subscription = cubit.stream.listen((state) {
-        if (state is GameStarted) {
-          if (!mounted) return;
-          subscription.cancel();
-          _loadGameState();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка при запуске игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      
-      await cubit.startGame();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка при запуске игры: $e')));
-      }
-    }
-  }
-
-  Future<void> _restartGame() async {
-    try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      
-      subscription = cubit.stream.listen((state) {
-        if (state is GameRestarted) {
-          if (!mounted) return;
-          subscription.cancel();
-          _loadGameState();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка при перезапуске игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      
-      await cubit.restartGame();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при перезапуске игры: $e')),
-        );
-      }
-    }
   }
 
   Widget _buildChatTabs(ColorScheme cs) {
     if (_gameState == null) return const SizedBox.shrink();
 
-    final tabs = <Widget>[];
-    tabs.add(_buildTabItem('Общий', 0, cs));
-
-    final playerChats = _gameState['playerChats'] as List?;
-    if (playerChats != null) {
-      for (int i = 0; i < playerChats.length; i++) {
-        final playerChat = playerChats[i];
-        final playerName =
-            playerChat['playerName'] as String? ?? 'Игрок ${i + 1}';
-        tabs.add(_buildTabItem(playerName, i + 1, cs));
-      }
-    }
-
-    final adviceChats = _gameState['adviceChats'] as List?;
-    if (adviceChats != null) {
-      final playerChatsCount = playerChats?.length ?? 0;
-      for (int i = 0; i < adviceChats.length; i++) {
-        final adviceChat = adviceChats[i];
-        final adviceTitle = adviceChat['title'] as String? ?? 'Совет ${i + 1}';
-        tabs.add(_buildTabItem(adviceTitle, i + 1 + playerChatsCount, cs));
-      }
-    }
-
     return Container(
       color: cs.surface,
-      height: 48,
-      child: ListView(scrollDirection: Axis.horizontal, children: tabs),
-    );
-  }
-
-  Widget _buildTabItem(String text, int index, ColorScheme cs) {
-    final isSelected = _selectedTabIndex == index;
-    final bg = isSelected ? cs.primary : Colors.transparent;
-    final border = isSelected ? Colors.transparent : cs.outlineVariant;
-    final fg = isSelected ? Colors.white : cs.onSurfaceVariant;
-
-    return GestureDetector(
-      onTap: () => _loadChat(index),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: bg,
-          border: Border.all(color: border, width: 1),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: fg,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabs: [
+          const Tab(text: 'Общий чат'),
+          const Tab(text: 'Игровой чат'),
+          ..._gameState!.playerChats.map((playerChat) {
+            // Find player name from game.players using chatOwner
+            String playerName = 'Игрок';
+            if (playerChat.chatOwner != null) {
+              final player = _gameState!.game.players.firstWhere(
+                (p) => p.user.id == playerChat.chatOwner,
+                orElse: () => _gameState!.game.players.first,
+              );
+              playerName = player.user.name;
+            }
+            return Tab(text: 'Чат $playerName');
+          }),
+        ],
       ),
     );
   }
@@ -454,7 +324,7 @@ class _GameScreenState extends State<GameScreen> {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
-            Text('Выберите чат', style: TextStyle(color: cs.onSurfaceVariant)),
+            Text('Загрузка чата...', style: TextStyle(color: cs.onSurfaceVariant)),
           ],
         ),
       ),
@@ -481,11 +351,6 @@ class _GameScreenState extends State<GameScreen> {
     BorderRadius borderRadius;
     Color borderColor = Colors.transparent;
     Color textColor = cs.onSurface;
-    TextStyle nameStyle = TextStyle(
-      color: cs.onSurfaceVariant,
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-    );
 
     if (message.sender.type == 'system') {
       bubbleColor = cs.surfaceContainerHighest;
@@ -551,11 +416,17 @@ class _GameScreenState extends State<GameScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if ((!isCurrentUser && message.sender.type == 'user') ||
-                      message.sender.type == 'system')
+                  if (!isCurrentUser && message.sender.type == 'user')
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(message.sender.name, style: nameStyle),
+                      child: Text(
+                        message.sender.name,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   Text(message.text, style: TextStyle(color: textColor)),
                 ],
@@ -591,29 +462,37 @@ class _GameScreenState extends State<GameScreen> {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children:
-            suggestions.map((s) {
-              return GestureDetector(
-                onTap: () => _selectSuggestion(s),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                  child: Text(s, style: TextStyle(color: cs.onSurface)),
-                ),
-              );
-            }).toList(),
+        children: suggestions.map((s) {
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _messageController.text = s;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cs.outlineVariant),
+              ),
+              child: Text(s, style: TextStyle(color: cs.onSurface)),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildMessageInput(ColorScheme cs) {
+    final canWrite = _canWriteInCurrentChat();
+    final hintText = canWrite
+        ? 'Введите сообщение...'
+        : 'Вы не можете писать в этот чат';
+
     return Container(
       color: cs.surface,
       padding: const EdgeInsets.all(12),
@@ -622,25 +501,26 @@ class _GameScreenState extends State<GameScreen> {
           Expanded(
             child: TextField(
               controller: _messageController,
-              decoration: const InputDecoration(
-                hintText: 'Введите сообщение...',
+              decoration: InputDecoration(
+                hintText: hintText,
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
+              onSubmitted: canWrite ? (_) => _sendMessage() : null,
+              enabled: canWrite,
             ),
           ),
           const SizedBox(width: 8),
           _isSending
               ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : IconButton(
-                icon: Icon(Icons.send, color: cs.primary),
-                onPressed: _sendMessage,
-              ),
+                  icon: Icon(Icons.send, color: canWrite ? cs.primary : cs.onSurfaceVariant),
+                  onPressed: canWrite ? _sendMessage : null,
+                ),
         ],
       ),
     );

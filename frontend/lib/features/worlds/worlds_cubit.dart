@@ -72,19 +72,23 @@ class WorldsCubit extends Cubit<WorldsState> {
   Future<void> loadUserWorlds(int userId) async {
     emit(WorldsLoading());
     try {
-      final worlds = await _worldService.getWorlds(filter: 'owner=$userId');
+      final worlds = await _worldService.getWorlds(
+        filter: 'owner=$userId', 
+        sort: 'lastUpdatedAt',
+        order: 'desc'
+      );
       emit(UserWorldsLoaded(worlds));
     } catch (e) {
       emit(WorldsFailure(e.toString()));
     }
   }
 
-  // Загрузить популярные миры
+  // Загрузить популярные миры (для витрины)
   Future<void> loadPopularWorlds() async {
     emit(WorldsLoading());
     try {
       final worlds = await _worldService.getWorlds(
-        isPublic: true,
+        public: true,
         sort: 'lastUpdatedAt',
         order: 'desc',
         limit: 10,

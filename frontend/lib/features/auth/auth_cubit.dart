@@ -89,12 +89,33 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // Получить URL для входа
-  String getLoginUrl() {
-    final url = _authService.getLoginUrl();
+  Future<String> getLoginUrl({String? provider}) async {
+    final url = await _authService.getLoginUrl(provider: provider);
     // ignore: avoid_print
     print('🔗 AuthCubit: URL для входа: $url');
     developer.log('AuthCubit: URL для входа: $url');
     return url;
+  }
+
+  // Создать временного пользователя
+  Future<void> testLogin({String? name, String? email}) async {
+    // ignore: avoid_print
+    print('🧪 AuthCubit: Создание временного пользователя');
+    developer.log('AuthCubit: Создание временного пользователя');
+    emit(AuthLoading());
+    try {
+      await _authService.testLogin(name: name, email: email);
+      // ignore: avoid_print
+      print('✅ AuthCubit: Временный пользователь создан, проверка авторизации');
+      developer.log('AuthCubit: Временный пользователь создан, проверка авторизации');
+      // После создания временного пользователя проверяем авторизацию
+      await checkAuth();
+    } catch (e, stackTrace) {
+      // ignore: avoid_print
+      print('❌ AuthCubit: Ошибка при создании временного пользователя: $e');
+      developer.log('AuthCubit: Ошибка при создании временного пользователя', error: e, stackTrace: stackTrace);
+      emit(AuthFailure(e.toString()));
+    }
   }
 
   // Выход из аккаунта

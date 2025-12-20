@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/worlds/domain/models/world.dart';
+import '/features/auth/auth_cubit.dart';
 import '/core/services/world_service.dart';
 import '/core/widgets/modern_card.dart';
 import '/core/widgets/neon_button.dart';
@@ -91,6 +92,36 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _copyWorld() async {
+    // Check authentication
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Необходимо авторизоваться для копирования мира')),
+      );
+      return;
+    }
+
+    try {
+      final worldService = context.read<WorldService>();
+      final copiedWorld = await worldService.copyWorld(widget.worldId);
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Мир "${copiedWorld.name}" успешно скопирован')),
+      );
+      
+      // Navigate to the copied world
+      context.go('/worlds/${copiedWorld.id}');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка при копировании мира: $e')),
+      );
     }
   }
 
@@ -422,6 +453,14 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
           ),
           const SizedBox(height: 12),
           NeonButton(
+            text: 'Копировать мир',
+            icon: Icons.copy_outlined,
+            onPressed: _copyWorld,
+            style: NeonButtonStyle.outlined,
+            color: cs.tertiary,
+          ),
+          const SizedBox(height: 12),
+          NeonButton(
             text: 'История мира',
             icon: Icons.history,
             onPressed: () => context.push('/worlds/${widget.worldId}/history'),
@@ -467,7 +506,9 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   bool _isOwner() {
     if (_world == null) return false;
-    return true;
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) return false;
+    return _world!.owner.id == authState.user.id;
   }
 
   String _formatDate(DateTime date) {

@@ -4,7 +4,8 @@ import '/features/chat/domain/models/chat.dart';
 import '/features/games/domain/models/game.dart';
 import '/features/chat/domain/models/message.dart';
 import '/features/games/domain/models/player.dart';
-import '/core/services/gameplay_service.dart';
+import '/features/chat/domain/models/game_state.dart';
+import '/core/services/interfaces/gameplay_service_interface.dart';
 
 // Состояния для работы с игровым процессом
 abstract class GameplayState extends Equatable {
@@ -17,7 +18,7 @@ class GameplayInitial extends GameplayState {}
 class GameplayLoading extends GameplayState {}
 
 class GameStateLoaded extends GameplayState {
-  final dynamic gameState;
+  final GameState gameState;
 
   GameStateLoaded(this.gameState);
 
@@ -70,6 +71,24 @@ class GameRestarted extends GameplayState {
   List<Object?> get props => [game];
 }
 
+class PlayerKicked extends GameplayState {
+  final Player player;
+
+  PlayerKicked(this.player);
+
+  @override
+  List<Object?> get props => [player];
+}
+
+class PlayerPromoted extends GameplayState {
+  final Player player;
+
+  PlayerPromoted(this.player);
+
+  @override
+  List<Object?> get props => [player];
+}
+
 class GameplayFailure extends GameplayState {
   final String message;
 
@@ -88,10 +107,10 @@ class GameplayCubit extends Cubit<GameplayState> {
       super(GameplayInitial());
 
   // Загрузить текущее состояние игры
-  Future<void> loadGameState() async {
+  Future<void> loadGameState(int gameId) async {
     emit(GameplayLoading());
     try {
-      final gameState = await _gameplayService.getGameState();
+      final gameState = await _gameplayService.getGameState(gameId);
       emit(GameStateLoaded(gameState));
     } catch (e) {
       emit(GameplayFailure(e.toString()));
@@ -99,10 +118,16 @@ class GameplayCubit extends Cubit<GameplayState> {
   }
 
   // Загрузить сегмент чата
-  Future<void> loadChat({required int chatId, int? before, int? after}) async {
+  Future<void> loadChat({
+    required int gameId,
+    required int chatId,
+    int? before,
+    int? after,
+  }) async {
     emit(GameplayLoading());
     try {
       final chatSegment = await _gameplayService.getChatSegment(
+        gameId,
         chatId,
         before: before,
         after: after,
@@ -115,6 +140,7 @@ class GameplayCubit extends Cubit<GameplayState> {
 
   // Отправить сообщение
   Future<void> sendMessage({
+    required int gameId,
     required int chatId,
     required String text,
     String? special,
@@ -122,6 +148,7 @@ class GameplayCubit extends Cubit<GameplayState> {
   }) async {
     try {
       final message = await _gameplayService.sendMessage(
+        gameId,
         chatId,
         text,
         special: special,
@@ -134,9 +161,9 @@ class GameplayCubit extends Cubit<GameplayState> {
   }
 
   // Установить статус готовности
-  Future<void> setReady(bool isReady) async {
+  Future<void> setReady(int gameId, bool isReady) async {
     try {
-      final player = await _gameplayService.setReady(isReady);
+      final player = await _gameplayService.setReady(gameId, isReady);
       emit(PlayerReadyStatusChanged(player));
     } catch (e) {
       emit(GameplayFailure(e.toString()));
@@ -144,22 +171,31 @@ class GameplayCubit extends Cubit<GameplayState> {
   }
 
   // Начать игру
-  Future<void> startGame({bool force = false}) async {
+  Future<void> startGame(int gameId, {bool force = false}) async {
     emit(GameplayLoading());
     try {
-      final game = await _gameplayService.startGame(force: force);
+      final game = await _gameplayService.startGame(gameId, force: force);
       emit(GameStarted(game));
     } catch (e) {
       emit(GameplayFailure(e.toString()));
     }
   }
 
-  // Перезапустить игру
-  Future<void> restartGame() async {
-    emit(GameplayLoading());
+  // Выгнать игрока
+  Future<void> kickPlayer(int gameId, int playerId) async {
     try {
-      final game = await _gameplayService.restartGame();
-      emit(GameRestarted(game));
+      final player = await _gameplayService.kickPlayer(gameId, playerId);
+      emit(PlayerKicked(player));
+    } catch (e) {
+      emit(GameplayFailure(e.toString()));
+    }
+  }
+
+  // Назначить игрока хостом
+  Future<void> promotePlayer(int gameId, int playerId) async {
+    try {
+      final player = await _gameplayService.promotePlayer(gameId, playerId);
+      emit(PlayerPromoted(player));
     } catch (e) {
       emit(GameplayFailure(e.toString()));
     }
