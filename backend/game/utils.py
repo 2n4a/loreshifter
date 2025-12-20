@@ -9,10 +9,10 @@ class Timer:
         self.going = False
 
     async def wait(self):
-        self.going = False
+        self.going = True
         with contextlib.suppress(asyncio.TimeoutError):
             await asyncio.wait_for(self.event.wait(), timeout=self.seconds)
-        self.going = True
+        self.going = False
         self.event.clear()
 
     def trigger_early(self):

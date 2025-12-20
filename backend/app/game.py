@@ -525,7 +525,7 @@ async def leave_game(
 
     game_system = await _get_or_load_game_system(universe, conn, game)
     result = await game_system.disconnect_player(
-        conn, user.id, requester_id=user.id, log=log
+        conn, user.id, kick_immediately=True, requester_id=user.id, log=log
     )
     if result is not None:
         raise_for_service_error(result)

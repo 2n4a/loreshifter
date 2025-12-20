@@ -238,3 +238,50 @@ async def test_spectator_flow(db, universe):
     )
     assert result.code == ServiceCode.GAME_FULL
     assert game_system.player_states[user3.id].is_spectator
+
+
+@pytest.mark.asyncio
+async def test_game_terminates_when_empty(db, universe):
+    user1 = await create_test_user(db, "user1")
+    user2 = await create_test_user(db, "user2")
+    world = await universe.create_world(db, "world", user1.id, True)
+    game = await universe.create_game(db, user1.id, world.id, "room", True, 2)
+    game_system = GameSystem.of(game.id)
+
+    await game_system.connect_player(db, user2.id)
+
+    # User 2 leaves
+    await game_system.disconnect_player(db, user2.id, kick_immediately=True)
+    assert game_system.status != GameStatus.ARCHIVED
+
+    # User 1 leaves
+    await game_system.disconnect_player(db, user1.id, kick_immediately=True)
+    assert game_system.status == GameStatus.ARCHIVED
+
+
+@pytest.mark.asyncio
+async def test_game_terminates_when_empty2(db, universe):
+    user1 = await create_test_user(db, "user1")
+    user2 = await create_test_user(db, "user2")
+    world = await universe.create_world(db, "world", user1.id, True)
+    game = await universe.create_game(db, user1.id, world.id, "room", True, 2)
+    game_system = GameSystem.of(game.id)
+
+    await game_system.connect_player(db, user2.id)
+
+    # User 2 leaves
+    await game_system.disconnect_player(db, user2.id)
+    await asyncio.sleep(0.1)
+    game_system.player_states[user2.id].kick_timer.trigger_early()
+    await asyncio.sleep(0.1)
+    assert game_system.status != GameStatus.ARCHIVED
+    assert (await game_system.get_player(db, user2.id)).code == ServiceCode.PLAYER_NOT_FOUND
+    assert (await game_system.get_player(db, user1.id)).user.id == user1.id
+
+    # User 1 leaves
+    await game_system.disconnect_player(db, user1.id)
+    await asyncio.sleep(0.1)
+    game_system.player_states[user1.id].kick_timer.trigger_early()
+    await asyncio.sleep(0.1)
+    assert game_system.status == GameStatus.ARCHIVED
+    assert (await game_system.get_player(db, user1.id)).code == ServiceCode.PLAYER_NOT_FOUND

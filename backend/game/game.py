@@ -497,7 +497,7 @@ class GameSystem(System[GameEvent]):
                     "Mismatch between server state and DB state. Failed to remove player",
                 )
 
-            await log.ainfo("Removed player from the game")
+            await log.ainfo("Marked player as not joined")
 
             self.emit(
                 PlayerLeftEvent(self.id, player=player.get_player_out(self.host_id))
@@ -771,8 +771,7 @@ class GameSystem(System[GameEvent]):
 
         async with self.lock:
             for player in self.player_states.values():
-                await self.disconnect_player(conn, player.user.id, log=log)
-                player.kick_timer.trigger_early()
+                await self.disconnect_player(conn, player.user.id, kick_immediately=True, log=log)
 
             self.status = GameStatus.ARCHIVED
             success = await conn.fetchval(
