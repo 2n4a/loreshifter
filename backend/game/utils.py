@@ -73,3 +73,15 @@ class AsyncReentrantLock:
     def locked(self) -> bool:
         """Return True if the lock is currently acquired by any task."""
         return self._lock.locked()
+
+
+@contextlib.asynccontextmanager
+async def get_conn():
+    import app.dependencies
+
+    if app.dependencies.state is not None:
+        with app.dependencies.state.pg_pool.acquire() as conn:
+            yield conn
+    else:
+        import tests.conftest
+        yield tests.conftest.active_conn

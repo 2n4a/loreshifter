@@ -35,15 +35,21 @@ async def postgres_connection_string():
     return test_dsn
 
 
+active_conn: asyncpg.Connection | None = None
+
+
 @pytest_asyncio.fixture
 async def db(postgres_connection_string):
+    global active_conn
     conn = await asyncpg.connect(postgres_connection_string)
     await init_connection(conn)
     trxn = conn.transaction(isolation="serializable")
     await trxn.start()
     try:
+        active_conn = conn
         yield conn
     finally:
+        active_conn = None
         await trxn.rollback()
 
 

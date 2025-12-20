@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import dataclasses
 import json
 import typing
@@ -35,14 +36,14 @@ class AppState:
 state: AppState | None = None
 
 
-async def get_db():
+async def get_conn():
     if state is None:
         raise Exception("State is not initialized")
     async with state.pg_pool.acquire() as conn:
         yield conn
 
 
-Conn = Annotated[asyncpg.Connection, Depends(get_db)]
+Conn = Annotated[asyncpg.Connection, Depends(get_conn)]
 
 
 async def get_universe():

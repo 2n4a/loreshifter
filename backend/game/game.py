@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import dataclasses
 import datetime
-from mimetypes import guess_all_extensions
 
 import asyncpg
 
@@ -11,7 +10,7 @@ import game.universe as universe
 import game.chat
 from game.chat import ChatSystem
 from game.logger import gl_log
-from game.utils import Timer, AsyncReentrantLock
+from game.utils import Timer, AsyncReentrantLock, get_conn
 from lstypes.chat import ChatType, ChatInterfaceType
 from game.system import System
 from lstypes.error import ServiceCode, ServiceError, error
@@ -369,6 +368,65 @@ class GameSystem(System[GameEvent]):
             await log.ainfo("Player joined")
             return None
 
+    async def kick_task(self, player: Player, dont_wait: bool = False, log=gl_log):
+        if not dont_wait:
+            await player.kick_timer.wait()
+
+        with contextlib.suppress(asyncio.CancelledError):
+            async with get_conn() as conn, self.lock:
+                player.kick_task = None
+                player_id = player.user.id
+
+                row = await conn.fetchrow(
+                    """
+                    WITH delete_player AS (
+                        DELETE FROM game_players WHERE
+                            game_id = $1 AND user_id = $2
+                        RETURNING user_id AS id, game_id
+                    )
+                    SELECT delete_player.id = g.host_id AS was_host FROM delete_player
+                    JOIN games AS g ON g.id = delete_player.game_id
+                    """,
+                    self.id,
+                    player_id,
+                )
+                if not row:
+                    await error(
+                        ServiceCode.SERVER_ERROR,
+                        "Mismatch between server state and DB state. Failed to remove player",
+                        log=log,
+                    )
+
+                await log.ainfo("Player removed from the game")
+                self.player_states.pop(player_id)
+                self.num_non_spectators -= 1
+                await self.update_chats_for_player(
+                    conn, player, force_stop=True, log=log
+                )
+
+                if len(self.player_states) == 0:
+                    await log.ainfo("Terminating game because last player left")
+                    await self.terminate(conn, log=log)
+                    return
+
+                if row["was_host"]:
+                    for p in self.player_states.values():
+                        if p.is_joined:
+                            new_host_id = p.user.id
+                            break
+                    else:
+                        await log.ainfo(
+                            "Terminating game because host left and all players are disconnected"
+                        )
+                        await self.terminate(conn, log=log)
+                        return
+
+                    await log.ainfo(
+                        "Promoting new host because old one quit",
+                        new_host_id=new_host_id,
+                    )
+                    await self.make_host(conn, new_host_id, log=log)
+
     async def disconnect_player(
         self,
         conn: asyncpg.Connection,
@@ -445,71 +503,11 @@ class GameSystem(System[GameEvent]):
                 PlayerLeftEvent(self.id, player=player.get_player_out(self.host_id))
             )
 
-            async def kick_task(dont_wait: bool = False):
-                nonlocal log
-
-                if not dont_wait:
-                    await player.kick_timer.wait()
-
-                with contextlib.suppress(asyncio.CancelledError):
-                    async with self.lock:
-                        player.kick_task = None
-
-                        row = await conn.fetchrow(
-                            """
-                            WITH delete_player AS (
-                                DELETE FROM game_players WHERE
-                                    game_id = $1 AND user_id = $2
-                                RETURNING user_id AS id, game_id
-                            )
-                            SELECT delete_player.id = g.host_id AS was_host FROM delete_player
-                            JOIN games AS g ON g.id = delete_player.game_id
-                            """,
-                            self.id,
-                            player_id,
-                        )
-                        if not row:
-                            await error(
-                                ServiceCode.SERVER_ERROR,
-                                "Mismatch between server state and DB state. Failed to remove player",
-                                log=log,
-                            )
-
-                        await log.ainfo("Player removed from the game")
-                        self.player_states.pop(player_id)
-                        self.num_non_spectators -= 1
-                        await self.update_chats_for_player(
-                            conn, player, force_stop=True, log=log
-                        )
-
-                        if len(self.player_states) == 0:
-                            await log.ainfo("Terminating game because last player left")
-                            await self.terminate(conn, log=log)
-                            return
-
-                        if row["was_host"]:
-                            for p in self.player_states.values():
-                                if p.is_joined:
-                                    new_host_id = p.user.id
-                                    break
-                            else:
-                                await log.ainfo(
-                                    "Terminating game because host left and all players are disconnected"
-                                )
-                                await self.terminate(conn, log=log)
-                                return
-
-                            await log.ainfo(
-                                "Promoting new host because old one quit",
-                                new_host_id=new_host_id,
-                            )
-                            await self.make_host(conn, new_host_id, log=log)
-
             if kick_immediately:
-                await kick_task(dont_wait=True)
+                await self.kick_task(player, dont_wait=True, log=log)
             else:
                 player.kick_task = asyncio.Task(
-                    kick_task(), name=f"kick_task_player{player_id}_game{self.id}"
+                    self.kick_task(player, log=log), name=f"kick_task_player{player_id}_game{self.id}"
                 )
 
         return None
