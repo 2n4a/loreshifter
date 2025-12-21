@@ -23,13 +23,22 @@ jobs:
       run: |
         pip install radon flake8 flake8-cognitive-complexity
 
-    - name: Measure Cyclomatic Complexity
+    - name: Generate complexity report
       run: |
-        echo "Cyclomatic Complexity (Radon):"
-        radon cc backend -a -s
+        echo "## Code Complexity Report" > complexity_report.md
+        echo "" >> complexity_report.md
+        echo "### Cyclomatic Complexity (Radon)" >> complexity_report.md
+        echo '```' >> complexity_report.md
+        radon cc backend -a -s >> complexity_report.md
+        echo '```' >> complexity_report.md
+        echo "" >> complexity_report.md
+        echo "### Cognitive Complexity (Flake8)" >> complexity_report.md
+        echo '```' >> complexity_report.md
+        flake8 backend --count --select=CCR001 --show-source --statistics --exit-zero >> complexity_report.md
+        echo '```' >> complexity_report.md
 
-    - name: Measure Cognitive Complexity
-      run: |
-        echo "Cognitive Complexity (Flake8):"
-        # We use --exit-zero to treat all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 backend --count --select=CCR001 --show-source --statistics --exit-zero
+    - name: Upload complexity report
+      uses: actions/upload-artifact@v3
+      with:
+        name: complexity-report
+        path: complexity_report.md
