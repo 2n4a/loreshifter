@@ -17,8 +17,12 @@ function damage_dragon(world_state, llm_params)
 end
 """
     manifest = {"tools": {"damage_dragon": {"lua_function": "damage_dragon"}}}
-    runner = ProcessLuaToolRunner(lua_sources=[lua_code], manifest=manifest, timeout_ms=200, memory_limit_mb=64)
+    runner = ProcessLuaToolRunner(
+        lua_sources=[lua_code], manifest=manifest, timeout_ms=200, memory_limit_mb=64
+    )
 
-    ws, out = await runner.run_tool_async("damage_dragon", {"dragon_hp": 100, "phase": 1}, {"damage": 15})
+    ws, out = await runner.run_tool_async(
+        "damage_dragon", {"dragon_hp": 100, "phase": 1}, {"damage": 15}
+    )
     assert ws == {"dragon_hp": 85, "phase": 1}
     assert out == {"applied_damage": 15, "dragon_hp": 85}

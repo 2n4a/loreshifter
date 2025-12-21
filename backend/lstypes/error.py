@@ -29,6 +29,7 @@ class ServiceCode(str, Enum):
     PLAYER_NOT_IN_GAME = "PlayerNotInGame"
     GAME_NOT_FINISHED = "GameNotFinished"
     PLAYER_NOT_READY = "PlayerNotReady"
+    CHARACTER_NOT_READY = "CharacterNotReady"
     INVALID_PROVIDER = "InvalidProvider"
 
 
@@ -66,6 +67,8 @@ def status_code_from_service_code(code: ServiceCode) -> int:
             | ServiceCode.CHAT_NOT_FOUND
         ):
             return 404
+        case ServiceCode.CHARACTER_NOT_READY:
+            return 400
         case _:
             return 400
 

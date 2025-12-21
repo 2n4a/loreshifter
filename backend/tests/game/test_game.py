@@ -11,6 +11,7 @@ from game.game import (
     PlayerPromotedEvent,
     PlayerSpectatorEvent,
 )
+from game.logic import default_character_profile
 from lstypes.game import GameStatus, GameOut
 from game.universe import UniverseGameEvent
 from game.user import create_test_user
@@ -24,6 +25,9 @@ async def test_game_set_ready(db, universe):
     game = await universe.create_game(db, user.id, world.id, "room", True, 1)
 
     game_system = GameSystem.of(game.id)
+    profile = default_character_profile(user.name)
+    game_system._set_character(user.id, profile)
+    await game_system._persist_state(db)
     assert await game_system.set_ready(db, user.id, True) is None
     assert await game_system.set_ready(db, user.id, False) is None
     assert (
@@ -275,7 +279,9 @@ async def test_game_terminates_when_empty2(db, universe):
     game_system.player_states[user2.id].kick_timer.trigger_early()
     await asyncio.sleep(0.1)
     assert game_system.status != GameStatus.ARCHIVED
-    assert (await game_system.get_player(db, user2.id)).code == ServiceCode.PLAYER_NOT_FOUND
+    assert (
+        await game_system.get_player(db, user2.id)
+    ).code == ServiceCode.PLAYER_NOT_FOUND
     assert (await game_system.get_player(db, user1.id)).user.id == user1.id
 
     # User 1 leaves
@@ -284,4 +290,6 @@ async def test_game_terminates_when_empty2(db, universe):
     game_system.player_states[user1.id].kick_timer.trigger_early()
     await asyncio.sleep(0.1)
     assert game_system.status == GameStatus.ARCHIVED
-    assert (await game_system.get_player(db, user1.id)).code == ServiceCode.PLAYER_NOT_FOUND
+    assert (
+        await game_system.get_player(db, user1.id)
+    ).code == ServiceCode.PLAYER_NOT_FOUND

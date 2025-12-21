@@ -207,6 +207,19 @@ class GameplayCubit extends Cubit<GameplayState> {
     }
   }
 
+  // Перезапустить игру
+  Future<void> restartGame(int gameId) async {
+    developer.log('[CUBIT:GAMEPLAY] restartGame(gameId=$gameId) started');
+    emit(GameplayLoading());
+    try {
+      final game = await _gameplayService.restartGame(gameId);
+      emit(GameRestarted(game));
+    } catch (e) {
+      developer.log('[CUBIT:GAMEPLAY] restartGame() -> Error', error: e);
+      emit(GameplayFailure(e.toString()));
+    }
+  }
+
   // Выгнать игрока
   Future<void> kickPlayer(int gameId, int playerId) async {
     developer.log('[CUBIT:GAMEPLAY] kickPlayer(gameId=$gameId, playerId=$playerId) started');

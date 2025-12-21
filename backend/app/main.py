@@ -16,6 +16,7 @@ from pathlib import Path
 
 from app.dependencies import livespan
 from lstypes.error import ServiceErrorException
+import config
 
 app = FastAPI(lifespan=livespan)
 
@@ -36,7 +37,7 @@ async def service_error_exception_handler(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

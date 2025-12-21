@@ -86,6 +86,7 @@ async def get_conn():
             yield conn
     else:
         import tests.conftest
+
         yield tests.conftest.active_conn
 
 

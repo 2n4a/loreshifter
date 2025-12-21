@@ -3,7 +3,6 @@ from typing import Any
 import lupa
 
 
-
 _ARRAY_LEN = "__py_array_len__"
 _NONE_SENTINEL = "__py_none__"
 
@@ -56,12 +55,11 @@ def lua_to_py(obj: Any, _stack: set[int] | None = None) -> Any:
     if not _is_lua_table(obj):
         raise TypeError(f"Unsupported type: {type(obj).__name__}")
 
-
     oid = id(obj)
     if oid in _stack:
         raise ValueError("Cycle detected in Lua table")
     _stack.add(oid)
-    
+
     try:
         keys = list(obj.keys())
 

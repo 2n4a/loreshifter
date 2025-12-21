@@ -26,12 +26,16 @@ end
         }
     }
 
-    manager = ToolManager(lua_sources=[lua_code], manifest=manifest, timeout_ms=200, memory_limit_mb=64)
+    manager = ToolManager(
+        lua_sources=[lua_code], manifest=manifest, timeout_ms=200, memory_limit_mb=64
+    )
 
     world_state = {"dragon_hp": 100, "phase": 1}
     llm_params = {"damage": 15}
 
-    new_world_state, output = await manager.run_tool("damage_dragon", world_state, llm_params)
+    new_world_state, output = await manager.run_tool(
+        "damage_dragon", world_state, llm_params
+    )
 
     assert new_world_state == {"dragon_hp": 85, "phase": 1}
     assert output == {"applied_damage": 15, "dragon_hp": 85}

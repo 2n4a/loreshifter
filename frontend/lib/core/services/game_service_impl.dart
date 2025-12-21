@@ -23,7 +23,7 @@ class GameServiceImpl extends BaseService implements GameService {
       'offset': offset,
       if (sort != null) 'sort': sort,
       if (order != null) 'order': order,
-      if (filter != null) 'filter': filter,
+      if (filter != null) 'filter_': filter,
       if (public != null) 'public': public,
       if (joined != null) 'joined': joined,
     };
@@ -132,4 +132,3 @@ class GameServiceImpl extends BaseService implements GameService {
     );
   }
 }
-

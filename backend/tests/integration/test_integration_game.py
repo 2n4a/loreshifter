@@ -1,7 +1,37 @@
+import asyncio
 import pytest
 from tests.service import service
 import aiohttp
 import app.dependencies as deps
+
+
+async def _complete_character_creation(
+    client: aiohttp.ClientSession, game_id: int, headers: dict
+):
+    resp = await client.get(f"/api/v0/game/{game_id}/state", headers=headers)
+    assert resp.status == 200
+    state = await resp.json()
+    character_chat = state["character_creation_chat"]
+    assert character_chat is not None
+    chat_id = character_chat["chat_id"]
+
+    answers = [
+        "Alyra",
+        "Scout",
+        "Strength 6",
+        "Dexterity 7",
+        "Intelligence 6",
+        "Raised among smugglers in the marshes.",
+    ]
+    for answer in answers:
+        resp = await client.post(
+            f"/api/v0/game/{game_id}/chat/{chat_id}/send",
+            headers=headers,
+            json={"text": answer},
+        )
+        assert resp.status == 200
+
+    await asyncio.sleep(0)
 
 
 @pytest.mark.asyncio
@@ -23,6 +53,7 @@ async def test_game_set_ready(service):
 
     async with aiohttp.ClientSession(base_url=service.url) as client:
         headers = {"Authentication": token}
+        await _complete_character_creation(client, game.id, headers)
         resp = await client.post(f"/api/v0/game/{game.id}/ready", headers=headers)
         assert resp.status == 200
         resp = await client.post(
@@ -58,6 +89,9 @@ async def test_game_start_and_restart_errors(service):
 
         resp = await client.post(f"/api/v0/game/{game.id}/join", headers=other_headers)
         assert resp.status == 200
+
+        await _complete_character_creation(client, game.id, host_headers)
+        await _complete_character_creation(client, game.id, other_headers)
 
         resp = await client.post(f"/api/v0/game/{game.id}/start", headers=other_headers)
         assert resp.status == 401

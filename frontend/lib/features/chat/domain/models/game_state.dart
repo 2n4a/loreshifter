@@ -20,22 +20,28 @@ class GameState {
   });
 
   factory GameState.fromJson(Map<String, dynamic> json) {
+    final characterChatJson =
+        json['character_creation_chat'] ?? json['characterCreationChat'];
+    final gameChatJson = json['game_chat'] ?? json['gameChat'];
+    final playerChatsJson = json['player_chats'] ?? json['playerChats'];
+    final adviceChatsJson = json['advice_chats'] ?? json['adviceChats'];
+    final statusRaw = json['status'];
+    final statusText = statusRaw is String ? statusRaw : statusRaw?.toString();
     return GameState(
       game: Game.fromJson(json['game']),
-      status: _parseGameStatus(json['status'] as String),
-      characterCreationChat: json['character_creation_chat'] != null
-          ? ChatSegment.fromJson(json['character_creation_chat'])
+      status: _parseGameStatus(statusText ?? 'waiting'),
+      characterCreationChat: characterChatJson != null
+          ? ChatSegment.fromJson(characterChatJson)
           : null,
-      gameChat: json['game_chat'] != null
-          ? ChatSegment.fromJson(json['game_chat'])
-          : null,
-      playerChats: json['player_chats'] != null
-          ? (json['player_chats'] as List)
+      gameChat:
+          gameChatJson != null ? ChatSegment.fromJson(gameChatJson) : null,
+      playerChats: playerChatsJson != null
+          ? (playerChatsJson as List)
               .map((e) => ChatSegment.fromJson(e as Map<String, dynamic>))
               .toList()
           : [],
-      adviceChats: json['advice_chats'] != null
-          ? (json['advice_chats'] as List)
+      adviceChats: adviceChatsJson != null
+          ? (adviceChatsJson as List)
               .map((e) => ChatSegment.fromJson(e as Map<String, dynamic>))
               .toList()
           : [],

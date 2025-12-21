@@ -39,6 +39,9 @@ abstract class GameplayService {
   /// Начать игру
   Future<Game> startGame(int gameId, {bool force = false});
 
+  /// Перезапустить игру
+  Future<Game> restartGame(int gameId);
+
   /// Подключиться к WebSocket для получения обновлений
   Stream<Map<String, dynamic>> connectWebSocket(int gameId);
 

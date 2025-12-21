@@ -29,18 +29,21 @@ class Game {
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
+    final hostId = json['hostId'] ?? json['host_id'];
+    final createdAt = json['createdAt'] ?? json['created_at'];
+    final maxPlayers = json['maxPlayers'] ?? json['max_players'];
     return Game(
       id: json['id'] as int,
       code: json['code'] as String,
       public: json['public'] as bool,
       name: json['name'] as String,
       world: World.fromJson(json['world']),
-      hostId: json['host_id'] as int,
+      hostId: hostId as int,
       players: (json['players'] as List)
           .map((e) => Player.fromJson(e as Map<String, dynamic>))
           .toList(),
-      createdAt: DateTime.parse(json['created_at']),
-      maxPlayers: json['max_players'] as int,
+      createdAt: DateTime.parse(createdAt as String),
+      maxPlayers: maxPlayers as int,
       status: _parseGameStatus(json['status'] as String),
     );
   }
@@ -75,4 +78,3 @@ class Game {
     };
   }
 }
-

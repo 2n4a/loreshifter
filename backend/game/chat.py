@@ -98,7 +98,7 @@ class MessageIndex:
         elif start_id not in self.index:
             return
         else:
-            ref = self.index[start_id]
+            ref = self.index[start_id].next
         for _ in range(count):
             if ref is None or ref is self.tail:
                 break
@@ -353,13 +353,13 @@ class ChatSystem(System[ChatEvent]):
             return await error(ServiceCode.SERVER_ERROR, "Chat not found", log=gl_log)
 
         if after_message_id is not None:
-            messages = list(self.index.walk_forward(after_message_id, limit))
-            if not messages:
+            if after_message_id not in self.index.index:
                 return await error(
                     ServiceCode.MESSAGE_NOT_FOUND,
                     "Message with id 'after_message_id' not found",
                     log=gl_log,
                 )
+            messages = list(self.index.walk_forward(after_message_id, limit))
         elif before_message_id is not None:
             messages = list(self.index.walk_backward(before_message_id, limit))
             if not messages:

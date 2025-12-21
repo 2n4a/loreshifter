@@ -11,14 +11,18 @@ from tooling.worker_process import worker_entry
 class ToolError(Exception):
     pass
 
+
 class ToolNotFound(ToolError):
     pass
+
 
 class ToolValidationError(ToolError):
     pass
 
+
 class ToolTimeoutError(ToolError):
     pass
+
 
 class ToolRuntimeError(ToolError):
     pass
@@ -68,9 +72,16 @@ class ProcessLuaToolRunner:
                 f"{resp.get('error_type')}: {resp.get('error')}\n{resp.get('traceback','')}"
             )
 
-    def run_tool(self, tool_name: str, world_state: dict, llm_params: dict) -> tuple[dict, dict]:
+    def run_tool(
+        self, tool_name: str, world_state: dict, llm_params: dict
+    ) -> tuple[dict, dict]:
         resp = self._call_worker(
-            {"op": "run", "tool_name": tool_name, "world_state": world_state, "llm_params": llm_params}
+            {
+                "op": "run",
+                "tool_name": tool_name,
+                "world_state": world_state,
+                "llm_params": llm_params,
+            }
         )
 
         if resp.get("ok") is True:
@@ -91,8 +102,12 @@ class ProcessLuaToolRunner:
 
         raise ToolRuntimeError(f"{et}: {msg}\n{tb}")
 
-    async def run_tool_async(self, tool_name: str, world_state: dict, llm_params: dict) -> tuple[dict, dict]:
-        return await asyncio.to_thread(self.run_tool, tool_name, world_state, llm_params)
+    async def run_tool_async(
+        self, tool_name: str, world_state: dict, llm_params: dict
+    ) -> tuple[dict, dict]:
+        return await asyncio.to_thread(
+            self.run_tool, tool_name, world_state, llm_params
+        )
 
     def _call_worker(self, request: dict) -> dict:
         ctx = mp.get_context(self.start_method)

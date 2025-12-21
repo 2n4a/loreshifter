@@ -140,12 +140,19 @@ class MockGameplayService implements GameplayService {
       suggestions: ['Привет всем!', 'Готов играть!'],
       interface: ChatInterface(type: ChatInterfaceType.full),
     );
+    _gameState['game_chat'] = _chats[1]!.toJson();
   }
 
   @override
   Future<GameState> getGameState(int gameId) async {
     debugPrint('DEBUG: MockGameplayService.getGameState(gameId: $gameId)');
     await Future.delayed(Duration(milliseconds: 300));
+    if (_chats.containsKey(1)) {
+      _gameState['game_chat'] = _chats[1]!.toJson();
+    }
+    if (_chats.containsKey(2)) {
+      _gameState['player_chats'] = [_chats[2]!.toJson()];
+    }
     // Mock implementation returns a structured GameState
     return GameState.fromJson(_gameState);
   }
@@ -552,15 +559,6 @@ class MockGameplayService implements GameplayService {
 
     // Обновляем статус игры
     _gameState['status'] = 'playing';
-    
-    // Обновляем структуру состояния для playing - добавляем playerChats и adviceChats
-    _gameState['playerChats'] = [
-      {'chatId': 2, 'playerName': 'Вы', 'title': 'Ваш чат'},
-      {'chatId': 3, 'playerName': 'Другой игрок', 'title': 'Чат другого игрока'},
-    ];
-    _gameState['adviceChats'] = [
-      {'chatId': 4, 'title': 'Подсказки', 'playerName': 'Советы'},
-    ];
 
     // Добавляем системное сообщение
     final newMessage = Message(
@@ -593,6 +591,9 @@ class MockGameplayService implements GameplayService {
         interface: ChatInterface(type: ChatInterfaceType.readonly),
       );
     }
+
+    _gameState['player_chats'] = [_chats[2]!.toJson()];
+    _gameState['advice_chats'] = [];
     
     // Сбрасываем состояние игры
     _turnNumber = 0;
@@ -639,6 +640,12 @@ class MockGameplayService implements GameplayService {
       maxPlayers: 4,
       status: GameStatus.playing,
     );
+  }
+
+  @override
+  Future<Game> restartGame(int gameId) async {
+    debugPrint('DEBUG: MockGameplayService.restartGame()');
+    return startGame(gameId, force: true);
   }
 
   @override

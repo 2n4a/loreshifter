@@ -41,9 +41,11 @@ services:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
+      args:
+        BACKEND_URL: http://localhost:8000/api/v0
     container_name: dev_frontend
     ports:
-      - "8080:80"
+      - "8081:80"
     env_file: ".env"
     depends_on:
       backend:

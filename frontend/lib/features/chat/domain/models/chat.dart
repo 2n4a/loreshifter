@@ -26,6 +26,7 @@ class ChatInterface {
       case 'timed':
         return ChatInterfaceType.timed;
       case 'foreignTimed':
+      case 'foreign_timed':
         return ChatInterfaceType.foreignTimed;
       default:
         return ChatInterfaceType.readonly;
@@ -60,15 +61,21 @@ class ChatSegment {
   });
 
   factory ChatSegment.fromJson(Map<String, dynamic> json) {
+    final chatId = json['chatId'] ?? json['chat_id'];
+    final chatOwner = json['chatOwner'] ?? json['chat_owner'];
+    final previousId = json['previousId'] ?? json['previous_id'];
+    final nextId = json['nextId'] ?? json['next_id'];
+    final messagesRaw = (json['messages'] as List?) ?? [];
+    final suggestionsRaw = (json['suggestions'] as List?) ?? [];
     return ChatSegment(
-      chatId: json['chat_id'] as int,
-      chatOwner: json['chat_owner'] as int?,
-      messages: (json['messages'] as List)
+      chatId: chatId as int,
+      chatOwner: chatOwner as int?,
+      messages: messagesRaw
           .map((e) => Message.fromJson(e as Map<String, dynamic>))
           .toList(),
-      previousId: json['previous_id'] as int?,
-      nextId: json['next_id'] as int?,
-      suggestions: (json['suggestions'] as List).map((e) => e as String).toList(),
+      previousId: previousId as int?,
+      nextId: nextId as int?,
+      suggestions: suggestionsRaw.map((e) => e as String).toList(),
       interface: ChatInterface.fromJson(json['interface']),
     );
   }
@@ -85,4 +92,3 @@ class ChatSegment {
     };
   }
 }
-

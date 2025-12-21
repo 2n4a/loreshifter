@@ -1,7 +1,8 @@
-import '/features/auth/domain/models/user.dart';
+import 'dart:developer' as developer;
+
 import '/core/services/base_service.dart';
 import '/core/services/interfaces/auth_service_interface.dart';
-import 'dart:developer' as developer;
+import '/features/auth/domain/models/user.dart';
 
 /// Реальная реализация сервиса аутентификации
 class AuthServiceImpl extends BaseService implements AuthService {
@@ -15,10 +16,16 @@ class AuthServiceImpl extends BaseService implements AuthService {
         '/user/me',
         fromJson: (data) => User.fromJson(data),
       );
-      developer.log('[SERVICE:AUTH] getCurrentUser() -> Success: User(id=${user.id}, name=${user.name})');
+      developer.log(
+        '[SERVICE:AUTH] getCurrentUser() -> Success: User(id=${user.id}, name=${user.name})',
+      );
       return user;
     } catch (e, stackTrace) {
-      developer.log('[SERVICE:AUTH] getCurrentUser() -> Error', error: e, stackTrace: stackTrace);
+      developer.log(
+        '[SERVICE:AUTH] getCurrentUser() -> Error',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -59,9 +66,9 @@ class AuthServiceImpl extends BaseService implements AuthService {
   Future<String> getLoginUrl({String? provider}) async {
     final providerName = provider ?? 'github';
     final callbackUrl = Uri.base.origin;
-    
+
     developer.log('[SERVICE:AUTH] getLoginUrl(provider=$providerName) -> GET /login');
-    
+
     final queryParams = <String, String>{
       'provider': providerName,
       'redirect': 'false',
@@ -74,12 +81,16 @@ class AuthServiceImpl extends BaseService implements AuthService {
         queryParameters: queryParams,
         fromJson: (data) => data as Map<String, dynamic>,
       );
-      
+
       final loginUrl = response['url'] as String;
       developer.log('[SERVICE:AUTH] getLoginUrl() -> Success: $loginUrl');
       return loginUrl;
     } catch (e, stackTrace) {
-      developer.log('AuthService: Ошибка при получении URL для входа', error: e, stackTrace: stackTrace);
+      developer.log(
+        'AuthService: Ошибка при получении URL для входа',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -87,11 +98,11 @@ class AuthServiceImpl extends BaseService implements AuthService {
   @override
   Future<void> testLogin({String? name, String? email}) async {
     developer.log('AuthService: Создание временного пользователя');
-    
+
     final queryParams = <String, String>{};
     if (name != null) queryParams['name'] = name;
     if (email != null) queryParams['email'] = email;
-    
+
     try {
       await apiClient.get<Map<String, dynamic>>(
         '/test-login',
@@ -100,7 +111,11 @@ class AuthServiceImpl extends BaseService implements AuthService {
       );
       developer.log('AuthService: Временный пользователь создан и cookie установлена');
     } catch (e, stackTrace) {
-      developer.log('AuthService: Ошибка при создании временного пользователя', error: e, stackTrace: stackTrace);
+      developer.log(
+        'AuthService: Ошибка при создании временного пользователя',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -115,7 +130,11 @@ class AuthServiceImpl extends BaseService implements AuthService {
       );
       developer.log('AuthService: Успешный выход из системы');
     } catch (e, stackTrace) {
-      developer.log('AuthService: Ошибка при выходе из системы', error: e, stackTrace: stackTrace);
+      developer.log(
+        'AuthService: Ошибка при выходе из системы',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }

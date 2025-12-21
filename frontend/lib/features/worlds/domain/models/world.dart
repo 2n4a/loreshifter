@@ -28,8 +28,12 @@ class World {
       id: json['id'] as int,
       name: json['name'] as String,
       public: json['public'] as bool,
-      createdAt: DateTime.parse(json['created_at']),
-      lastUpdatedAt: DateTime.parse(json['last_updated_at']),
+      createdAt: DateTime.parse(
+        (json['createdAt'] ?? json['created_at']) as String,
+      ),
+      lastUpdatedAt: DateTime.parse(
+        (json['lastUpdatedAt'] ?? json['last_updated_at']) as String,
+      ),
       owner: User.fromJson(json['owner']),
       description: json['description'] as String?,
       data: json['data'],
@@ -51,4 +55,3 @@ class World {
     };
   }
 }
-

@@ -8,6 +8,12 @@ from app.dependencies import init_connection
 from game.universe import Universe
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def disable_llm():
+    config.LLM_ENABLED = False
+    yield
+
+
 @pytest_asyncio.fixture(scope="session")
 async def postgres_connection_string():
     dsn = config.POSTGRES_URL

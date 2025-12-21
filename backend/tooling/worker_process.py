@@ -42,17 +42,17 @@ def worker_entry(
     memory_limit_mb: int,
 ) -> None:
     """
-      Request:
-        {"op": "validate"}
-        OR
-        {"op": "run", "tool_name": str, "world_state": dict, "llm_params": dict}
+    Request:
+      {"op": "validate"}
+      OR
+      {"op": "run", "tool_name": str, "world_state": dict, "llm_params": dict}
 
-      Response (ok):
-        validate -> {"ok": True, "tool_names": [..]}
-        run      -> {"ok": True, "world_state": <dict>, "output": <dict>}
+    Response (ok):
+      validate -> {"ok": True, "tool_names": [..]}
+      run      -> {"ok": True, "world_state": <dict>, "output": <dict>}
 
-      Response (fail):
-        {"ok": False, "error_type": str, "error": str, "traceback": str}
+    Response (fail):
+      {"ok": False, "error_type": str, "error": str, "traceback": str}
     """
     try:
         _apply_rlimits(timeout_ms=timeout_ms, memory_limit_mb=memory_limit_mb)
@@ -67,7 +67,6 @@ def worker_entry(
 
         for src in lua_sources or []:
             lua.execute(src)
-
 
         tools = (manifest or {}).get("tools")
         if not isinstance(tools, dict):
@@ -87,14 +86,14 @@ def worker_entry(
 
             fn = g[fn_name]
             if not callable(fn):
-                raise ValueError(f"Lua function {fn_name!r} for tool {tool_name!r} not found or not callable")
+                raise ValueError(
+                    f"Lua function {fn_name!r} for tool {tool_name!r} not found or not callable"
+                )
 
             tool_map[tool_name] = fn_name
 
-
         req = conn.recv()
         op = req.get("op")
-
 
         if op == "validate":
             conn.send({"ok": True, "tool_names": sorted(tool_map.keys())})
@@ -109,13 +108,18 @@ def worker_entry(
 
         fn_name = tool_map.get(tool_name)
         if not fn_name:
-            conn.send({"ok": False, "error_type": "ToolNotFound", "error": f"Unknown tool: {tool_name}"})
+            conn.send(
+                {
+                    "ok": False,
+                    "error_type": "ToolNotFound",
+                    "error": f"Unknown tool: {tool_name}",
+                }
+            )
             return
 
         fn = lua.globals()[fn_name]
         if not callable(fn):
             raise ValueError(f"Lua function {fn_name!r} not found or not callable")
-
 
         # Конвертеры
         from tooling.converters import py_to_lua, lua_to_py

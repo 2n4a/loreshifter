@@ -1,6 +1,11 @@
 import pytest
 
-from tooling.lua_runner import LuaToolRunner, ToolNotFound, ToolRuntimeError, ToolValidationError
+from tooling.lua_runner import (
+    LuaToolRunner,
+    ToolNotFound,
+    ToolRuntimeError,
+    ToolValidationError,
+)
 
 
 def test_damage_dragon_happy_path():
@@ -23,7 +28,10 @@ end
 """
     manifest = {
         "tools": {
-            "damage_dragon": {"lua_function": "damage_dragon", "description": "Reduces dragon HP"}
+            "damage_dragon": {
+                "lua_function": "damage_dragon",
+                "description": "Reduces dragon HP",
+            }
         }
     }
 

@@ -40,7 +40,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
 
     try {
       final worldService = context.read<WorldService>();
-      final world = await worldService.createWorld(
+      await worldService.createWorld(
         name: _nameController.text,
         public: _isPublic,
         description:
@@ -51,15 +51,16 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
 
       if (!mounted) return;
 
-      // Refresh the user worlds list
       final authState = context.read<AuthCubit>().state;
       if (authState is Authenticated) {
-        context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+        await context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
       }
 
-  // После создания возвращаемся в домашний экран и показываем вкладку "Мои миры"
-  // (Tab index 1 соответствует второй вкладке — "МОИ МИРЫ")
-  context.go('/?tab=1');
+      // После создания возвращаемся в домашний экран и показываем вкладку "Мои миры"
+      // (Tab index 1 соответствует второй вкладке — "МОИ МИРЫ")
+      if (mounted) {
+        context.go('/?tab=1');
+      }
     } catch (e) {
       setState(() {
         _error = 'Ошибка при создании мира: $e';

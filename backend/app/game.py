@@ -11,7 +11,8 @@ from lstypes.error import (
     ServiceCode,
     raise_for_service_error,
     raise_service_error,
-    unwrap, ServiceError,
+    unwrap,
+    ServiceError,
 )
 from lstypes.player import PlayerOut
 from game.game import GameSystem
@@ -234,7 +235,9 @@ async def _get_or_load_game_system(
     if game_system is not None:
         return game_system
 
-    game_system = await GameSystem.create_new(conn, game)
+    game_system = await GameSystem.create_new(
+        conn, game, db_pool=getattr(universe, "pg_pool", None)
+    )
     universe.add_game(game_system)
     return game_system
 

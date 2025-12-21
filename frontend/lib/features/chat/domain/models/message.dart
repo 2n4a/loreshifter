@@ -42,14 +42,17 @@ class Message {
   }
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    final chatId = json['chatId'] ?? json['chat_id'];
+    final senderId = json['senderId'] ?? json['sender_id'];
+    final sentAt = json['sentAt'] ?? json['sent_at'];
     return Message(
       id: json['id'] as int,
-      chatId: json['chat_id'] as int,
-      senderId: json['sender_id'] as int?,
+      chatId: chatId as int,
+      senderId: senderId as int?,
       kind: _parseMessageKind(json['kind'] as String),
       text: json['text'] as String,
       special: json['special'] as String?,
-      sentAt: DateTime.parse(json['sent_at']),
+      sentAt: DateTime.parse(sentAt as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
@@ -75,12 +78,16 @@ class Message {
       case 'system':
         return MessageKind.system;
       case 'characterCreation':
+      case 'character_creation':
         return MessageKind.characterCreation;
       case 'generalInfo':
+      case 'general_info':
         return MessageKind.generalInfo;
       case 'publicInfo':
+      case 'public_info':
         return MessageKind.publicInfo;
       case 'privateInfo':
+      case 'private_info':
         return MessageKind.privateInfo;
       default:
         return MessageKind.system;
@@ -116,4 +123,3 @@ class MessageOut {
     };
   }
 }
-

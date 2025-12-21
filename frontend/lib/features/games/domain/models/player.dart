@@ -14,11 +14,14 @@ class Player {
   });
 
   factory Player.fromJson(Map<String, dynamic> json) {
+    final isReady = (json['isReady'] ?? json['is_ready']) ?? false;
+    final isHost = (json['isHost'] ?? json['is_host']) ?? false;
+    final isSpectator = (json['isSpectator'] ?? json['is_spectator']) ?? false;
     return Player(
       user: User.fromJson(json['user']),
-      isReady: json['is_ready'] as bool,
-      isHost: json['is_host'] as bool,
-      isSpectator: json['is_spectator'] as bool,
+      isReady: isReady as bool,
+      isHost: isHost as bool,
+      isSpectator: isSpectator as bool,
     );
   }
 
@@ -31,4 +34,3 @@ class Player {
     };
   }
 }
-

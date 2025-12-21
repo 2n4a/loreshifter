@@ -5,8 +5,20 @@ import asyncpg
 import dataclasses
 
 from game.logger import gl_log
-from game.universe import Universe, UniverseNewWorldEvent, UniverseWorldUpdateEvent, UniverseGameEvent
-from game.game import GameSystem, GameEvent, GameStatusEvent, PlayerLeftEvent, PlayerJoinedEvent, PlayerKickedEvent
+from game.universe import (
+    Universe,
+    UniverseNewWorldEvent,
+    UniverseWorldUpdateEvent,
+    UniverseGameEvent,
+)
+from game.game import (
+    GameSystem,
+    GameEvent,
+    GameStatusEvent,
+    PlayerLeftEvent,
+    PlayerJoinedEvent,
+    PlayerKickedEvent,
+)
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from lstypes.game import GameStatus
 from fastapi.encoders import jsonable_encoder
@@ -113,7 +125,9 @@ class WebSocketController:
             task = asyncio.create_task(self.delayed_disconnect(game_id, user_id))
             self.pending_disconnect[key] = task
 
-    async def disconnect(self, game_id: int, user_id: int, code: int = 1000, purge: bool = False):
+    async def disconnect(
+        self, game_id: int, user_id: int, code: int = 1000, purge: bool = False
+    ):
         async with self._lock:
             game_map = self.user_to_ws.get(game_id)
             ws = game_map.get(user_id) if game_map else None
@@ -129,17 +143,26 @@ class WebSocketController:
             except Exception:
                 pass
 
-    async def _safe_send(self, game_id: int, user_id: int, ws: WebSocket, message: dict) -> bool:
+    async def _safe_send(
+        self, game_id: int, user_id: int, ws: WebSocket, message: dict
+    ) -> bool:
         try:
             if getattr(ws, "client_state", None) == WebSocketState.DISCONNECTED:
                 raise RuntimeError("WebSocket already disconnected")
 
-            await self.log.ainfo(f"Sending message: {message}", game_id=game_id, user_id=user_id)
+            await self.log.ainfo(
+                f"Sending message: {message}", game_id=game_id, user_id=user_id
+            )
             await ws.send_json(message)
             return True
 
         except Exception as e:
-            await self.log.awarning("WebSocketController send failed", game_id=game_id, user_id=user_id, err=str(e))
+            await self.log.awarning(
+                "WebSocketController send failed",
+                game_id=game_id,
+                user_id=user_id,
+                err=str(e),
+            )
 
             removed = False
             async with self._lock:
@@ -196,54 +219,67 @@ class WebSocketController:
                     case UniverseGameEvent(event=ev):
                         match ev:
                             case PlayerJoinedEvent(game_id=gid, player=player_out):
-                                await self.send_json_all({
-                                    "type": type(ev).__name__,
-                                    "payload": jsonable_encoder(ev),
-                                },
-                                    gid
+                                await self.send_json_all(
+                                    {
+                                        "type": type(ev).__name__,
+                                        "payload": jsonable_encoder(ev),
+                                    },
+                                    gid,
                                 )
 
                             case PlayerLeftEvent(game_id=gid, player=player_out):
-                                await self.disconnect(game_id=gid, user_id=player_out.user.id, purge=True)
-                                await self.send_json_all({
-                                    "type": type(ev).__name__,
-                                    "payload": jsonable_encoder(ev),
-                                },
-                                    gid
+                                await self.disconnect(
+                                    game_id=gid, user_id=player_out.user.id, purge=True
+                                )
+                                await self.send_json_all(
+                                    {
+                                        "type": type(ev).__name__,
+                                        "payload": jsonable_encoder(ev),
+                                    },
+                                    gid,
                                 )
 
                             case PlayerKickedEvent(game_id=gid, player=player_out):
-                                await self.disconnect(game_id=gid, user_id=player_out.user.id, purge=True)
-                                await self.send_json_all({
-                                    "type": type(ev).__name__,
-                                    "payload": jsonable_encoder(ev),
-                                },
-                                    gid
+                                await self.disconnect(
+                                    game_id=gid, user_id=player_out.user.id, purge=True
+                                )
+                                await self.send_json_all(
+                                    {
+                                        "type": type(ev).__name__,
+                                        "payload": jsonable_encoder(ev),
+                                    },
+                                    gid,
                                 )
 
                             case GameStatusEvent(game_id=gid, new_status=new_s):
                                 if new_s == GameStatus.ARCHIVED:
                                     await self.remove_game(gid)
 
-                                await self.send_json_all({
-                                    "type": type(ev).__name__,
-                                    "payload": {
-                                        "game_id": gid,
-                                        "new_status": new_s.value,
+                                await self.send_json_all(
+                                    {
+                                        "type": type(ev).__name__,
+                                        "payload": {
+                                            "game_id": gid,
+                                            "new_status": new_s.value,
+                                        },
                                     },
-                                }, gid)
+                                    gid,
+                                )
 
                             case _:
                                 gid = ev.game_id
-                                await self.send_json_all({
-                                    "type": type(ev).__name__,
-                                    "payload": jsonable_encoder(ev),
-                                },
-                                    gid
+                                await self.send_json_all(
+                                    {
+                                        "type": type(ev).__name__,
+                                        "payload": jsonable_encoder(ev),
+                                    },
+                                    gid,
                                 )
 
                     case _:
-                        await self.log.awarning("Unhandled UniverseEvent: %s (%s)", event, type(event))
+                        await self.log.awarning(
+                            "Unhandled UniverseEvent: %s (%s)", event, type(event)
+                        )
         except Exception as e:
             await self.log.aerror("Listen task failed: %s", e)
             raise

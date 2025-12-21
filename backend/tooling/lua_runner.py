@@ -5,22 +5,27 @@ from lupa import LuaRuntime
 from tooling.converters import py_to_lua, lua_to_py
 
 
-
-
 class ToolError(Exception):
     """Базовая ошибка раннера."""
+
     pass
+
 
 class ToolNotFound(ToolError):
     """Запрошенный tool_name не описан в manifest."""
+
     pass
+
 
 class ToolValidationError(ToolError):
     """Manifest кривой или функция не найдена/не callable."""
+
     pass
+
 
 class ToolRuntimeError(ToolError):
     """Lua функция упала или вернула не то."""
+
     pass
 
 
@@ -41,7 +46,6 @@ class LuaToolRunner:
 
         self.lua_sources = list(lua_sources or [])
         self.manifest = manifest or {}
-
 
         for src in self.lua_sources:
             self.lua.execute(src)
@@ -69,13 +73,19 @@ class LuaToolRunner:
 
             fn_name = spec.get("lua_function")
             if not isinstance(fn_name, str) or not fn_name:
-                raise ToolValidationError(f"tool {tool_name!r} missing valid 'lua_function'")
+                raise ToolValidationError(
+                    f"tool {tool_name!r} missing valid 'lua_function'"
+                )
 
             desc = spec.get("description")
             if desc is not None and not isinstance(desc, str):
-                raise ToolValidationError(f"tool {tool_name!r} has invalid 'description' type")
+                raise ToolValidationError(
+                    f"tool {tool_name!r} has invalid 'description' type"
+                )
 
-            out[tool_name] = ToolSpec(tool_name=tool_name, lua_function=fn_name, description=desc)
+            out[tool_name] = ToolSpec(
+                tool_name=tool_name, lua_function=fn_name, description=desc
+            )
 
         return out
 
@@ -88,7 +98,9 @@ class LuaToolRunner:
                     f"Lua function {spec.lua_function!r} for tool {tool_name!r} not found or not callable"
                 )
 
-    def run_tool(self, tool_name: str, world_state: dict, llm_params: dict) -> tuple[dict, dict]:
+    def run_tool(
+        self, tool_name: str, world_state: dict, llm_params: dict
+    ) -> tuple[dict, dict]:
         spec = self.tools.get(tool_name)
         if spec is None:
             raise ToolNotFound(f"Unknown tool: {tool_name}")

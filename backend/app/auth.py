@@ -131,14 +131,21 @@ AUTH_PROVIDERS = [
 
 
 @router.get("/api/v0/login")
-def login(provider: str, to: str | None = None, redirect: bool = False):
+def login(
+    request: Request, provider: str, to: str | None = None, redirect: bool = False
+):
     for p in AUTH_PROVIDERS:
         if p.provider_name == provider:
             state = {}
             if to is not None:
                 state["to"] = to
             login_url = p.get_login_url(state)
-            if redirect:
+            wants_redirect = redirect or to is not None
+            if not wants_redirect:
+                accept = request.headers.get("accept", "")
+                if "text/html" in accept:
+                    wants_redirect = True
+            if wants_redirect:
                 return RedirectResponse(login_url)
             return {"url": login_url}
     else:
@@ -167,8 +174,9 @@ async def login_callback(request: Request, conn: Conn, provider: str):
             )
 
             secure = config.ENVIRONMENT == "prod"
-            if "to" in state:
-                response = RedirectResponse(state["to"])
+            redirect_target = state.get("to") or config.AUTH_REDIRECT_URL
+            if redirect_target:
+                response = RedirectResponse(redirect_target)
                 response.set_cookie("session", jwt_token, secure=secure, httponly=True)
                 return response
 

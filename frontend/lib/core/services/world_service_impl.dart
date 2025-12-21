@@ -108,4 +108,3 @@ class WorldServiceImpl extends BaseService implements WorldService {
     );
   }
 }
-

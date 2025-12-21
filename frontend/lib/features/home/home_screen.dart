@@ -11,7 +11,9 @@ import '/core/widgets/neon_button.dart';
 import '/features/games/presentation/widgets/game_status_chip.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTabIndex;
+
+  const HomeScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -25,49 +27,56 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    final uri = Uri.base;
-    final tabParam = uri.queryParameters['tab'];
-    _initialTabIndex = int.tryParse(tabParam ?? '') ?? 0;
-    if (_initialTabIndex < 0 || _initialTabIndex > 2) _initialTabIndex = 0;
+    _initialTabIndex = _normalizeTabIndex(widget.initialTabIndex);
 
-    _tabController = TabController(length: 3, vsync: this, initialIndex: _initialTabIndex);
-    _tabController.addListener(_onTabChanged);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: _initialTabIndex,
+    );
+    _tabController.addListener(_handleTabChange);
     _loadInitialData();
   }
 
-  void _onTabChanged() {
-    if (!_tabController.indexIsChanging) {
-      _loadDataForTab(_tabController.index);
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextIndex = _normalizeTabIndex(widget.initialTabIndex);
+    if (nextIndex != _tabController.index) {
+      _tabController.animateTo(nextIndex);
+      _loadWorldsForTab(nextIndex);
     }
   }
 
   void _loadInitialData() {
     context.read<GamesCubit>().loadGames();
-    _loadDataForTab(_initialTabIndex);
+    _loadWorldsForTab(_tabController.index);
   }
 
-  void _loadDataForTab(int tabIndex) {
-    switch (tabIndex) {
-      case 0:
-        // Комнаты - already loaded games
-        break;
-      case 1:
-        // Мои миры
-        final authState = context.read<AuthCubit>().state;
-        if (authState is Authenticated) {
-          context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
-        }
-        break;
-      case 2:
-        // Витрина
-        context.read<WorldsCubit>().loadPopularWorlds();
-        break;
+  int _normalizeTabIndex(int value) {
+    if (value < 0 || value > 2) return 0;
+    return value;
+  }
+
+  void _handleTabChange() {
+    if (_tabController.indexIsChanging) return;
+    _loadWorldsForTab(_tabController.index);
+  }
+
+  void _loadWorldsForTab(int tabIndex) {
+    if (tabIndex == 1) {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated) {
+        context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+      }
+    } else if (tabIndex == 2) {
+      context.read<WorldsCubit>().loadPopularWorlds();
     }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -79,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen>
       listener: (context, state) {
         // When user logs in, reload data for current tab
         if (state is Authenticated) {
-          _loadDataForTab(_tabController.index);
+          _loadWorldsForTab(_tabController.index);
         }
       },
       child: Scaffold(

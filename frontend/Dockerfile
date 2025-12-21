@@ -2,7 +2,7 @@
 FROM ghcr.io/cirruslabs/flutter:${FLUTTER_VERSION} AS build
 
 # Build arguments (override at build time)
-ARG BACKEND_URL=http://127.0.0.1:8000/api/v0
+ARG BACKEND_URL=http://localhost:8000/api/v0
 ARG BUILD_NUMBER=0
 
 # Expose at build for dart-define; also write into ENV if any scripts read it

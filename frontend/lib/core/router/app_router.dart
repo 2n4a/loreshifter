@@ -25,7 +25,14 @@ class AppRouter {
   late final router = GoRouter(
     refreshListenable: GoRouterRefreshStream(authCubit.stream),
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/',
+        builder: (context, state) {
+          final tabParam = state.uri.queryParameters['tab'];
+          final tabIndex = int.tryParse(tabParam ?? '') ?? 0;
+          return HomeScreen(initialTabIndex: tabIndex);
+        },
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/profile/:userId',

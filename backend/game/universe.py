@@ -40,8 +40,9 @@ class UniverseWorldUpdateEvent(UniverseEvent):
 
 
 class Universe(System[UniverseEvent, None]):
-    def __init__(self):
+    def __init__(self, pg_pool: asyncpg.Pool | None = None):
         super().__init__(None)
+        self.pg_pool = pg_pool
         self.games = []
 
     async def stop(self):
@@ -293,6 +294,7 @@ class Universe(System[UniverseEvent, None]):
                 game_system = await GameSystem.create_new(
                     conn,
                     game,
+                    db_pool=self.pg_pool,
                 )
 
                 self.add_game(game_system)

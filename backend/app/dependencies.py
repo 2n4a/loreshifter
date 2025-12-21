@@ -57,6 +57,7 @@ async def get_ws_controller():
         raise Exception("State is not initialized")
     return state.ws_controller
 
+
 U = Annotated[Universe, Depends(get_universe)]
 W = Annotated[WebSocketController, Depends(get_ws_controller)]
 
@@ -148,7 +149,7 @@ async def livespan(_app: FastAPI):
     async with asyncpg.create_pool(
         dsn=config.POSTGRES_URL, init=init_connection
     ) as pg_pool:
-        universe = Universe()
+        universe = Universe(pg_pool)
         ws_controller = WebSocketController(pg_pool)
         async with asyncio.TaskGroup() as bg_tasks:
             bg_tasks.create_task(ws_controller.listen(universe))
@@ -166,7 +167,9 @@ async def livespan(_app: FastAPI):
             state = None
 
 
-async def lazy_ws_auth(websocket: WebSocket, conn: asyncpg.Connection) -> FullUserOut | None:
+async def lazy_ws_auth(
+    websocket: WebSocket, conn: asyncpg.Connection
+) -> FullUserOut | None:
     try:
         msg = await websocket.receive_json()
     except Exception:
@@ -174,7 +177,7 @@ async def lazy_ws_auth(websocket: WebSocket, conn: asyncpg.Connection) -> FullUs
 
     if not isinstance(msg, dict) or msg.get("type") != "auth":
         return None
-    
+
     token = msg.get("payload")
     if not isinstance(token, str):
         return None
@@ -187,5 +190,5 @@ async def lazy_ws_auth(websocket: WebSocket, conn: asyncpg.Connection) -> FullUs
     user = await game.user.get_user(conn, payload["id"], deleted_ok=False)
     if isinstance(user, ServiceError):
         return None
-    
+
     return user

@@ -131,12 +131,16 @@ class GameWsServiceImpl implements GameWsService {
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
     final host = uri.host;
     final port = uri.port;
+    final basePath = uri.path.isEmpty || uri.path == '/'
+        ? ''
+        : (uri.path.endsWith('/') ? uri.path.substring(0, uri.path.length - 1) : uri.path);
     final wsPath = path.startsWith('/') ? path : '/$path';
+    final fullPath = '$basePath$wsPath';
 
     if (port != 80 && port != 443) {
-      return '$scheme://$host:$port$wsPath';
+      return '$scheme://$host:$port$fullPath';
     }
-    return '$scheme://$host$wsPath';
+    return '$scheme://$host$fullPath';
   }
 
   Future<void> dispose() async {
@@ -144,4 +148,3 @@ class GameWsServiceImpl implements GameWsService {
     _messageController.close();
   }
 }
-

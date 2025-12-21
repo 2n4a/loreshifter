@@ -127,6 +127,15 @@ class GameplayServiceImpl extends BaseService implements GameplayService {
   }
 
   @override
+  Future<Game> restartGame(int gameId) async {
+    developer.log('[SERVICE:GAMEPLAY] restartGame(gameId=$gameId) -> POST /game/$gameId/restart');
+    return apiClient.post<Game>(
+      '/game/$gameId/restart',
+      fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  @override
   Stream<Map<String, dynamic>> connectWebSocket(int gameId) {
     developer.log('[SERVICE:GAMEPLAY] connectWebSocket(gameId=$gameId)');
     disconnectWebSocket();
