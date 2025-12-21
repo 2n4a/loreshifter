@@ -16,6 +16,7 @@
       oauth2-github-client-secret: "{{ oauth2_github_client_secret }}"
       gen-api-key: "{{ gen_api_key }}"
       proxy-api-key: "{{ proxy_api_key }}"
+      jwt-secret: "{{ jwt_secret }}"
 
   tasks:
     - name: Ensure Docker is installed

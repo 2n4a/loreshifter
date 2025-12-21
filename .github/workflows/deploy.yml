@@ -155,6 +155,7 @@ jobs:
             -e "oauth2_github_client_secret=${{ secrets.OAUTH2_GITHUB_CLIENT_SECRET }}"
             -e "gen_api_key=${{ secrets.GEN_API_KEY }}"
             -e "proxy_api_key=${{ secrets.PROXY_API_KEY }}"
+            -e "jwt_secret=${{ secrets.JWT_SECRET }}"
             -u "${{ vars.DEPLOY_SERVER_USER }}"
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
           requirements: ansible-requirements.yaml
