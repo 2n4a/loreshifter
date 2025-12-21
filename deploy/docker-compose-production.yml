@@ -34,6 +34,7 @@ services:
       - DB_NAME=${DB_NAME:-loreshifter}
       - DB_USER=${DB_USER:-postgres}
       - LOG_STACKTRACE=true
+      - SELF_URL=https://ls.elteammate.space
     ports:
       - "15002:8000"
     depends_on:
