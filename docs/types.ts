@@ -8,11 +8,11 @@ type ServiceError = {
 }
 
 type Ping = {
-    time: Date,
+    // Empty payload for ping
 }
 
 type Pong = {
-    time: Date,
+    // Empty payload for pong
 }
 
 type User = {
@@ -153,3 +153,58 @@ type GameStateArchived = GameStateBase & {
 }
 
 type GameState = GameStateWaiting | GameStatePlaying | GameStateFinished | GameStateArchived
+
+// WebSocket Events
+
+type WsEvent<T, P> = {
+    type: T,
+    payload: P
+}
+
+type AuthEvent = WsEvent<"auth", string>
+type PingEvent = WsEvent<"ping", null>
+type PongEvent = WsEvent<"pong", null>
+
+type GameStatusEvent = WsEvent<"GameStatusEvent", {
+    game_id: number,
+    new_status: GameStatus
+}>
+
+type PlayerJoinedEvent = WsEvent<"PlayerJoinedEvent", {
+    game_id: number,
+    player: Player
+}>
+
+type PlayerLeftEvent = WsEvent<"PlayerLeftEvent", {
+    game_id: number,
+    player: Player
+}>
+
+type PlayerKickedEvent = WsEvent<"PlayerKickedEvent", {
+    game_id: number,
+    player: Player
+}>
+
+type PlayerReadyEvent = WsEvent<"PlayerReadyEvent", {
+    game_id: number,
+    player_id: number,
+    ready: boolean
+}>
+
+type MessageOutWithNeighbors = {
+    msg: Message,
+    prev_id: number | null,
+    next_id: number | null
+}
+
+type ChatEventPayload = 
+    | { message: MessageOutWithNeighbors } // Sent
+    | { message: Message } // Edit/Delete
+    | { suggestions: string[] } // Suggestions
+
+type GameChatEvent = WsEvent<"GameChatEvent", {
+    game_id: number,
+    chat_id: number,
+    owner_id: number | null,
+    event: ChatEventPayload
+}>
