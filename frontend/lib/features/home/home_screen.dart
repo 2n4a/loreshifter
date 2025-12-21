@@ -75,10 +75,17 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Loreshifter'),
-        actions: [_buildHistoryButton(), _buildProfileButton()],
+    return BlocListener<AuthCubit, AuthState>(
+      listener: (context, state) {
+        // When user logs in, reload data for current tab
+        if (state is Authenticated) {
+          _loadDataForTab(_tabController.index);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Loreshifter'),
+          actions: [_buildHistoryButton(), _buildProfileButton()],
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -103,10 +110,11 @@ class _HomeScreenState extends State<HomeScreen>
           _buildWorldsShowcase(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/worlds/create'),
-        tooltip: 'Создать мир',
-        child: const Icon(Icons.add),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => context.push('/worlds/create'),
+          tooltip: 'Создать мир',
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
@@ -216,12 +224,12 @@ class _HomeScreenState extends State<HomeScreen>
                   GameStatusChip(status: game.status, uppercase: true),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 'Мир: ${game.world.name}',
                 style: TextStyle(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               Text(
                 'Игроков: ${game.players.length}/${game.maxPlayers}',
                 style: TextStyle(color: cs.onSurfaceVariant),
@@ -367,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen>
                       'Автор: ${world.owner.name}',
                       style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       world.description ?? 'Нет описания',
                       style: TextStyle(color: cs.onSurface, fontSize: 12),

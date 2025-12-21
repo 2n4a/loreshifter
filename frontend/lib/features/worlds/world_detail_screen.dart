@@ -66,6 +66,15 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload world data when returning from edit screen
+    if (ModalRoute.of(context)?.isCurrent == true && _world != null) {
+      _loadWorld();
+    }
+  }
+
   Future<void> _loadWorld() async {
     setState(() {
       _isLoading = true;
@@ -115,8 +124,8 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
         SnackBar(content: Text('Мир "${copiedWorld.name}" успешно скопирован')),
       );
       
-      // Navigate to the copied world
-      context.go('/worlds/${copiedWorld.id}');
+      // Navigate to the edit screen of the copied world with fresh copy flag
+      context.push('/worlds/${copiedWorld.id}/edit?sourceWorldId=${widget.worldId}&isFreshCopy=true');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,16 +154,31 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildAppBar(ColorScheme cs) {
     return SliverAppBar(
-      expandedHeight: 120,
       floating: false,
       pinned: true,
-      elevation: 0,
       backgroundColor: cs.surface,
       foregroundColor: cs.onSurface,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, size: 20),
         onPressed: () => context.pop(),
         tooltip: 'Назад',
+      ),
+      title: AnimatedBuilder(
+        animation: _fadeAnimation,
+        builder: (context, child) {
+          return Opacity(
+            opacity: _fadeAnimation.value,
+            child: Text(
+              _world?.name ?? 'Мир',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        },
       ),
       actions: [
         if (_world != null && _isOwner())
@@ -164,26 +188,6 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             tooltip: 'Редактировать мир',
           ),
       ],
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 60, bottom: 16, right: 60),
-        title: AnimatedBuilder(
-          animation: _fadeAnimation,
-          builder: (context, child) {
-            return Opacity(
-              opacity: _fadeAnimation.value,
-              child: Text(
-                _world?.name ?? 'Детали мира',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          },
-        ),
-      ),
     );
   }
 
@@ -202,7 +206,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
               ),
               child: const CircularProgressIndicator(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               'Загрузка мира...',
               style: Theme.of(
@@ -225,7 +229,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.error_outline, size: 48, color: cs.error),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   'Упс! Что-то пошло не так',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -234,7 +238,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   _error ?? 'Неизвестная ошибка',
                   style: Theme.of(
@@ -242,7 +246,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                   ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 NeonButton(
                   text: 'Повторить попытку',
                   icon: Icons.refresh,
@@ -259,16 +263,17 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildContentSliver() {
     final items = <Widget>[
+      const SizedBox(height: 12),
       _buildHeaderSection(),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       _buildDescriptionSection(),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       _buildOwnerSection(),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       _buildInfoSection(),
-      const SizedBox(height: 24),
+      const SizedBox(height: 12),
       _buildActionButtons(),
-      const SizedBox(height: 32),
+      const SizedBox(height: 12),
     ];
 
     Widget wrapAnimated(Widget child) => FadeTransition(
@@ -332,7 +337,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             iconColor: cs.primary,
             padding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             _world!.description ?? 'Описание отсутствует',
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -374,7 +379,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                 withGlow: true,
                 glowColor: cs.primary,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,7 +391,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 12),
                     Text(
                       'Нажмите, чтобы посмотреть профиль',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -418,7 +423,7 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
             iconColor: cs.secondary,
             padding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           InfoTile(
             label: 'Создан',
             value: _formatDate(_world!.createdAt),
@@ -439,68 +444,73 @@ class _WorldDetailScreenState extends State<WorldDetailScreen>
 
   Widget _buildActionButtons() {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          NeonButton(
-            text: 'Создать игру',
-            icon: Icons.add_circle_outline,
-            onPressed:
-                () => context.push('/games/create?worldId=${widget.worldId}'),
-            size: ButtonSize.large,
-            style: NeonButtonStyle.gradient, // мягкий градиент по умолчанию
-          ),
-          const SizedBox(height: 12),
-          NeonButton(
-            text: 'Копировать мир',
-            icon: Icons.copy_outlined,
-            onPressed: _copyWorld,
-            style: NeonButtonStyle.outlined,
-            color: cs.tertiary,
-          ),
-          const SizedBox(height: 12),
-          NeonButton(
-            text: 'История мира',
-            icon: Icons.history,
-            onPressed: () => context.push('/worlds/${widget.worldId}/history'),
-            style: NeonButtonStyle.outlined,
-            color: cs.primary,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: NeonButton(
-                  text: 'Поделиться',
-                  icon: Icons.share_outlined,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Функция в разработке')),
-                    );
-                  },
-                  style: NeonButtonStyle.outlined,
-                  color: cs.primary,
-                ),
+    return Column(
+      children: [
+        NeonButton(
+          text: 'Создать игру',
+          icon: Icons.add_circle_outline,
+          onPressed:
+              () => context.push('/games/create?worldId=${widget.worldId}'),
+          size: ButtonSize.large,
+          style: NeonButtonStyle.gradient, // мягкий градиент по умолчанию
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: NeonButton(
+                text: 'Копировать мир',
+                icon: Icons.copy_outlined,
+                onPressed: _copyWorld,
+                style: NeonButtonStyle.outlined,
+                color: cs.tertiary,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: NeonButton(
-                  text: 'Избранное',
-                  icon: Icons.favorite_outline,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Добавлено в избранное')),
-                    );
-                  },
-                  style: NeonButtonStyle.outlined,
-                  color: cs.secondary,
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: NeonButton(
+                text: 'История мира',
+                icon: Icons.history,
+                onPressed: () => context.push('/worlds/${widget.worldId}/history'),
+                style: NeonButtonStyle.outlined,
+                color: cs.primary,
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: NeonButton(
+                text: 'Поделиться',
+                icon: Icons.share_outlined,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Функция в разработке')),
+                  );
+                },
+                style: NeonButtonStyle.outlined,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: NeonButton(
+                text: 'Избранное',
+                icon: Icons.favorite_outline,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Добавлено в избранное')),
+                  );
+                },
+                style: NeonButtonStyle.outlined,
+                color: cs.secondary,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

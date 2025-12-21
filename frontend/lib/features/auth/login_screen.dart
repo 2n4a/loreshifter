@@ -55,7 +55,7 @@ class LoginScreen extends StatelessWidget {
                       color: cs.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   Text(
                     'Loreshifter',
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -63,7 +63,7 @@ class LoginScreen extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     'Текстовые новеллы и миры на базе LLM',
                     textAlign: TextAlign.center,

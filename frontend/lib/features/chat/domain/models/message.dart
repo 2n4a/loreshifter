@@ -44,12 +44,12 @@ class Message {
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
       id: json['id'] as int,
-      chatId: json['chatId'] as int,
-      senderId: json['senderId'] as int?,
+      chatId: json['chat_id'] as int,
+      senderId: json['sender_id'] as int?,
       kind: _parseMessageKind(json['kind'] as String),
       text: json['text'] as String,
       special: json['special'] as String?,
-      sentAt: DateTime.parse(json['sentAt']),
+      sentAt: DateTime.parse(json['sent_at']),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }

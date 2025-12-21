@@ -17,7 +17,7 @@ class GameServiceImpl extends BaseService implements GameService {
     bool? public,
     bool? joined,
   }) async {
-    developer.log('GameService: Запрос списка игр');
+    developer.log('[SERVICE:GAMES] getGames(limit=$limit, public=$public, joined=$joined) -> GET /game');
     final queryParams = <String, dynamic>{
       'limit': limit,
       'offset': offset,
@@ -39,7 +39,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<Game> getGameById(int id) async {
-    developer.log('GameService: Запрос игры по ID: $id');
+    developer.log('[SERVICE:GAMES] getGameById($id) -> GET /game/$id');
     return apiClient.get<Game>(
       '/game/$id',
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
@@ -48,7 +48,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<Game> getCurrentGame() async {
-    developer.log('GameService: Запрос текущей игры');
+    developer.log('[SERVICE:GAMES] getCurrentGame() -> GET /game/0');
     return apiClient.get<Game>(
       '/game/0',
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
@@ -57,7 +57,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<Game> getGameByCode(String code) async {
-    developer.log('GameService: Запрос игры по коду: $code');
+    developer.log('[SERVICE:GAMES] getGameByCode($code) -> GET /game/code/$code');
     return apiClient.get<Game>(
       '/game/code/$code',
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
@@ -71,7 +71,7 @@ class GameServiceImpl extends BaseService implements GameService {
     String? name,
     int? maxPlayers,
   }) async {
-    developer.log('GameService: Создание игры');
+    developer.log('[SERVICE:GAMES] createGame(worldId=$worldId, name=$name) -> POST /game');
     return apiClient.post<Game>(
       '/game',
       data: {
@@ -92,7 +92,7 @@ class GameServiceImpl extends BaseService implements GameService {
     int? hostId,
     int? maxPlayers,
   }) async {
-    developer.log('GameService: Обновление игры $id');
+    developer.log('[SERVICE:GAMES] updateGame($id) -> PUT /game/$id');
     return apiClient.put<Game>(
       '/game/$id',
       data: {
@@ -107,7 +107,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<Game> joinGameById(int id) async {
-    developer.log('GameService: Присоединение к игре $id');
+    developer.log('[SERVICE:GAMES] joinGameById($id) -> POST /game/$id/join');
     return apiClient.post<Game>(
       '/game/$id/join',
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
@@ -116,7 +116,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<Game> joinGameByCode(String code) async {
-    developer.log('GameService: Присоединение к игре по коду $code');
+    developer.log('[SERVICE:GAMES] joinGameByCode($code) -> POST /game/code/$code/join');
     return apiClient.post<Game>(
       '/game/code/$code/join',
       fromJson: (data) => Game.fromJson(data as Map<String, dynamic>),
@@ -125,7 +125,7 @@ class GameServiceImpl extends BaseService implements GameService {
 
   @override
   Future<void> leaveGame(int gameId) async {
-    developer.log('GameService: Выход из игры $gameId');
+    developer.log('[SERVICE:GAMES] leaveGame($gameId) -> POST /game/$gameId/leave');
     await apiClient.post<Map<String, dynamic>>(
       '/game/$gameId/leave',
       fromJson: (data) => data as Map<String, dynamic>,

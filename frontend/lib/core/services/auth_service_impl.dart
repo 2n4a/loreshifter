@@ -9,23 +9,23 @@ class AuthServiceImpl extends BaseService implements AuthService {
 
   @override
   Future<User> getCurrentUser() async {
-    developer.log('AuthService: Запрос текущего пользователя GET /user/me');
+    developer.log('[SERVICE:AUTH] getCurrentUser() -> GET /user/me');
     try {
       final user = await apiClient.get<User>(
         '/user/me',
         fromJson: (data) => User.fromJson(data),
       );
-      developer.log('AuthService: Пользователь получен успешно - id: ${user.id}, name: ${user.name}');
+      developer.log('[SERVICE:AUTH] getCurrentUser() -> Success: User(id=${user.id}, name=${user.name})');
       return user;
     } catch (e, stackTrace) {
-      developer.log('AuthService: Ошибка при получении пользователя', error: e, stackTrace: stackTrace);
+      developer.log('[SERVICE:AUTH] getCurrentUser() -> Error', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
 
   @override
   Future<User> getUserById(int id) async {
-    developer.log('AuthService: Запрос пользователя по ID: $id');
+    developer.log('[SERVICE:AUTH] getUserById($id) -> GET /user/$id');
     return apiClient.get<User>(
       '/user/$id',
       fromJson: (data) => User.fromJson(data),
@@ -34,7 +34,7 @@ class AuthServiceImpl extends BaseService implements AuthService {
 
   @override
   Future<User> updateUser(String name) async {
-    developer.log('AuthService: Обновление имени пользователя на: $name');
+    developer.log('[SERVICE:AUTH] updateUser(name=$name) -> PUT /user');
     return apiClient.put<User>(
       '/user',
       data: {'name': name},
@@ -44,28 +44,28 @@ class AuthServiceImpl extends BaseService implements AuthService {
 
   @override
   Future<bool> isAuthenticated() async {
-    developer.log('AuthService: Проверка авторизации');
+    developer.log('[SERVICE:AUTH] isAuthenticated() -> checking');
     try {
       await getCurrentUser();
-      developer.log('AuthService: Пользователь авторизован');
+      developer.log('[SERVICE:AUTH] isAuthenticated() -> true');
       return true;
     } catch (e) {
-      developer.log('AuthService: Пользователь НЕ авторизован', error: e);
+      developer.log('[SERVICE:AUTH] isAuthenticated() -> false');
       return false;
     }
   }
 
   @override
   Future<String> getLoginUrl({String? provider}) async {
-    developer.log('AuthService: Получение URL для OAuth2 авторизации');
-    
-    // Определяем URL для редиректа обратно в приложение
+    final providerName = provider ?? 'github';
     final callbackUrl = Uri.base.origin;
     
+    developer.log('[SERVICE:AUTH] getLoginUrl(provider=$providerName) -> GET /login');
+    
     final queryParams = <String, String>{
-      'provider': provider ?? 'github',
-      'redirect': 'false', // Получаем URL в JSON, а не делаем редирект сразу
-      'to': callbackUrl, // Куда редиректить после авторизации
+      'provider': providerName,
+      'redirect': 'false',
+      'to': callbackUrl,
     };
 
     try {
@@ -76,7 +76,7 @@ class AuthServiceImpl extends BaseService implements AuthService {
       );
       
       final loginUrl = response['url'] as String;
-      developer.log('AuthService: Получен URL для входа: $loginUrl (redirect to: ${queryParams['to']})');
+      developer.log('[SERVICE:AUTH] getLoginUrl() -> Success: $loginUrl');
       return loginUrl;
     } catch (e, stackTrace) {
       developer.log('AuthService: Ошибка при получении URL для входа', error: e, stackTrace: stackTrace);

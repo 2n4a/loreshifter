@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,19 +37,34 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
   StreamSubscription<Map<String, dynamic>>? _wsSubscription;
   int? _currentGameId;
   GameState? _gameState;
+  GameplayCubit? _gameplayCubit;
+  bool _isDisposed = false;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
+  int? _loadedChatId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadGameDetails();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _gameplayCubit ??= context.read<GameplayCubit>();
+  }
+
+  @override
   void dispose() {
+    _isDisposed = true;
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _messageController.dispose();
     _wsSubscription?.cancel();
+    _gameplayCubit?.disconnectWebSocket();
     super.dispose();
   }
 
@@ -62,21 +78,158 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
 
     if (!mounted) return;
 
-    // Load game state
+    // Load game state and connect to WebSocket
     final state = context.read<GamesCubit>().state;
     if (state is GameLoaded) {
       _currentGameId = state.game.id;
       await _loadGameState();
+      _connectWebSocket();
     }
+  }
+
+  void _connectWebSocket() {
+    if (_currentGameId == null) return;
+
+    _wsSubscription?.cancel();
+    _wsSubscription = context
+        .read<GameplayCubit>()
+        .connectWebSocket(_currentGameId!)
+        .listen((event) async {
+      if (_isDisposed) return;
+
+      final type = event['type'] as String?;
+      final payload = event['payload'] as Map<String, dynamic>?;
+
+      // Handle connection state changes
+      if (type == '_connection_state' && payload != null) {
+        final state = payload['state'] as String?;
+        final attempts = payload['attempts'] as int? ?? 0;
+        
+        if (!mounted) return;
+        
+        setState(() {
+          _isReconnecting = state == 'reconnecting';
+          _reconnectAttempts = attempts;
+        });
+
+        if (state == 'disconnected' && attempts >= 10) {
+          // Max reconnect attempts reached
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Соединение потеряно. Пожалуйста, обновите страницу.'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+                duration: const Duration(seconds: 10),
+              ),
+            );
+          }
+        } else if (state == 'connected' && attempts > 0) {
+          // Successfully reconnected
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Соединение восстановлено'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            // Reload state after reconnection
+            await _loadGameState();
+            await _loadGameDetails();
+          }
+        }
+        return;
+      }
+
+      if (type == 'GameStatusEvent' && payload != null) {
+        final newStatus = payload['new_status'] as String?;
+        if (newStatus == 'playing') {
+          // Game started, navigate to game screen
+          if (mounted && !_isDisposed) {
+            await _wsSubscription?.cancel();
+            _wsSubscription = null;
+            if (mounted) {
+              context.push('/game/$_currentGameId');
+            }
+          }
+        } else {
+          // Reload game state
+          if (!_isDisposed && mounted) {
+            await _loadGameState();
+            await _loadGameDetails();
+          }
+        }
+      } else if (type == 'PlayerJoinedEvent' ||
+          type == 'PlayerLeftEvent' ||
+          type == 'PlayerKickedEvent' ||
+          type == 'PlayerReadyEvent') {
+        // Reload game details and state
+        if (!_isDisposed && mounted) {
+          await _loadGameState();
+          await _loadGameDetails();
+        }
+      } else if (type == 'GameChatEvent') {
+        // Reload current chat if needed
+        // Could be more selective here
+      }
+    }, onError: (error) {
+      if (_isDisposed || !mounted) return;
+      
+      developer.log('[GAME_LOBBY] WebSocket error: $error', error: error);
+    });
+  }
+
+  void _disconnectWebSocket() {
+    _wsSubscription?.cancel();
+    _gameplayCubit?.disconnectWebSocket();
   }
 
   Future<void> _loadGameState() async {
     if (_currentGameId != null) {
       await context.read<GameplayCubit>().loadGameState(_currentGameId!);
+      
+      // Load the initial chat after game state is loaded
+      if (mounted && !_isDisposed) {
+        await _loadCurrentChat();
+      }
     }
   }
 
-  // WebSocket methods removed - polling will be used for updates
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging && mounted && !_isDisposed) {
+      _loadCurrentChat();
+    }
+  }
+
+  Future<void> _loadCurrentChat() async {
+    if (_currentGameId == null || _gameState == null) return;
+
+    final isGeneralChat = _tabController.index == 0;
+    
+    int? chatId;
+    if (isGeneralChat) {
+      chatId = _gameState!.gameChat?.chatId ?? _gameState!.characterCreationChat?.chatId;
+    } else {
+      chatId = _gameState!.characterCreationChat?.chatId;
+    }
+
+    if (chatId != null) {
+      try {
+        await context.read<GameplayCubit>().loadChat(
+          gameId: _currentGameId!,
+          chatId: chatId,
+        );
+        
+        if (mounted) {
+          setState(() {
+            _loadedChatId = chatId;
+          });
+        }
+      } catch (e) {
+        developer.log('[GAME_LOBBY] Failed to load chat: $e', error: e);
+      }
+    }
+  }
 
   Future<void> _joinGame() async {
     setState(() {
@@ -98,6 +251,7 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
       if (state is GameJoined) {
         _currentGameId = state.game.id;
         await _loadGameState();
+        _connectWebSocket();
         await _loadGameDetails();
       }
     } catch (e) {
@@ -115,8 +269,10 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
     }
   }
 
+  bool _isTogglingReady = false;
+
   Future<void> _toggleReady() async {
-    if (_currentGameId == null) return;
+    if (_currentGameId == null || _isTogglingReady) return;
 
     final authState = context.read<AuthCubit>().state;
     if (authState is! Authenticated) return;
@@ -126,13 +282,28 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
       (p) => p.user.id == authState.user.id,
     );
 
-    await context
-        .read<GameplayCubit>()
-        .setReady(_currentGameId!, !currentPlayer.isReady);
+    setState(() {
+      _isTogglingReady = true;
+    });
 
-    // Reload game state
-    await _loadGameState();
-    await _loadGameDetails();
+    try {
+      await context
+          .read<GameplayCubit>()
+          .setReady(_currentGameId!, !currentPlayer.isReady);
+      // WebSocket will automatically update the game state via PlayerReadyEvent
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTogglingReady = false;
+        });
+      }
+    }
   }
 
   Future<void> _startGame() async {
@@ -173,8 +344,20 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
 
     if (confirmed == true && mounted) {
       try {
+        // Disconnect WebSocket first and wait for it to complete
+        await _wsSubscription?.cancel();
+        _wsSubscription = null;
+        _gameplayCubit?.disconnectWebSocket();
+        
+        // Small delay to ensure WebSocket is fully closed
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        if (!mounted) return;
+        
         await context.read<GamesCubit>().leaveGame(gameId);
         if (mounted) {
+          // Reload games list before navigating back
+          await context.read<GamesCubit>().loadGames();
           context.go('/');
         }
       } catch (e) {
@@ -190,17 +373,78 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Лобби игры')),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            const Text('Лобби игры'),
+            if (_isReconnecting) ...[  
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Переподключение...',
+                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
       body: BlocListener<GameplayCubit, GameplayState>(
         listener: (context, state) {
+          if (_isDisposed) return;
+          
           if (state is GameStateLoaded) {
-            setState(() {
-              _gameState = state.gameState;
-            });
+            // Check if game has started BEFORE updating state to prevent rebuild
+            if (state.gameState.status == GameStatus.playing && _currentGameId != null) {
+              if (mounted) {
+                _wsSubscription?.cancel();
+                _wsSubscription = null;
+                context.push('/game/$_currentGameId');
+              }
+              return;
+            }
+            
+            // Only update state if not navigating away
+            if (mounted) {
+              setState(() {
+                _gameState = state.gameState;
+              });
+            }
+          } else if (state is GameplayFailure) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Ошибка: ${state.message}')),
+              );
+            }
           }
         },
         child: BlocBuilder<GamesCubit, GamesState>(
           builder: (context, state) {
+            // Return early if widget is disposed to prevent TabController errors
+            if (_isDisposed) {
+              return const SizedBox.shrink();
+            }
+            
             if (state is GamesLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -222,7 +466,7 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: _loadGameDetails,
                       child: const Text('Повторить'),
@@ -240,6 +484,11 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
   }
 
   Widget _buildLobby(Game game) {
+    // Return early if disposed to prevent using disposed TabController
+    if (_isDisposed) {
+      return const SizedBox.shrink();
+    }
+
     final authState = context.read<AuthCubit>().state;
     final isAuthenticated = authState is Authenticated;
     final isPlayer = isAuthenticated &&
@@ -252,8 +501,15 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
     // Adjust tab count dynamically
     final tabCount = isSpectator ? 1 : 2;
     if (_tabController.length != tabCount) {
-      _tabController.dispose();
-      _tabController = TabController(length: tabCount, vsync: this);
+      // Schedule tab controller update for after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _tabController.dispose();
+            _tabController = TabController(length: tabCount, vsync: this);
+          });
+        }
+      });
     }
 
     return Column(
@@ -276,7 +532,7 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
                     GameStatusChip(status: game.status),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text('Мир: ${game.world.name}'),
                 Text('Код: ${game.code}'),
               ],
@@ -316,7 +572,7 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
                           children: [
                             if (player.isHost)
                               const Chip(
-                                label: Text('Хост'),
+                                label: Text('Хост', style: TextStyle(color: Colors.black)),
                                 backgroundColor: Colors.amber,
                               ),
                             if (player.isSpectator)
@@ -386,21 +642,28 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
     return BlocBuilder<GameplayCubit, GameplayState>(
       builder: (context, state) {
         List<Message> messages = [];
+        int? expectedChatId;
 
         if (_gameState != null) {
           if (isGeneralChat) {
-            // General chat (room/lobby chat) - Use character creation chat as fallback
-            // In waiting state, there's no separate general chat, use character creation
+            // General chat - use gameChat if available, fallback to character creation
+            final generalChat = _gameState!.gameChat ?? _gameState!.characterCreationChat;
+            if (generalChat != null) {
+              messages = generalChat.messages;
+              expectedChatId = generalChat.chatId;
+            }
           } else {
             // Character creation chat
             final characterChat = _gameState!.characterCreationChat;
             if (characterChat != null) {
               messages = characterChat.messages;
+              expectedChatId = characterChat.chatId;
             }
           }
         }
 
-        if (state is ChatLoaded && isGeneralChat) {
+        // Use ChatLoaded state if it matches the expected chat for this tab
+        if (state is ChatLoaded && state.chatSegment.chatId == expectedChatId) {
           messages = state.chatSegment.messages;
         }
 
@@ -508,23 +771,38 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
 
     int chatId;
     if (isGeneralChat) {
-      // Use character creation chat in lobby for general chat
-      chatId = _gameState!.characterCreationChat!.chatId;
+      // Use game chat for general chat, fallback to character creation chat if not available
+      chatId = _gameState!.gameChat?.chatId ?? _gameState!.characterCreationChat!.chatId;
     } else {
       chatId = _gameState!.characterCreationChat!.chatId;
     }
 
-    await context.read<GameplayCubit>().sendMessage(
-      gameId: _currentGameId!,
-      chatId: chatId,
-      text: content,
-    );
+    try {
+      await context.read<GameplayCubit>().sendMessage(
+        gameId: _currentGameId!,
+        chatId: chatId,
+        text: content,
+      );
 
-    // Reload chat
-    await context.read<GameplayCubit>().loadChat(
-      gameId: _currentGameId!,
-      chatId: chatId,
-    );
+      // Reload chat to get updated messages
+      await context.read<GameplayCubit>().loadChat(
+        gameId: _currentGameId!,
+        chatId: chatId,
+      );
+      
+      // Track which chat was loaded for UI updates
+      if (mounted) {
+        setState(() {
+          _loadedChatId = chatId;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildJoinButton() {
@@ -560,25 +838,25 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
             child: NeonButton(
               text: currentPlayer.isReady
                   ? 'Готов ($readyCount/$totalPlayers)'
-                  : 'Не готов ($readyCount/$totalPlayers)',
-              onPressed: _toggleReady,
+                  : 'Готов',
+              onPressed: _isTogglingReady ? null : _toggleReady,
               style: NeonButtonStyle.filled,
-              color: currentPlayer.isReady ? Colors.green : Colors.grey,
+              color: currentPlayer.isReady ? Colors.green.shade700 : Colors.green,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
         ],
-        if (isHost && allReady)
+        if (isHost)
           SizedBox(
             width: double.infinity,
             child: NeonButton(
-              text: 'Начать игру',
-              onPressed: _startGame,
+              text: allReady ? 'Начать игру' : 'Ожидание игроков ($readyCount/$totalPlayers)',
+              onPressed: allReady ? _startGame : null,
               style: NeonButtonStyle.filled,
-              color: Colors.green,
+              color: allReady ? Colors.green : Colors.green.shade900.withOpacity(0.5),
             ),
           ),
-        const SizedBox(height: 8),
+        if (isHost) const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: NeonButton(

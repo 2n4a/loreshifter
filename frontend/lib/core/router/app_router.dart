@@ -69,7 +69,13 @@ class AppRouter {
         path: '/worlds/:worldId/edit',
         builder: (context, state) {
           final worldId = int.parse(state.pathParameters['worldId']!);
-          return EditWorldScreen(worldId: worldId);
+          final sourceWorldId = state.uri.queryParameters['sourceWorldId'];
+          final isFreshCopy = state.uri.queryParameters['isFreshCopy'] == 'true';
+          return EditWorldScreen(
+            worldId: worldId,
+            sourceWorldId: sourceWorldId != null ? int.parse(sourceWorldId) : null,
+            isFreshCopy: isFreshCopy,
+          );
         },
       ),
       GoRoute(

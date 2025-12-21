@@ -23,7 +23,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
       if (sort != null) 'sort': sort,
       if (order != null) 'order': order,
       if (public != null) 'public': public ? 1 : 0,
-      if (filter != null) 'filter': filter,
+      if (filter != null) 'filter_': filter,
     };
 
     return apiClient.get<List<World>>(

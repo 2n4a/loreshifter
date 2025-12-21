@@ -26,8 +26,6 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          // ignore: avoid_print
-          print('🌐 HTTP ${options.method} ${options.uri}');
           developer.log(
             'HTTP ${options.method} ${options.uri}',
             name: 'ApiClient',
@@ -45,11 +43,6 @@ class ApiClient {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          print('✅ Response ${response.statusCode} from ${response.requestOptions.uri}');
-          developer.log(
-            'Response ${response.statusCode} from ${response.requestOptions.uri}',
-            name: 'ApiClient',
-          );
           developer.log(
             'Response data: ${response.data}',
             name: 'ApiClient',
@@ -57,13 +50,6 @@ class ApiClient {
           return handler.next(response);
         },
         onError: (error, handler) {
-          // ignore: avoid_print
-          print('❌ HTTP Error ${error.response?.statusCode} from ${error.requestOptions.uri}');
-          print('   Error: ${error.message}');
-          if (error.response?.data != null) {
-            // ignore: avoid_print
-            print('   Response: ${error.response?.data}');
-          }
           developer.log(
             'HTTP Error ${error.response?.statusCode} from ${error.requestOptions.uri}',
             name: 'ApiClient',

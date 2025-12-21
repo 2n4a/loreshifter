@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/features/games/domain/models/game.dart';
 import '/core/services/game_service.dart';
+import 'dart:developer' as developer;
 
 // Состояния для работы с играми
 abstract class GamesState extends Equatable {
@@ -61,39 +62,49 @@ class GamesCubit extends Cubit<GamesState> {
 
   // Загрузить список всех доступных игр
   Future<void> loadGames() async {
+    developer.log('[CUBIT:GAMES] loadGames() started');
     emit(GamesLoading());
     try {
       final games = await _gameService.getGames();
+      developer.log('[CUBIT:GAMES] loadGames() -> GamesLoaded(count=${games.length})');
       emit(GamesLoaded(games));
     } catch (e) {
+      developer.log('[CUBIT:GAMES] loadGames() -> Error', error: e);
       emit(GamesFailure(e.toString()));
     }
   }
 
   // Загрузить игру по ID
   Future<void> loadGameById(int gameId) async {
+    developer.log('[CUBIT:GAMES] loadGameById($gameId) started');
     emit(GamesLoading());
     try {
       final game = await _gameService.getGameById(gameId);
+      developer.log('[CUBIT:GAMES] loadGameById() -> GameLoaded(id=${game.id}, name=${game.name})');
       emit(GameLoaded(game));
     } catch (e) {
+      developer.log('[CUBIT:GAMES] loadGameById() -> Error', error: e);
       emit(GamesFailure(e.toString()));
     }
   }
 
   // Загрузить игру по коду
   Future<void> loadGameByCode(String code) async {
+    developer.log('[CUBIT:GAMES] loadGameByCode($code) started');
     emit(GamesLoading());
     try {
       final game = await _gameService.getGameByCode(code);
+      developer.log('[CUBIT:GAMES] loadGameByCode() -> GameLoaded(id=${game.id})');
       emit(GameLoaded(game));
     } catch (e) {
+      developer.log('[CUBIT:GAMES] loadGameByCode() -> Error', error: e);
       emit(GamesFailure(e.toString()));
     }
   }
 
   // Присоединиться к игре
   Future<void> joinGame({int? gameId, String? code}) async {
+    developer.log('[CUBIT:GAMES] joinGame(gameId=$gameId, code=$code) started');
     emit(GamesLoading());
     try {
       Game game;
@@ -104,19 +115,24 @@ class GamesCubit extends Cubit<GamesState> {
       } else {
         throw Exception('Необходимо указать gameId или code');
       }
+      developer.log('[CUBIT:GAMES] joinGame() -> GameJoined(id=${game.id})');
       emit(GameJoined(game));
     } catch (e) {
+      developer.log('[CUBIT:GAMES] joinGame() -> Error', error: e);
       emit(GamesFailure(e.toString()));
     }
   }
 
   // Покинуть игру
   Future<void> leaveGame(int gameId) async {
+    developer.log('[CUBIT:GAMES] leaveGame($gameId) started');
     emit(GamesLoading());
     try {
       await _gameService.leaveGame(gameId);
+      developer.log('[CUBIT:GAMES] leaveGame() -> GameLeft');
       emit(GameLeft());
     } catch (e) {
+      developer.log('[CUBIT:GAMES] leaveGame() -> Error', error: e);
       emit(GamesFailure(e.toString()));
     }
   }
@@ -128,6 +144,7 @@ class GamesCubit extends Cubit<GamesState> {
     required bool public,
     required int maxPlayers,
   }) async {
+    developer.log('[CUBIT:GAMES] createGame(worldId=$worldId, name=$name) started');
     emit(GamesLoading());
     try {
       final game = await _gameService.createGame(
@@ -136,9 +153,11 @@ class GamesCubit extends Cubit<GamesState> {
         public: public,
         maxPlayers: maxPlayers,
       );
+      developer.log('[CUBIT:GAMES] createGame() -> GameLoaded(id=${game.id})');
       emit(GameLoaded(game));
       return game;
     } catch (e) {
+      developer.log('[CUBIT:GAMES] createGame() -> Error', error: e);
       emit(GamesFailure(e.toString()));
       rethrow;
     }

@@ -97,7 +97,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                     style: TextStyle(fontSize: 16),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 12),
 
                   // Поле для названия мира
                   TextFormField(
@@ -115,7 +115,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Поле для описания мира
                   TextFormField(
@@ -128,7 +128,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                     maxLines: 5,
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Переключатель для публичности мира
                   SwitchListTile(
@@ -144,7 +144,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 12),
 
                   if (_error != null)
                     Padding(

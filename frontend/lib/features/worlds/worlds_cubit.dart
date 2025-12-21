@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/features/worlds/domain/models/world.dart';
 import '/core/services/world_service.dart';
+import 'dart:developer' as developer;
 
 // Состояния для работы с мирами
 abstract class WorldsState extends Equatable {
@@ -59,42 +60,49 @@ class WorldsCubit extends Cubit<WorldsState> {
 
   // Загрузить список всех доступных миров
   Future<void> loadWorlds() async {
+    developer.log('[CUBIT:WORLDS] loadWorlds() started');
     emit(WorldsLoading());
     try {
       final worlds = await _worldService.getWorlds();
+      developer.log('[CUBIT:WORLDS] loadWorlds() -> WorldsLoaded(count=${worlds.length})');
       emit(WorldsLoaded(worlds));
     } catch (e) {
+      developer.log('[CUBIT:WORLDS] loadWorlds() -> Error', error: e);
       emit(WorldsFailure(e.toString()));
     }
   }
 
   // Загрузить миры пользователя
   Future<void> loadUserWorlds(int userId) async {
+    developer.log('[CUBIT:WORLDS] loadUserWorlds(userId=$userId) started');
     emit(WorldsLoading());
     try {
       final worlds = await _worldService.getWorlds(
-        filter: 'owner=$userId', 
-        sort: 'lastUpdatedAt',
-        order: 'desc'
+        filter: 'owner=$userId',
+        order: 'desc',
       );
+      developer.log('[CUBIT:WORLDS] loadUserWorlds() -> UserWorldsLoaded(count=${worlds.length})');
       emit(UserWorldsLoaded(worlds));
     } catch (e) {
+      developer.log('[CUBIT:WORLDS] loadUserWorlds() -> Error', error: e);
       emit(WorldsFailure(e.toString()));
     }
   }
 
   // Загрузить популярные миры (для витрины)
   Future<void> loadPopularWorlds() async {
+    developer.log('[CUBIT:WORLDS] loadPopularWorlds() started');
     emit(WorldsLoading());
     try {
       final worlds = await _worldService.getWorlds(
         public: true,
-        sort: 'lastUpdatedAt',
         order: 'desc',
         limit: 10,
       );
+      developer.log('[CUBIT:WORLDS] loadPopularWorlds() -> PopularWorldsLoaded(count=${worlds.length})');
       emit(PopularWorldsLoaded(worlds));
     } catch (e) {
+      developer.log('[CUBIT:WORLDS] loadPopularWorlds() -> Error', error: e);
       emit(WorldsFailure(e.toString()));
     }
   }
