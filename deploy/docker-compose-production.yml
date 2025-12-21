@@ -28,14 +28,12 @@ services:
   backend:
     image: ghcr.io/2n4a/loreshifter-backend:latest
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ENVIRONMENT=prod
       - DB_HOST=db
       - DB_PORT=5432
       - DB_NAME=${DB_NAME:-loreshifter}
       - DB_USER=${DB_USER:-postgres}
-      - ASPNETCORE_URLS=http://0.0.0.0:8000
-      - OAUTH2_GITHUB_REDIRECT_URI=https://ls.elteammate.space/api/v0/login/callback/github/
-      - FRONTEND_URL=https://ls.elteammate.space/
+      - LOG_STACKTRACE=true
     ports:
       - "15002:8000"
     depends_on:
@@ -46,6 +44,7 @@ services:
       - oauth2-github-client-secret
       - db-password
       - gen-api-key
+      - proxy-api-key
 
   frontend:
     image: ghcr.io/2n4a/loreshifter-web:latest
@@ -65,6 +64,8 @@ secrets:
     file: ./secrets/oauth2-github-client-secret
   gen-api-key:
     file: ./secrets/gen-api-key
+  proxy-api-key:
+    file: ./secrets/proxy-api-key
 
 volumes:
   postgres_data:
