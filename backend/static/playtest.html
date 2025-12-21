@@ -497,7 +497,7 @@
         };
     }
 
-    function handleWsMessage(player, msg) {
+    async function handleWsMessage(player, msg) {
         // msg: { type: string, payload: any }
         
         if (msg.type === 'pong') {
@@ -507,9 +507,15 @@
 
         if (msg.type === 'GameStatusEvent') {
             if (player.state) {
-                player.state.status = msg.payload.new_status;
-                updatePlayerControls(player, player.state);
-                renderChats(player, player.state);
+                // Re-fetch state on status change to ensure we have correct chats for new state
+                try {
+                    const newState = await request('GET', `/game/${gameId}/state`, player.token);
+                    player.state = newState;
+                    updatePlayerControls(player, player.state);
+                    renderChats(player, player.state);
+                } catch (e) {
+                    console.error("Failed to fetch state update", e);
+                }
             }
         }
         else if (msg.type === 'PlayerJoinedEvent') {
