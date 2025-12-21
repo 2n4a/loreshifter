@@ -56,13 +56,6 @@ def _route_key(request: Request) -> str:
 
 
 def _user_id_from_request(request: Request) -> int | None:
-    """
-    Повторяем логику get_jwt из dependencies.py, но без Depends.
-    Смотрим:
-      - Authorization: Bearer ...
-      - Authentication: ...
-      - cookie session
-    """
     if not config.JWT_SECRET:
         return None
 
@@ -101,9 +94,6 @@ def _user_id_from_request(request: Request) -> int | None:
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    # не лимитим служебные штуки, чтобы не мешали отладке/проверкам
-    if request.url.path in ("/api/v0/liveness", "/playtest"):
-        return await call_next(request)
 
     route_key = _route_key(request)
     user_id = _user_id_from_request(request)
