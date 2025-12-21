@@ -1,0 +1,35 @@
+name: Code Complexity
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  complexity:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        pip install radon flake8 flake8-cognitive-complexity
+
+    - name: Measure Cyclomatic Complexity
+      run: |
+        echo "Cyclomatic Complexity (Radon):"
+        radon cc backend -a -s
+
+    - name: Measure Cognitive Complexity
+      run: |
+        echo "Cognitive Complexity (Flake8):"
+        # We use --exit-zero to treat all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 backend --count --select=CCR001 --show-source --statistics --exit-zero

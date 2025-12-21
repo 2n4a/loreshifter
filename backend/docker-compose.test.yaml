@@ -1,0 +1,20 @@
+services:
+  db:
+    build:
+      context: ../..
+      dockerfile: ./db/Dockerfile.dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend-test:
+    build:
+      context: ../..
+      dockerfile: ./backend/Dockerfile.test
+    environment:
+      POSTGRES_URL: postgres://testuser:testpassword@db:5432/testdb
+    depends_on:
+      db:
+        condition: service_healthy
