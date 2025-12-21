@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/games/domain/models/game.dart';
@@ -767,15 +768,34 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: isGeneralChat
-                    ? 'Сообщение в общий чат...'
-                    : 'Опишите своего персонажа...',
-                border: const OutlineInputBorder(),
+            child: Focus(
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                  final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                  final shiftDown = keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                      keys.contains(LogicalKeyboardKey.shiftRight);
+                  if (!shiftDown) {
+                    _sendMessage(isGeneralChat);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: TextField(
+                controller: _messageController,
+                decoration: InputDecoration(
+                  hintText: isGeneralChat
+                      ? 'Сообщение в общий чат...'
+                      : 'Опишите своего персонажа...',
+                  border: const OutlineInputBorder(),
+                ),
+                minLines: 1,
+                maxLines: null,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendMessage(isGeneralChat),
               ),
-              maxLines: null,
             ),
           ),
           const SizedBox(width: 8),

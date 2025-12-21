@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -457,6 +458,14 @@ class _GameScreenViewState extends State<_GameScreenView>
     _messageController.text = suggestion;
   }
 
+  void _submitMessage(GameScreenState state) {
+    if (state.isSending) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+    context.read<GameScreenBloc>().add(GameScreenMessageSent(text));
+    _messageController.clear();
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -907,23 +916,41 @@ class _GameScreenViewState extends State<_GameScreenView>
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Введите сообщение...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+            child: Focus(
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                  final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                  final shiftDown = keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                      keys.contains(LogicalKeyboardKey.shiftRight);
+                  if (!shiftDown) {
+                    _submitMessage(state);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: TextField(
+                controller: _messageController,
+                decoration: InputDecoration(
+                  hintText: 'Введите сообщение...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
-                filled: true,
-                fillColor: cs.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _submitMessage(state),
               ),
-              minLines: 1,
-              maxLines: 5,
             ),
           ),
           const SizedBox(width: 8),
@@ -931,13 +958,7 @@ class _GameScreenViewState extends State<_GameScreenView>
             onPressed: state.isSending
                 ? null
                 : () {
-                    final text = _messageController.text.trim();
-                    if (text.isNotEmpty) {
-                      context.read<GameScreenBloc>().add(
-                            GameScreenMessageSent(text),
-                          );
-                      _messageController.clear();
-                    }
+                    _submitMessage(state);
                   },
             icon: state.isSending
                 ? const SizedBox(
