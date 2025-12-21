@@ -65,7 +65,6 @@ async def get_worlds(
 ) -> list[WorldOut]:
     _ = sort
     _ = search
-    _ = filter_
     return unwrap(
         await universe.get_worlds(
             conn,
@@ -73,6 +72,7 @@ async def get_worlds(
             offset,
             order,
             public=(public is True),
+            filter_=filter_,
             requester_id=user.id if user else None,
             log=log,
         )
