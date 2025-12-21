@@ -66,33 +66,15 @@ class AuthServiceImpl extends BaseService implements AuthService {
   Future<String> getLoginUrl({String? provider}) async {
     final providerName = provider ?? 'github';
     final callbackUrl = Uri.base.origin;
-
-    developer.log('[SERVICE:AUTH] getLoginUrl(provider=$providerName) -> GET /login');
-
-    final queryParams = <String, String>{
-      'provider': providerName,
-      'redirect': 'false',
-      'to': callbackUrl,
-    };
-
-    try {
-      final response = await apiClient.get<Map<String, dynamic>>(
-        '/login',
-        queryParameters: queryParams,
-        fromJson: (data) => data as Map<String, dynamic>,
-      );
-
-      final loginUrl = response['url'] as String;
-      developer.log('[SERVICE:AUTH] getLoginUrl() -> Success: $loginUrl');
-      return loginUrl;
-    } catch (e, stackTrace) {
-      developer.log(
-        'AuthService: Ошибка при получении URL для входа',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      rethrow;
-    }
+    final loginUri = Uri.parse('${apiClient.baseUrl}/login').replace(
+      queryParameters: {
+        'provider': providerName,
+        'redirect': 'true',
+        'to': callbackUrl,
+      },
+    );
+    developer.log('[SERVICE:AUTH] getLoginUrl() -> $loginUri');
+    return loginUri.toString();
   }
 
   @override
