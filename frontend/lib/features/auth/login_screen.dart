@@ -9,11 +9,11 @@ import '/core/widgets/neon_button.dart';
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
-  Future<void> _handleLogin(BuildContext context) async {
-    final loginUrl = context.read<AuthCubit>().getLoginUrl();
+  Future<void> _handleLogin(BuildContext context, String provider) async {
+    final loginUrl = context.read<AuthCubit>().getLoginUrl(provider: provider);
 
     if (kIsWeb) {
-      web.window.location.href = loginUrl;
+      web.window.location.href = await loginUrl;
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -55,7 +55,7 @@ class LoginScreen extends StatelessWidget {
                       color: cs.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   Text(
                     'Loreshifter',
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -63,7 +63,7 @@ class LoginScreen extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     'Текстовые новеллы и миры на базе LLM',
                     textAlign: TextAlign.center,
@@ -82,14 +82,14 @@ class LoginScreen extends StatelessWidget {
                     NeonButton(
                       text: 'Войти через GitHub',
                       icon: Icons.login,
-                      onPressed: () => _handleLogin(context),
+                      onPressed: () => _handleLogin(context, 'github'),
                       style: NeonButtonStyle.filled,
                       color: cs.primary,
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => context.go('/'),
-                      child: const Text('Продолжить без авторизации'),
+                      onPressed: () => context.read<AuthCubit>().testLogin(),
+                      child: const Text('Продолжить со временным аккаунтом'),
                     ),
                   ],
                   if (state is AuthFailure) ...[

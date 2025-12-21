@@ -80,6 +80,8 @@ class MockGameService extends BaseService implements GameService {
     String? sort,
     String? order,
     String? filter,
+    bool? public,
+    bool? joined,
   }) async {
     await Future.delayed(const Duration(milliseconds: 1000));
 
@@ -176,7 +178,7 @@ class MockGameService extends BaseService implements GameService {
   @override
   Future<Game> createGame({
     required int worldId,
-    required bool isPublic,
+    required bool public,
     String? name,
     int? maxPlayers,
   }) async {
@@ -205,7 +207,7 @@ class MockGameService extends BaseService implements GameService {
     final newGame = Game(
       id: gameId,
       code: gameCode,
-      public: isPublic,
+      public: public,
       name: name ?? "Игра в мире ${world.name}",
       world: world,
       hostId: 1,
@@ -236,7 +238,7 @@ class MockGameService extends BaseService implements GameService {
   @override
   Future<Game> updateGame({
     required int id,
-    bool? isPublic,
+    bool? public,
     String? name,
     int? hostId,
     int? maxPlayers,
@@ -296,7 +298,7 @@ class MockGameService extends BaseService implements GameService {
     final updatedGame = Game(
       id: oldGame.id,
       code: oldGame.code,
-      public: isPublic ?? oldGame.public,
+      public: public ?? oldGame.public,
       name: name ?? oldGame.name,
       world: oldGame.world,
       hostId: hostId ?? oldGame.hostId,
@@ -319,15 +321,8 @@ class MockGameService extends BaseService implements GameService {
 
   // Присоединиться к игре по ID
   @override
-  Future<Game> joinGameById(int id, {bool force = false}) async {
+  Future<Game> joinGameById(int id) async {
     await Future.delayed(const Duration(milliseconds: 800));
-
-    // Проверяем, находится ли пользователь уже в игре
-    if (_currentGame != null && _currentGame!.id != id && !force) {
-      throw Exception(
-        'Вы уже находитесь в игре. Выйдите или используйте force=true.',
-      );
-    }
 
     // Находим игру
     final gameIndex = _mockGames.indexWhere((game) => game.id == id);
@@ -344,25 +339,22 @@ class MockGameService extends BaseService implements GameService {
 
     // Проверяем, не присоединился ли пользователь уже
     final isAlreadyJoined = game.players.any((player) => player.user.id == 1);
-    if (isAlreadyJoined && !force) {
-      throw Exception('Вы уже присоединились к этой игре');
+    if (isAlreadyJoined) {
+      // Идемпотентность - просто возвращаем игру
+      _currentGame = game;
+      return game;
     }
 
     // Создаем обновленный список игроков
-    List<Player> updatedPlayers;
-    if (isAlreadyJoined) {
-      updatedPlayers = game.players;
-    } else {
-      updatedPlayers = List<Player>.from(game.players);
-      updatedPlayers.add(
-        Player(
-          user: User(id: 1, name: "Тестовый пользователь"),
-          isReady: false,
-          isHost: false,
-          isSpectator: false,
-        ),
-      );
-    }
+    final updatedPlayers = List<Player>.from(game.players);
+    updatedPlayers.add(
+      Player(
+        user: User(id: 1, name: "Тестовый пользователь"),
+        isReady: false,
+        isHost: false,
+        isSpectator: false,
+      ),
+    );
 
     // Создаем обновленную игру
     final updatedGame = Game(
@@ -389,7 +381,7 @@ class MockGameService extends BaseService implements GameService {
 
   // Присоединиться к игре по коду
   @override
-  Future<Game> joinGameByCode(String code, {bool force = false}) async {
+  Future<Game> joinGameByCode(String code) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Находим игру
@@ -404,23 +396,20 @@ class MockGameService extends BaseService implements GameService {
     final game = _mockGames[gameIndex];
 
     // Присоединяемся к игре
-    return joinGameById(game.id, force: force);
+    return joinGameById(game.id);
   }
 
-  // Покинуть текущую игру
+  // Покинуть игру
   @override
-  Future<void> leaveGame({int? gameId}) async {
+  Future<void> leaveGame(int gameId) async {
     await Future.delayed(const Duration(milliseconds: 800));
 
-    if (_currentGame == null) {
-      throw Exception('Вы не находитесь в игре');
+    final gameIndex = _mockGames.indexWhere((game) => game.id == gameId);
+    if (gameIndex == -1) {
+      throw Exception('Игра с ID $gameId не найдена');
     }
 
-    final gameIndex = _mockGames.indexWhere(
-      (game) => game.id == _currentGame!.id,
-    );
-    if (gameIndex != -1) {
-      final game = _mockGames[gameIndex];
+    final game = _mockGames[gameIndex];
 
       // Удаляем пользователя из списка игроков
       final updatedPlayers =
@@ -462,9 +451,11 @@ class MockGameService extends BaseService implements GameService {
       );
 
       _mockGames[gameIndex] = updatedGame;
-    }
+    
 
-    // Сбрасываем текущую игру
-    _currentGame = null;
+    // Сбрасываем текущую игру если это она
+    if (_currentGame?.id == gameId) {
+      _currentGame = null;
+    }
   }
 }

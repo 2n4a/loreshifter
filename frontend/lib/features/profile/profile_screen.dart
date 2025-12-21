@@ -140,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: _loadUserData,
                       child: const Text('Повторить'),

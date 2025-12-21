@@ -31,20 +31,43 @@ class _HomeScreenState extends State<HomeScreen>
     if (_initialTabIndex < 0 || _initialTabIndex > 2) _initialTabIndex = 0;
 
     _tabController = TabController(length: 3, vsync: this, initialIndex: _initialTabIndex);
+    _tabController.addListener(_onTabChanged);
     _loadInitialData();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      _loadDataForTab(_tabController.index);
+    }
   }
 
   void _loadInitialData() {
     context.read<GamesCubit>().loadGames();
-    context.read<WorldsCubit>().loadPopularWorlds();
-    final authState = context.read<AuthCubit>().state;
-    if (authState is Authenticated) {
-      context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+    _loadDataForTab(_initialTabIndex);
+  }
+
+  void _loadDataForTab(int tabIndex) {
+    switch (tabIndex) {
+      case 0:
+        // Комнаты - already loaded games
+        break;
+      case 1:
+        // Мои миры
+        final authState = context.read<AuthCubit>().state;
+        if (authState is Authenticated) {
+          context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+        }
+        break;
+      case 2:
+        // Витрина
+        context.read<WorldsCubit>().loadPopularWorlds();
+        break;
     }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -52,10 +75,17 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Loreshifter'),
-        actions: [_buildHistoryButton(), _buildProfileButton()],
+    return BlocListener<AuthCubit, AuthState>(
+      listener: (context, state) {
+        // When user logs in, reload data for current tab
+        if (state is Authenticated) {
+          _loadDataForTab(_tabController.index);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Loreshifter'),
+          actions: [_buildHistoryButton(), _buildProfileButton()],
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -80,10 +110,11 @@ class _HomeScreenState extends State<HomeScreen>
           _buildWorldsShowcase(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/worlds/create'),
-        tooltip: 'Создать мир',
-        child: const Icon(Icons.add),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => context.push('/worlds/create'),
+          tooltip: 'Создать мир',
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
@@ -171,9 +202,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildGameCard(Game game) {
     final cs = Theme.of(context).colorScheme;
+    final authState = context.read<AuthCubit>().state;
+    final isAuthenticated = authState is Authenticated;
+    
     return ModernCard(
       child: InkWell(
-        onTap: () => context.push('/games/${game.id}'),
+        onTap: isAuthenticated ? () => context.push('/games/${game.id}') : null,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
@@ -190,12 +224,12 @@ class _HomeScreenState extends State<HomeScreen>
                   GameStatusChip(status: game.status, uppercase: true),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 'Мир: ${game.world.name}',
                 style: TextStyle(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               Text(
                 'Игроков: ${game.players.length}/${game.maxPlayers}',
                 style: TextStyle(color: cs.onSurfaceVariant),
@@ -205,8 +239,18 @@ class _HomeScreenState extends State<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   NeonButton(
-                    text: 'Зайти',
-                    onPressed: () => context.push('/games/${game.id}'),
+                    text: 'Присоединиться',
+                    onPressed: () {
+                      if (!isAuthenticated) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Необходимо авторизоваться для присоединения к игре'),
+                          ),
+                        );
+                        return;
+                      }
+                      context.push('/games/${game.id}');
+                    },
                     style: NeonButtonStyle.filled,
                     color: cs.primary,
                   ),
@@ -328,10 +372,10 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Тип: ${world.type.toString().split('.').last}',
+                      'Автор: ${world.owner.name}',
                       style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       world.description ?? 'Нет описания',
                       style: TextStyle(color: cs.onSurface, fontSize: 12),
@@ -343,8 +387,12 @@ class _HomeScreenState extends State<HomeScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Рейтинг: ${world.rating}/10',
-                          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                          world.public ? 'Публичный' : 'Приватный',
+                          style: TextStyle(
+                            color: world.public ? cs.primary : cs.secondary, 
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
                         ),
                         if (isMyWorld)
                           Icon(Icons.edit, color: cs.onSurfaceVariant, size: 18),

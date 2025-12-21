@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '/features/chat/domain/models/chat.dart';
 import '/features/games/domain/models/game.dart';
@@ -5,6 +6,7 @@ import '/features/chat/domain/models/message.dart';
 import '/features/games/domain/models/player.dart';
 import '/features/auth/domain/models/user.dart';
 import '/features/worlds/domain/models/world.dart';
+import '/features/chat/domain/models/game_state.dart';
 import '/core/services/interfaces/gameplay_service_interface.dart';
 
 /// Простая мок-реализация GameplayService
@@ -15,17 +17,41 @@ class MockGameplayService implements GameplayService {
   final User _systemUser = User(id: 0, name: 'Система');
   final User _assistantUser = User(id: 999, name: 'ИИ Мастер');
 
-  // Простое состояние игры
+  // Простое состояние игры - must match GameState structure
   final Map<String, dynamic> _gameState = {
     'status': 'waiting',
-    'gameChat': {'chatId': 1, 'title': 'Основной чат'},
-    'playerChats': [
-      {'chatId': 2, 'playerName': 'Другой игрок'},
-    ],
-    'adviceChats': [
-      {'chatId': 4, 'title': 'Подсказки'},
-    ],
-    'game': {'id': 1, 'hostId': 1},
+    'game': {
+      'id': 1,
+      'code': 'TEST123',
+      'public': true,
+      'name': 'Тестовая игра',
+      'world': {
+        'id': 1,
+        'name': 'Тестовый мир',
+        'owner': {'id': 1, 'name': 'Вы', 'created_at': DateTime.now().toIso8601String(), 'deleted': false},
+        'public': true,
+        'description': 'Описание тестового мира',
+        'created_at': DateTime.now().toIso8601String(),
+        'last_updated_at': DateTime.now().toIso8601String(),
+        'deleted': false,
+      },
+      'host_id': 1,
+      'players': [
+        {
+          'user': {'id': 1, 'name': 'Вы', 'created_at': DateTime.now().toIso8601String(), 'deleted': false},
+          'is_ready': false,
+          'is_host': true,
+          'is_spectator': false,
+        },
+      ],
+      'created_at': DateTime.now().toIso8601String(),
+      'max_players': 4,
+      'status': 'waiting',
+    },
+    'character_creation_chat': null,
+    'game_chat': null,
+    'player_chats': [],
+    'advice_chats': [],
   };
 
   // Счетчик для генерации ID
@@ -117,19 +143,20 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<dynamic> getGameState({int? gameId}) async {
-    debugPrint('DEBUG: MockGameplayService.getGameState()');
+  Future<GameState> getGameState(int gameId) async {
+    debugPrint('DEBUG: MockGameplayService.getGameState(gameId: $gameId)');
     await Future.delayed(Duration(milliseconds: 300));
-    return _gameState;
+    // Mock implementation returns a structured GameState
+    return GameState.fromJson(_gameState);
   }
 
   @override
   Future<ChatSegment> getChatSegment(
+    int gameId,
     int chatId, {
     int? before,
     int? after,
     int limit = 50,
-    int? gameId,
   }) async {
     debugPrint('DEBUG: MockGameplayService.getChatSegment(chatId: $chatId, before: $before, after: $after, limit: $limit)');
 
@@ -181,11 +208,11 @@ class MockGameplayService implements GameplayService {
 
   @override
   Future<Message> sendMessage(
+    int gameId,
     int chatId,
     String text, {
     String? special,
     Map<String, dynamic>? metadata,
-    int? gameId,
   }) async {
     debugPrint('DEBUG: MockGameplayService.sendMessage(chatId: $chatId, text: $text)');
 
@@ -204,7 +231,7 @@ class MockGameplayService implements GameplayService {
 
     // Добавляем сообщение в чат
     if (!_chats.containsKey(chatId)) {
-      await getChatSegment(chatId);
+      await getChatSegment(gameId, chatId);
     }
     _addMessageToChat(chatId, message);
 
@@ -476,7 +503,7 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<Player> kickPlayer(int playerId, {int? gameId}) async {
+  Future<Player> kickPlayer(int gameId, int playerId) async {
     debugPrint('DEBUG: MockGameplayService.kickPlayer(playerId: $playerId)');
 
     await Future.delayed(Duration(milliseconds: 300));
@@ -490,7 +517,7 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<Player> promotePlayer(int playerId, {int? gameId}) async {
+  Future<Player> promotePlayer(int gameId, int playerId) async {
     debugPrint('DEBUG: MockGameplayService.promotePlayer(playerId: $playerId)');
 
     await Future.delayed(Duration(milliseconds: 300));
@@ -504,7 +531,7 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<Player> setReady(bool isReady, {int? gameId}) async {
+  Future<Player> setReady(int gameId, bool isReady) async {
     debugPrint('DEBUG: MockGameplayService.setReady(isReady: $isReady)');
 
     await Future.delayed(Duration(milliseconds: 300));
@@ -518,7 +545,7 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<Game> startGame({int? gameId, bool force = false}) async {
+  Future<Game> startGame(int gameId, {bool force = false}) async {
     debugPrint('DEBUG: MockGameplayService.startGame(force: $force)');
 
     await Future.delayed(Duration(milliseconds: 500));
@@ -591,8 +618,6 @@ class MockGameplayService implements GameplayService {
         createdAt: DateTime.now().subtract(Duration(days: 10)),
         lastUpdatedAt: DateTime.now().subtract(Duration(days: 1)),
         owner: _currentUser,
-        type: WorldType.fantasy,
-        rating: 5,
         data: {},
       ),
       hostId: _currentUser.id,
@@ -617,65 +642,15 @@ class MockGameplayService implements GameplayService {
   }
 
   @override
-  Future<Game> restartGame({int? gameId}) async {
-    debugPrint('DEBUG: MockGameplayService.restartGame()');
+  Stream<Map<String, dynamic>> connectWebSocket(int gameId) {
+    debugPrint('DEBUG: MockGameplayService.connectWebSocket(gameId: $gameId)');
+    // Mock WebSocket - just return an empty stream for now
+    return Stream<Map<String, dynamic>>.empty();
+  }
 
-    await Future.delayed(Duration(milliseconds: 500));
-
-    // Обновляем статус игры
-    _gameState['status'] = 'waiting';
-
-    // Очищаем сообщения в основном чате
-    _chats[1]?.messages.clear();
-
-    // Добавляем системное сообщение
-    final newMessage = Message(
-      id: _messageIdCounter++,
-      chatId: 1,
-      senderId: _systemUser.id,
-      text: 'Игра перезапущена. Ожидаем готовности игроков.',
-      kind: MessageKind.system,
-      sentAt: DateTime.now(),
-    );
-
-    _addMessageToChat(1, newMessage);
-
-    // Возвращаем объект игры
-    return Game(
-      id: 2,
-      // Новый ID игры
-      code: 'DEF456',
-      public: true,
-      name: 'Тестовая игра (перезапуск)',
-      world: World(
-        id: 1,
-        name: 'Тестовый мир',
-        public: true,
-        createdAt: DateTime.now().subtract(Duration(days: 10)),
-        lastUpdatedAt: DateTime.now(),
-        owner: _currentUser,
-        type: WorldType.fantasy,
-        rating: 5,
-        data: {},
-      ),
-      hostId: _currentUser.id,
-      players: [
-        Player(
-          user: _currentUser,
-          isReady: false,
-          isHost: true,
-          isSpectator: false,
-        ),
-        Player(
-          user: _otherUser,
-          isReady: false,
-          isHost: false,
-          isSpectator: false,
-        ),
-      ],
-      createdAt: DateTime.now(),
-      maxPlayers: 4,
-      status: GameStatus.waiting,
-    );
+  @override
+  void disconnectWebSocket() {
+    debugPrint('DEBUG: MockGameplayService.disconnectWebSocket()');
+    // No-op for mock
   }
 }

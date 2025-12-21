@@ -8,7 +8,7 @@ abstract class WorldService {
     int offset = 0,
     String? sort,
     String? order,
-    bool? isPublic,
+    bool? public,
     String? filter,
   });
 
@@ -18,7 +18,7 @@ abstract class WorldService {
   /// Создать новый мир
   Future<World> createWorld({
     required String name,
-    required bool isPublic,
+    required bool public,
     String? description,
     dynamic data,
   });
@@ -27,7 +27,7 @@ abstract class WorldService {
   Future<World> updateWorld({
     required int id,
     String? name,
-    bool? isPublic,
+    bool? public,
     String? description,
     dynamic data,
   });

@@ -3,11 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '/features/worlds/domain/models/world.dart';
 import '/core/services/world_service.dart';
+import '/features/worlds/worlds_cubit.dart';
+import '/features/auth/auth_cubit.dart';
 
 class EditWorldScreen extends StatefulWidget {
   final int worldId;
+  final int? sourceWorldId;
+  final bool isFreshCopy;
 
-  const EditWorldScreen({super.key, required this.worldId});
+  const EditWorldScreen({
+    super.key,
+    required this.worldId,
+    this.sourceWorldId,
+    this.isFreshCopy = false,
+  });
 
   @override
   State<EditWorldScreen> createState() => _EditWorldScreenState();
@@ -72,7 +81,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
       final updatedWorld = await worldService.updateWorld(
         id: widget.worldId,
         name: _nameController.text,
-        isPublic: _isPublic,
+        public: _isPublic,
         description:
             _descriptionController.text.isNotEmpty
                 ? _descriptionController.text
@@ -83,18 +92,37 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
 
       setState(() {
         _world = updatedWorld;
+        _isLoading = false;
       });
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Мир успешно обновлен')));
+
+      // Refresh the worlds list to show updated data
+      context.read<WorldsCubit>().loadWorlds();
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated) {
+        context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+      }
+
+      // Navigate back after successful save
+      // If we came from a copied world scenario, pop twice and navigate to the new world detail
+      if (widget.sourceWorldId != null) {
+        context.pop(); // Pop edit screen
+        if (mounted) {
+          context.pop(); // Pop original world detail screen
+        }
+        if (mounted) {
+          context.push('/worlds/${widget.worldId}'); // Navigate to new world detail
+        }
+      } else {
+        context.pop(); // Just go back normally
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Ошибка при обновлении мира: $e';
-      });
-    } finally {
       if (mounted) {
         setState(() {
+          _error = 'Ошибка при обновлении мира: $e';
           _isLoading = false;
         });
       }
@@ -112,6 +140,13 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
       await worldService.deleteWorld(widget.worldId);
 
       if (!mounted) return;
+
+      // Refresh the worlds list to remove the deleted world
+      context.read<WorldsCubit>().loadWorlds();
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated) {
+        context.read<WorldsCubit>().loadUserWorlds(authState.user.id);
+      }
 
       context.go('/');
     } catch (e) {
@@ -161,41 +196,94 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_world?.name ?? 'Редактирование мира'),
-        actions: [
-          if (_world != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _isDeleting ? null : _showDeleteConfirmation,
-              tooltip: 'Удалить мир',
+    return PopScope(
+      canPop: !widget.isFreshCopy,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        // Show confirmation dialog for fresh copies
+        final shouldDiscard = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Отменить копирование'),
+            content: const Text(
+              'Все несохраненные изменения будут отменены. '
+              'Копия мира будет удалена. '
+              'Продолжить?',
             ),
-        ],
-      ),
-      body:
-          _isLoading && _world == null
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null && _world == null
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadWorld,
-                      child: const Text('Повторить'),
-                    ),
-                  ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Отмена'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
                 ),
-              )
-              : _buildWorldForm(),
+                child: const Text('Удалить'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldDiscard == true && context.mounted) {
+          // Delete the copied world
+          try {
+            final worldService = context.read<WorldService>();
+            await worldService.deleteWorld(widget.worldId);
+            
+            if (context.mounted) {
+              context.pop();
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Ошибка при удалении мира: $e'),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+            }
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_world?.name ?? 'Редактирование мира'),
+          actions: [
+            if (_world != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: _isDeleting ? null : _showDeleteConfirmation,
+                tooltip: 'Удалить мир',
+              ),
+          ],
+        ),
+        body:
+            _isLoading && _world == null
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null && _world == null
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadWorld,
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                )
+                : _buildWorldForm(),
+      ),
     );
   }
 
@@ -210,14 +298,14 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
             // Информация о мире
             Text(
               'Создано: ${_formatDate(_world?.createdAt)}',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             Text(
               'Последнее обновление: ${_formatDate(_world?.lastUpdatedAt)}',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
             // Поле для названия мира
             TextFormField(
@@ -235,7 +323,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // Поле для описания мира
             TextFormField(
@@ -248,7 +336,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
               maxLines: 5,
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // Переключатель для публичности мира
             SwitchListTile(
@@ -264,7 +352,7 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
               },
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
 
             if (_error != null)
               Padding(
@@ -290,40 +378,37 @@ class _EditWorldScreenState extends State<EditWorldScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
-
-            // Кнопка создания игры на основе этого мира
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed:
-                    _isLoading || _isDeleting
-                        ? null
-                        : () => context.push(
-                          '/games/create?worldId=${widget.worldId}',
-                        ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Создать игру на основе этого мира'),
+            // Кнопка удаления мира (только для владельца)
+            if (_world != null && _isOwner())
+              Column(
+                children: [
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _isLoading || _isDeleting ? null : _showDeleteConfirmation,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        side: BorderSide(color: Theme.of(context).colorScheme.error),
+                      ),
+                      child: const Text('Удалить мир'),
+                    ),
+                  ),
+                ],
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Кнопка отмены
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed:
-                    _isLoading || _isDeleting ? null : () => context.go('/'),
-                child: const Text('Назад'),
-              ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  bool _isOwner() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated && _world != null) {
+      return authState.user.id == _world!.owner.id;
+    }
+    return false;
   }
 
   String _formatDate(DateTime? date) {

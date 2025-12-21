@@ -1,164 +1,402 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '/features/chat/domain/models/chat.dart';
-import '/features/chat/domain/models/message.dart';
+
+import '/core/services/interfaces/gameplay_service_interface.dart';
 import '/features/auth/auth_cubit.dart';
-import '/features/chat/gameplay_cubit.dart';
-import '/features/games/games_cubit.dart';
-import '/core/widgets/neon_button.dart';
+import '/features/chat/domain/models/chat.dart';
+import '/features/chat/domain/models/game_state.dart';
+import '/features/chat/domain/models/message.dart';
 
-class GameScreen extends StatefulWidget {
-  final int gameId;
+// --- BLOC & STATE ---
 
-  const GameScreen({super.key, required this.gameId});
+enum GameScreenStatus { initial, loading, success, failure }
 
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
+enum ConnectionStatus { connecting, connected, disconnected, reconnecting }
 
-class _GameScreenState extends State<GameScreen> {
-  final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+class GameScreenState extends Equatable {
+  final GameScreenStatus status;
+  final ConnectionStatus connectionStatus;
+  final GameState? gameState;
+  final Map<int, ChatSegment> loadedChats;
+  final int selectedTabIndex;
+  final int? currentUserId;
+  final String? errorMessage;
+  final bool isSending;
 
-  dynamic _gameState;
-  ChatSegment? _currentChat;
-  bool _isSending = false;
-  int _selectedTabIndex = 0;
-  int? _currentUserId;
+  const GameScreenState({
+    this.status = GameScreenStatus.initial,
+    this.connectionStatus = ConnectionStatus.connecting,
+    this.gameState,
+    this.loadedChats = const {},
+    this.selectedTabIndex = 0,
+    this.currentUserId,
+    this.errorMessage,
+    this.isSending = false,
+  });
 
-  @override
-  void initState() {
-    super.initState();
-    _getCurrentUserId();
-    _loadGameState();
+  ChatSegment? get currentChat {
+    if (gameState == null) return null;
+    final chatId = _getChatIdForTab(selectedTabIndex);
+    if (chatId == null) return null;
+    return loadedChats[chatId];
   }
 
-  void _getCurrentUserId() {
-    final authState = context.read<AuthCubit>().state;
-    if (authState is Authenticated) {
-      _currentUserId = authState.user.id;
-    }
-  }
-
-  Future<void> _loadGameState() async {
-    try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is GameStateLoaded) {
-          if (!mounted) return;
-          setState(() {
-            _gameState = state.gameState;
-          });
-          if (_gameState['gameChat'] != null) {
-            _loadChat(0);
-          }
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка загрузки игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      await cubit.loadGameState();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-      }
-    }
-  }
-
-  Future<void> _loadChat(int chatIndex) async {
-    final chatId = _getChatIdFromIndex(chatIndex);
-    if (chatId != null) {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is ChatLoaded) {
-          if (!mounted) return;
-          setState(() {
-            _currentChat = state.chatSegment;
-            _selectedTabIndex = chatIndex;
-          });
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _scrollToBottom(),
-          );
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка загрузки чата: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      await cubit.loadChat(chatId: chatId);
-    }
-  }
-
-  int? _getChatIdFromIndex(int index) {
-    if (_gameState == null) return null;
+  int? _getChatIdForTab(int index) {
+    if (gameState == null) return null;
     if (index == 0) {
-      return _gameState['gameChat']?['chatId'];
-    } else if (_gameState['playerChats'] != null &&
-        index - 1 < (_gameState['playerChats'] as List).length) {
-      return _gameState['playerChats']?[index - 1]?['chatId'];
-    } else if (_gameState['adviceChats'] != null) {
-      final playerChatsCount =
-          (_gameState['playerChats'] as List?)?.length ?? 0;
-      if (index - 1 - playerChatsCount <
-          (_gameState['adviceChats'] as List).length) {
-        return _gameState['adviceChats']?[index -
-            1 -
-            playerChatsCount]?['chatId'];
+      // General chat (Lobby chat)
+      return gameState!.gameChat?.chatId;
+    } else if (index == 1) {
+      // Main Game Chat (Shared)
+      // We assume the first player chat is the shared one, or the backend handles it.
+      return gameState!.playerChats.isNotEmpty ? gameState!.playerChats.first.chatId : null;
+    } else {
+      // Advice chats (Personal Chats)
+      final adviceIndex = index - 2;
+      if (adviceIndex >= 0 && adviceIndex < gameState!.adviceChats.length) {
+        return gameState!.adviceChats[adviceIndex].chatId;
       }
     }
     return null;
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.isEmpty || _currentChat == null) return;
-    final text = _messageController.text;
-    _messageController.clear();
-    if (!mounted) return;
-    setState(() => _isSending = true);
+  GameScreenState copyWith({
+    GameScreenStatus? status,
+    ConnectionStatus? connectionStatus,
+    GameState? gameState,
+    Map<int, ChatSegment>? loadedChats,
+    int? selectedTabIndex,
+    int? currentUserId,
+    String? errorMessage,
+    bool? isSending,
+  }) {
+    return GameScreenState(
+      status: status ?? this.status,
+      connectionStatus: connectionStatus ?? this.connectionStatus,
+      gameState: gameState ?? this.gameState,
+      loadedChats: loadedChats ?? this.loadedChats,
+      selectedTabIndex: selectedTabIndex ?? this.selectedTabIndex,
+      currentUserId: currentUserId ?? this.currentUserId,
+      errorMessage: errorMessage,
+      isSending: isSending ?? this.isSending,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    status,
+    connectionStatus,
+    gameState,
+    loadedChats,
+    selectedTabIndex,
+    currentUserId,
+    errorMessage,
+    isSending,
+  ];
+}
+
+abstract class GameScreenEvent extends Equatable {
+  @override
+  List<Object?> get props => [];
+}
+
+class GameScreenInitialized extends GameScreenEvent {
+  final int gameId;
+  final int? currentUserId;
+  GameScreenInitialized(this.gameId, this.currentUserId);
+}
+
+class GameScreenTabChanged extends GameScreenEvent {
+  final int newIndex;
+  GameScreenTabChanged(this.newIndex);
+}
+
+class GameScreenMessageSent extends GameScreenEvent {
+  final String text;
+  GameScreenMessageSent(this.text);
+}
+
+class GameScreenWebSocketEventReceived extends GameScreenEvent {
+  final Map<String, dynamic> event;
+  GameScreenWebSocketEventReceived(this.event);
+}
+
+class GameScreenRefreshed extends GameScreenEvent {}
+
+class GameScreenBloc extends Bloc<GameScreenEvent, GameScreenState> {
+  final GameplayService _gameplayService;
+  final int _gameId;
+  StreamSubscription? _wsSubscription;
+
+  GameScreenBloc({
+    required GameplayService gameplayService,
+    required int gameId,
+  }) : _gameplayService = gameplayService,
+       _gameId = gameId,
+       super(const GameScreenState()) {
+    on<GameScreenInitialized>(_onInitialized);
+    on<GameScreenTabChanged>(_onTabChanged);
+    on<GameScreenMessageSent>(_onMessageSent);
+    on<GameScreenWebSocketEventReceived>(_onWebSocketEvent);
+    on<GameScreenRefreshed>(_onRefreshed);
+  }
+
+  @override
+  Future<void> close() {
+    _wsSubscription?.cancel();
+    _gameplayService.disconnectWebSocket();
+    return super.close();
+  }
+
+  Future<void> _onInitialized(
+    GameScreenInitialized event,
+    Emitter<GameScreenState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: GameScreenStatus.loading,
+        currentUserId: event.currentUserId,
+      ),
+    );
+
     try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      subscription = cubit.stream.listen((state) {
-        if (state is MessageSent) {
-          _loadChat(_selectedTabIndex);
-          subscription.cancel();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка отправки: ${state.message}')),
-            );
-          }
-          subscription.cancel();
-        }
-      });
-      await cubit.sendMessage(chatId: _currentChat!.chatId, text: text);
+      final gameState = await _gameplayService.getGameState(_gameId);
+      emit(
+        state.copyWith(status: GameScreenStatus.success, gameState: gameState),
+      );
+
+      // Load initial chat (tab 0)
+      add(GameScreenTabChanged(0));
+
+      _connectWebSocket();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      emit(
+        state.copyWith(
+          status: GameScreenStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
+    }
+  }
+
+  void _connectWebSocket() {
+    _wsSubscription?.cancel();
+    _wsSubscription = _gameplayService
+        .connectWebSocket(_gameId)
+        .listen(
+          (event) => add(GameScreenWebSocketEventReceived(event)),
+          onError: (error) {
+            developer.log('WebSocket error: $error');
+          },
+        );
+  }
+
+  Future<void> _onTabChanged(
+    GameScreenTabChanged event,
+    Emitter<GameScreenState> emit,
+  ) async {
+    emit(state.copyWith(selectedTabIndex: event.newIndex));
+
+    final chatId = state._getChatIdForTab(event.newIndex);
+    if (chatId != null) {
+      try {
+        final chat = await _gameplayService.getChatSegment(_gameId, chatId);
+        final newChats = Map<int, ChatSegment>.from(state.loadedChats);
+        newChats[chatId] = chat;
+        emit(state.copyWith(loadedChats: newChats));
+      } catch (e) {
+        developer.log('Error loading chat $chatId: $e');
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-        _scrollToBottom();
+    }
+  }
+
+  Future<void> _onMessageSent(
+    GameScreenMessageSent event,
+    Emitter<GameScreenState> emit,
+  ) async {
+    final currentChat = state.currentChat;
+    if (currentChat == null) return;
+
+    emit(state.copyWith(isSending: true));
+    try {
+      await _gameplayService.sendMessage(
+        _gameId,
+        currentChat.chatId,
+        event.text,
+      );
+      // Reload chat immediately
+      final chat = await _gameplayService.getChatSegment(
+        _gameId,
+        currentChat.chatId,
+      );
+      final newChats = Map<int, ChatSegment>.from(state.loadedChats);
+      newChats[currentChat.chatId] = chat;
+      emit(state.copyWith(loadedChats: newChats, isSending: false));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSending: false,
+          errorMessage: 'Failed to send message: $e',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onWebSocketEvent(
+    GameScreenWebSocketEventReceived event,
+    Emitter<GameScreenState> emit,
+  ) async {
+    final type = event.event['type'];
+    final payload = event.event['payload'];
+
+    if (type == '_connection_state') {
+      final statusStr = payload['state'];
+      ConnectionStatus status;
+      if (statusStr == 'connected')
+        status = ConnectionStatus.connected;
+      else if (statusStr == 'reconnecting')
+        status = ConnectionStatus.reconnecting;
+      else
+        status = ConnectionStatus.disconnected;
+
+      emit(state.copyWith(connectionStatus: status));
+      if (status == ConnectionStatus.connected) {
+        add(GameScreenRefreshed());
       }
+    } else if (type == 'GameChatEvent') {
+      final chatId = payload['chat_id'];
+      if (chatId != null) {
+        // Reload this chat if it's loaded
+        if (state.loadedChats.containsKey(chatId)) {
+          try {
+            final chat = await _gameplayService.getChatSegment(_gameId, chatId);
+            final newChats = Map<int, ChatSegment>.from(state.loadedChats);
+            newChats[chatId] = chat;
+            emit(state.copyWith(loadedChats: newChats));
+          } catch (e) {
+            developer.log('Error reloading chat on event: $e');
+          }
+        }
+      }
+    } else if ([
+      'GameStatusEvent',
+      'PlayerJoinedEvent',
+      'PlayerLeftEvent',
+      'PlayerKickedEvent',
+      'PlayerReadyEvent',
+    ].contains(type)) {
+      add(GameScreenRefreshed());
+    }
+  }
+
+  Future<void> _onRefreshed(
+    GameScreenRefreshed event,
+    Emitter<GameScreenState> emit,
+  ) async {
+    try {
+      final gameState = await _gameplayService.getGameState(_gameId);
+      emit(state.copyWith(gameState: gameState));
+
+      // Reload current chat too
+      final currentChatId = state._getChatIdForTab(state.selectedTabIndex);
+      if (currentChatId != null) {
+        final chat = await _gameplayService.getChatSegment(
+          _gameId,
+          currentChatId,
+        );
+        final newChats = Map<int, ChatSegment>.from(state.loadedChats);
+        newChats[currentChatId] = chat;
+        emit(state.copyWith(loadedChats: newChats));
+      }
+    } catch (e) {
+      developer.log('Error refreshing game: $e');
+    }
+  }
+}
+
+// --- WIDGET ---
+
+class GameScreen extends StatelessWidget {
+  final int gameId;
+
+  const GameScreen({super.key, required this.gameId});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) {
+        final authState = context.read<AuthCubit>().state;
+        final currentUserId = authState is Authenticated
+            ? authState.user.id
+            : null;
+
+        return GameScreenBloc(
+          gameplayService: context.read<GameplayService>(),
+          gameId: gameId,
+        )..add(GameScreenInitialized(gameId, currentUserId));
+      },
+      child: const _GameScreenView(),
+    );
+  }
+}
+
+class _GameScreenView extends StatefulWidget {
+  const _GameScreenView();
+
+  @override
+  State<_GameScreenView> createState() => _GameScreenViewState();
+}
+
+class _GameScreenViewState extends State<_GameScreenView>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  // Track previous tab count to detect changes
+  int _previousTabCount = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 1, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      context.read<GameScreenBloc>().add(
+        GameScreenTabChanged(_tabController.index),
+      );
+    }
+  }
+
+  void _updateTabController(int newCount, int selectedIndex) {
+    if (newCount != _previousTabCount) {
+      final oldController = _tabController;
+      oldController.removeListener(_onTabChanged);
+
+      _tabController = TabController(
+        length: newCount,
+        vsync: this,
+        initialIndex: selectedIndex < newCount ? selectedIndex : 0,
+      );
+      _tabController.addListener(_onTabChanged);
+      _previousTabCount = newCount;
+
+      // Dispose old controller after frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        oldController.dispose();
+      });
+
+      setState(() {});
+    } else if (_tabController.index != selectedIndex) {
+      _tabController.animateTo(selectedIndex);
     }
   }
 
@@ -172,18 +410,9 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _selectSuggestion(String suggestion) {
-    _messageController.text = suggestion;
-  }
-
-  Future<void> _leaveGame() async {
-    await context.read<GamesCubit>().leaveGame();
-    if (!mounted) return;
-    context.go('/');
-  }
-
   @override
   void dispose() {
+    _tabController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -191,252 +420,161 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Игра'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: _leaveGame,
-            tooltip: 'Выйти из игры',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildGameStatusBar(cs),
-          if (_gameState == null)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else
-            Expanded(
-              child: Column(
-                children: [
-                  _buildChatTabs(cs),
-                  Expanded(
-                    child:
-                        _currentChat == null
-                            ? _buildEmptyChat(cs)
-                            : _buildChatMessages(cs),
-                  ),
-                  if (_currentChat != null) _buildSuggestions(cs),
-                  _buildMessageInput(cs),
-                ],
-              ),
+    return BlocListener<GameScreenBloc, GameScreenState>(
+      listenWhen: (previous, current) =>
+          previous.gameState != current.gameState ||
+          previous.loadedChats != current.loadedChats ||
+          previous.errorMessage != current.errorMessage,
+      listener: (context, state) {
+        if (state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: Colors.red,
             ),
-        ],
+          );
+        }
+
+        if (state.gameState != null) {
+          // 1 General + 1 Game + N Advice Chats
+          final tabCount = 1 + 1 + state.gameState!.adviceChats.length;
+          _updateTabController(tabCount, state.selectedTabIndex);
+        }
+
+        // Scroll to bottom if chat changed or new messages
+        if (state.currentChat != null) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _scrollToBottom(),
+          );
+        }
+      },
+      child: Scaffold(appBar: _buildAppBar(context), body: _buildBody(context)),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      title: BlocBuilder<GameScreenBloc, GameScreenState>(
+        buildWhen: (previous, current) =>
+            previous.connectionStatus != current.connectionStatus ||
+            previous.gameState != current.gameState,
+        builder: (context, state) {
+          return Row(
+            children: [
+              Text(state.gameState?.game.name ?? 'Игра'),
+              if (state.connectionStatus == ConnectionStatus.reconnecting) ...[
+                const SizedBox(width: 12),
+                _buildReconnectingIndicator(context),
+              ],
+            ],
+          );
+        },
+      ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => context.go('/'),
+        tooltip: 'На главную',
       ),
     );
   }
 
-  Widget _buildGameStatusBar(ColorScheme cs) {
-    if (_gameState == null) return const SizedBox.shrink();
-    final status = _gameState['status'] as String? ?? 'waiting';
-    String statusText;
-    Color statusColor;
-    switch (status) {
-      case 'waiting':
-        statusText = 'Ожидание игроков';
-        statusColor = Colors.blue;
-        break;
-      case 'playing':
-        statusText = 'Игра идет';
-        statusColor = Colors.green;
-        break;
-      case 'finished':
-        statusText = 'Игра завершена';
-        statusColor = Colors.orange;
-        break;
-      default:
-        statusText = 'Статус неизвестен';
-        statusColor = cs.onSurfaceVariant;
-    }
-
+  Widget _buildReconnectingIndicator(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: statusColor.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
+        color: Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange, width: 1),
       ),
-      child: Row(
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 6),
           Text(
-            statusText,
-            style: TextStyle(
-              color: cs.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            'Переподключение...',
+            style: TextStyle(fontSize: 12, color: Colors.orange),
           ),
-          const Spacer(),
-          if (status == 'waiting' && _isPlayerHost())
-            SizedBox(
-              width: 148,
-              child: NeonButton(
-                text: 'Начать игру',
-                onPressed: _startGame,
-                style: NeonButtonStyle.filled,
-                color: Colors.green,
-              ),
-            ),
-          if (status == 'finished' && _isPlayerHost())
-            SizedBox(
-              width: 168,
-              child: NeonButton(
-                text: 'Начать заново',
-                onPressed: _restartGame,
-                style: NeonButtonStyle.filled,
-                color: Colors.green,
-              ),
-            ),
         ],
       ),
     );
   }
 
-  bool _isPlayerHost() {
-    if (_gameState == null || _currentUserId == null) return false;
-    final hostId = _gameState['game']?['hostId'];
-    return hostId == _currentUserId;
-  }
-
-  Future<void> _startGame() async {
-    try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      
-      subscription = cubit.stream.listen((state) {
-        if (state is GameStarted) {
-          if (!mounted) return;
-          subscription.cancel();
-          _loadGameState();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка при запуске игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
+  Widget _buildBody(BuildContext context) {
+    return BlocBuilder<GameScreenBloc, GameScreenState>(
+      builder: (context, state) {
+        if (state.status == GameScreenStatus.loading) {
+          return const Center(child: CircularProgressIndicator());
         }
-      });
-      
-      await cubit.startGame();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка при запуске игры: $e')));
-      }
-    }
-  }
 
-  Future<void> _restartGame() async {
-    try {
-      final cubit = context.read<GameplayCubit>();
-      late final StreamSubscription subscription;
-      
-      subscription = cubit.stream.listen((state) {
-        if (state is GameRestarted) {
-          if (!mounted) return;
-          subscription.cancel();
-          _loadGameState();
-        } else if (state is GameplayFailure) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка при перезапуске игры: ${state.message}')),
-            );
-          }
-          subscription.cancel();
+        if (state.gameState == null) {
+          return const Center(child: Text('Не удалось загрузить игру'));
         }
-      });
-      
-      await cubit.restartGame();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при перезапуске игры: $e')),
+
+        return Column(
+          children: [
+            _buildChatTabs(context, state),
+            Expanded(
+              child: state.currentChat == null
+                  ? _buildEmptyChat(context)
+                  : _buildChatMessages(
+                      context,
+                      state.currentChat!,
+                      state.currentUserId,
+                    ),
+            ),
+            if (state.currentChat != null) _buildSuggestions(context),
+            _buildMessageInput(context, state),
+          ],
         );
-      }
-    }
+      },
+    );
   }
 
-  Widget _buildChatTabs(ColorScheme cs) {
-    if (_gameState == null) return const SizedBox.shrink();
+  Widget _buildChatTabs(BuildContext context, GameScreenState state) {
+    final cs = Theme.of(context).colorScheme;
+    final gameState = state.gameState!;
+    final tabCount = 1 + 1 + gameState.adviceChats.length;
 
-    final tabs = <Widget>[];
-    tabs.add(_buildTabItem('Общий', 0, cs));
-
-    final playerChats = _gameState['playerChats'] as List?;
-    if (playerChats != null) {
-      for (int i = 0; i < playerChats.length; i++) {
-        final playerChat = playerChats[i];
-        final playerName =
-            playerChat['playerName'] as String? ?? 'Игрок ${i + 1}';
-        tabs.add(_buildTabItem(playerName, i + 1, cs));
-      }
-    }
-
-    final adviceChats = _gameState['adviceChats'] as List?;
-    if (adviceChats != null) {
-      final playerChatsCount = playerChats?.length ?? 0;
-      for (int i = 0; i < adviceChats.length; i++) {
-        final adviceChat = adviceChats[i];
-        final adviceTitle = adviceChat['title'] as String? ?? 'Совет ${i + 1}';
-        tabs.add(_buildTabItem(adviceTitle, i + 1 + playerChatsCount, cs));
-      }
+    // Ensure controller length matches state
+    if (_tabController.length != tabCount) {
+      return const SizedBox.shrink(); // Wait for listener to update controller
     }
 
     return Container(
       color: cs.surface,
-      height: 48,
-      child: ListView(scrollDirection: Axis.horizontal, children: tabs),
-    );
-  }
-
-  Widget _buildTabItem(String text, int index, ColorScheme cs) {
-    final isSelected = _selectedTabIndex == index;
-    final bg = isSelected ? cs.primary : Colors.transparent;
-    final border = isSelected ? Colors.transparent : cs.outlineVariant;
-    final fg = isSelected ? Colors.white : cs.onSurfaceVariant;
-
-    return GestureDetector(
-      onTap: () => _loadChat(index),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: bg,
-          border: Border.all(color: border, width: 1),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: fg,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabs: [
+          const Tab(text: 'Общий чат'),
+          const Tab(text: 'Игровой чат'),
+          ...gameState.adviceChats.map((adviceChat) {
+            final playerName = _getPlayerName(gameState, adviceChat.chatOwner);
+            return Tab(text: 'Советы $playerName');
+          }),
+        ],
       ),
     );
   }
 
-  Widget _buildEmptyChat(ColorScheme cs) {
+  String _getPlayerName(GameState gameState, int? userId) {
+    if (userId == null) return 'Игрок';
+    final player = gameState.game.players
+        .where((p) => p.user.id == userId)
+        .firstOrNull;
+    return player?.user.name ?? 'Игрок';
+  }
+
+  Widget _buildEmptyChat(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -454,38 +592,44 @@ class _GameScreenState extends State<GameScreen> {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
-            Text('Выберите чат', style: TextStyle(color: cs.onSurfaceVariant)),
+            Text(
+              'Загрузка чата...',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatMessages(ColorScheme cs) {
-    if (_currentChat == null) return const SizedBox.shrink();
+  Widget _buildChatMessages(
+    BuildContext context,
+    ChatSegment chat,
+    int? currentUserId,
+  ) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      itemCount: _currentChat!.messages.length,
+      itemCount: chat.messages.length,
       itemBuilder: (context, index) {
-        final message = _currentChat!.messages[index];
-        return _buildMessageBubble(message, cs);
+        final message = chat.messages[index];
+        return _buildMessageBubble(context, message, currentUserId);
       },
     );
   }
 
-  Widget _buildMessageBubble(Message message, ColorScheme cs) {
-    final isCurrentUser = message.senderId == _currentUserId;
+  Widget _buildMessageBubble(
+    BuildContext context,
+    Message message,
+    int? currentUserId,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final isCurrentUser = message.senderId == currentUserId;
 
     Color bubbleColor;
     BorderRadius borderRadius;
     Color borderColor = Colors.transparent;
     Color textColor = cs.onSurface;
-    TextStyle nameStyle = TextStyle(
-      color: cs.onSurfaceVariant,
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-    );
 
     if (message.sender.type == 'system') {
       bubbleColor = cs.surfaceContainerHighest;
@@ -500,149 +644,164 @@ class _GameScreenState extends State<GameScreen> {
       bubbleColor = cs.primaryContainer;
       borderRadius = const BorderRadius.only(
         topLeft: Radius.circular(16),
-        topRight: Radius.circular(6),
+        topRight: Radius.circular(4),
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
       textColor = cs.onPrimaryContainer;
     } else {
-      bubbleColor = cs.tertiaryContainer;
+      bubbleColor = cs.surfaceContainerHigh;
       borderRadius = const BorderRadius.only(
-        topLeft: Radius.circular(6),
+        topLeft: Radius.circular(4),
         topRight: Radius.circular(16),
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
-      textColor = cs.onTertiaryContainer;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment:
-            isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isCurrentUser && message.sender.type == 'user')
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: cs.primaryContainer,
-              child: Text(
-                message.sender.name.substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  color: cs.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
+    return Align(
+      alignment: message.sender.type == 'system'
+          ? Alignment.center
+          : (isCurrentUser ? Alignment.centerRight : Alignment.centerLeft),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          borderRadius: borderRadius,
+          border: Border.all(color: borderColor),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (message.sender.type != 'system' && !isCurrentUser)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  message.sender.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColor.withOpacity(0.7),
+                  ),
                 ),
               ),
-            ),
-          if (!isCurrentUser && message.sender.type != 'system')
-            const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: borderRadius,
-                border: Border.all(
-                  color: borderColor,
-                  width: borderColor == Colors.transparent ? 0 : 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if ((!isCurrentUser && message.sender.type == 'user') ||
-                      message.sender.type == 'system')
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(message.sender.name, style: nameStyle),
-                    ),
-                  Text(message.text, style: TextStyle(color: textColor)),
-                ],
-              ),
-            ),
-          ),
-          if (isCurrentUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: cs.primaryContainer,
-              child: Text(
-                message.sender.name.substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  color: cs.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            Text(message.text, style: TextStyle(color: textColor)),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSuggestions(ColorScheme cs) {
-    final suggestions = _currentChat?.suggestions ?? [];
-    if (suggestions.isEmpty) return const SizedBox.shrink();
+  Widget _buildSuggestions(BuildContext context) {
+    // Placeholder for suggestions if needed
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildMessageInput(BuildContext context, GameScreenState state) {
+    final cs = Theme.of(context).colorScheme;
+    final canWrite = _canWriteInCurrentChat(state);
+
+    if (!canWrite) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: cs.surfaceContainer,
+        child: Center(
+          child: Text(
+            'Вы не можете писать в этот чат',
+            style: TextStyle(color: cs.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
 
     return Container(
-      color: cs.surface,
       padding: const EdgeInsets.all(8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children:
-            suggestions.map((s) {
-              return GestureDetector(
-                onTap: () => _selectSuggestion(s),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                  child: Text(s, style: TextStyle(color: cs.onSurface)),
-                ),
-              );
-            }).toList(),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(top: BorderSide(color: cs.outlineVariant)),
       ),
-    );
-  }
-
-  Widget _buildMessageInput(ColorScheme cs) {
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _messageController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Введите сообщение...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: cs.surfaceContainerHighest,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
               ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
+              minLines: 1,
+              maxLines: 5,
             ),
           ),
           const SizedBox(width: 8),
-          _isSending
-              ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-              : IconButton(
-                icon: Icon(Icons.send, color: cs.primary),
-                onPressed: _sendMessage,
-              ),
+          IconButton.filled(
+            onPressed: state.isSending
+                ? null
+                : () {
+                    final text = _messageController.text.trim();
+                    if (text.isNotEmpty) {
+                      context.read<GameScreenBloc>().add(
+                        GameScreenMessageSent(text),
+                      );
+                      _messageController.clear();
+                    }
+                  },
+            icon: state.isSending
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send),
+          ),
         ],
       ),
     );
+  }
+
+  bool _canWriteInCurrentChat(GameScreenState state) {
+    if (state.gameState == null ||
+        state.currentChat == null ||
+        state.currentUserId == null)
+      return false;
+
+    // Allow Host to write everywhere
+    if (state.gameState!.game.hostId == state.currentUserId) {
+      return true;
+    }
+
+    final currentPlayer = state.gameState!.game.players
+        .where((p) => p.user.id == state.currentUserId)
+        .firstOrNull;
+
+    if (currentPlayer == null) return false;
+
+    // Tab 0: General Chat (Everyone can write)
+    if (state.selectedTabIndex == 0) {
+      return true;
+    }
+
+    // Tab 1: Game Chat (Everyone can write)
+    if (state.selectedTabIndex == 1) {
+      return true;
+    }
+
+    // Advice Chats
+    // Only the owner of the chat can write
+    final chatOwnerId = state.currentChat!.chatOwner;
+    return chatOwnerId == state.currentUserId;
   }
 }

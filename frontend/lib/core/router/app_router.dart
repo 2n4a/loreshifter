@@ -6,7 +6,7 @@ import '/features/auth/auth_cubit.dart';
 import '/features/auth/login_screen.dart';
 import '/features/auth/auth_callback_screen.dart';
 import '/features/games/create_game_screen.dart';
-import '/features/games/game_detail_screen.dart';
+import '/features/games/game_lobby_screen.dart';
 import '/features/games/game_screen.dart';
 import '/features/home/home_screen.dart';
 import '/features/profile/profile_screen.dart';
@@ -69,7 +69,13 @@ class AppRouter {
         path: '/worlds/:worldId/edit',
         builder: (context, state) {
           final worldId = int.parse(state.pathParameters['worldId']!);
-          return EditWorldScreen(worldId: worldId);
+          final sourceWorldId = state.uri.queryParameters['sourceWorldId'];
+          final isFreshCopy = state.uri.queryParameters['isFreshCopy'] == 'true';
+          return EditWorldScreen(
+            worldId: worldId,
+            sourceWorldId: sourceWorldId != null ? int.parse(sourceWorldId) : null,
+            isFreshCopy: isFreshCopy,
+          );
         },
       ),
       GoRoute(
@@ -85,14 +91,14 @@ class AppRouter {
         path: '/games/:gameId',
         builder: (context, state) {
           final gameId = int.parse(state.pathParameters['gameId']!);
-          return GameDetailScreen(gameId: gameId);
+          return GameLobbyScreen(gameId: gameId);
         },
       ),
       GoRoute(
         path: '/games/code/:code',
         builder: (context, state) {
           final code = state.pathParameters['code']!;
-          return GameDetailScreen(code: code);
+          return GameLobbyScreen(code: code);
         },
       ),
       // Экран игры с параметром gameId

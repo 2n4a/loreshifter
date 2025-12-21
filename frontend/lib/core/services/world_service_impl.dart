@@ -13,7 +13,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
     int offset = 0,
     String? sort,
     String? order,
-    bool? isPublic,
+    bool? public,
     String? filter,
   }) async {
     developer.log('WorldService: Запрос списка миров');
@@ -22,8 +22,8 @@ class WorldServiceImpl extends BaseService implements WorldService {
       'offset': offset,
       if (sort != null) 'sort': sort,
       if (order != null) 'order': order,
-      if (isPublic != null) 'public': isPublic ? 1 : 0,
-      if (filter != null) 'filter': filter,
+      if (public != null) 'public': public ? 1 : 0,
+      if (filter != null) 'filter_': filter,
     };
 
     return apiClient.get<List<World>>(
@@ -52,7 +52,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
   @override
   Future<World> createWorld({
     required String name,
-    required bool isPublic,
+    required bool public,
     String? description,
     dynamic data,
   }) async {
@@ -61,7 +61,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
       '/world',
       data: {
         'name': name,
-        'public': isPublic,
+        'public': public,
         if (description != null) 'description': description,
         if (data != null) 'data': data,
       },
@@ -73,7 +73,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
   Future<World> updateWorld({
     required int id,
     String? name,
-    bool? isPublic,
+    bool? public,
     String? description,
     dynamic data,
   }) async {
@@ -82,7 +82,7 @@ class WorldServiceImpl extends BaseService implements WorldService {
       '/world/$id',
       data: {
         if (name != null) 'name': name,
-        if (isPublic != null) 'public': isPublic,
+        if (public != null) 'public': public,
         if (description != null) 'description': description,
         if (data != null) 'data': data,
       },

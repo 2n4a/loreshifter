@@ -44,96 +44,73 @@ class AuthCubit extends Cubit<AuthState> {
 
   // Проверить аутентификацию
   Future<void> checkAuth() async {
-    // ignore: avoid_print
-    print('🔑 AuthCubit: Начало проверки авторизации');
-    developer.log('AuthCubit: Начало проверки авторизации');
+    developer.log('[CUBIT:AUTH] checkAuth() started');
     emit(AuthLoading());
     try {
-      // ignore: avoid_print
-      print('🔑 AuthCubit: Вызов isAuthenticated()');
-      developer.log('AuthCubit: Вызов isAuthenticated()');
       final isAuth = await _authService.isAuthenticated();
-      // ignore: avoid_print
-      print('🔑 AuthCubit: isAuthenticated() = $isAuth');
-      developer.log('AuthCubit: isAuthenticated() = $isAuth');
+      developer.log('[CUBIT:AUTH] checkAuth() isAuthenticated=$isAuth');
 
       if (isAuth) {
-        // ignore: avoid_print
-        print('🔑 AuthCubit: Получение данных пользователя');
-        developer.log('AuthCubit: Получение данных пользователя');
         final user = await _authService.getCurrentUser();
-        // ignore: avoid_print
-        print(
-          '✅ AuthCubit: Пользователь получен - id: ${user.id}, name: ${user.name}',
-        );
-        developer.log(
-          'AuthCubit: Пользователь получен - id: ${user.id}, name: ${user.name}',
-        );
+        developer.log('[CUBIT:AUTH] checkAuth() -> Authenticated(user.id=${user.id})');
         emit(Authenticated(user));
       } else {
-        // ignore: avoid_print
-        print('⚠️ AuthCubit: Пользователь не авторизован');
-        developer.log('AuthCubit: Пользователь не авторизован');
+        developer.log('[CUBIT:AUTH] checkAuth() -> Unauthenticated');
         emit(Unauthenticated());
       }
     } catch (e, stackTrace) {
-      // ignore: avoid_print
-      print('❌ AuthCubit: Ошибка при проверке авторизации: $e');
-      developer.log(
-        'AuthCubit: Ошибка при проверке авторизации',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('[CUBIT:AUTH] checkAuth() -> Error', error: e, stackTrace: stackTrace);
       emit(AuthFailure(e.toString()));
     }
   }
 
   // Получить URL для входа
-  String getLoginUrl() {
-    final url = _authService.getLoginUrl();
-    // ignore: avoid_print
-    print('🔗 AuthCubit: URL для входа: $url');
-    developer.log('AuthCubit: URL для входа: $url');
+  Future<String> getLoginUrl({String? provider}) async {
+    developer.log('[CUBIT:AUTH] getLoginUrl(provider=$provider)');
+    final url = await _authService.getLoginUrl(provider: provider);
+    developer.log('[CUBIT:AUTH] getLoginUrl() -> $url');
     return url;
+  }
+
+  // Создать временного пользователя
+  Future<void> testLogin({String? name, String? email}) async {
+    developer.log('[CUBIT:AUTH] testLogin(name=$name, email=$email) started');
+    emit(AuthLoading());
+    try {
+      await _authService.testLogin(name: name, email: email);
+      developer.log('[CUBIT:AUTH] testLogin() -> checking auth');
+      await checkAuth();
+    } catch (e, stackTrace) {
+      developer.log('[CUBIT:AUTH] testLogin() -> Error', error: e, stackTrace: stackTrace);
+      emit(AuthFailure(e.toString()));
+    }
   }
 
   // Выход из аккаунта
   Future<void> logout() async {
-    // ignore: avoid_print
-    print('👋 AuthCubit: Выход из системы');
-    developer.log('AuthCubit: Выход из системы');
+    developer.log('[CUBIT:AUTH] logout() started');
     emit(AuthLoading());
     try {
       await _authService.logout();
-      // ignore: avoid_print
-      print('✅ AuthCubit: Выход успешен');
-      developer.log('AuthCubit: Выход успешен');
+      developer.log('[CUBIT:AUTH] logout() -> Unauthenticated');
       emit(Unauthenticated());
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ AuthCubit: Ошибка при выходе: $e');
-      developer.log('AuthCubit: Ошибка при выходе', error: e);
+      developer.log('[CUBIT:AUTH] logout() -> Error', error: e);
       emit(AuthFailure(e.toString()));
     }
   }
 
   // Обновить данные пользователя
   Future<void> updateUserName(String name) async {
-    // ignore: avoid_print
-    print('📝 AuthCubit: Обновление имени пользователя на: $name');
-    developer.log('AuthCubit: Обновление имени пользователя на: $name');
+    developer.log('[CUBIT:AUTH] updateUserName(name=$name) started');
     final currentState = state;
     if (currentState is Authenticated) {
       try {
         final updatedUser = await _authService.updateUser(name);
-        // ignore: avoid_print
-        print('✅ AuthCubit: Имя пользователя обновлено');
-        developer.log('AuthCubit: Имя пользователя обновлено');
+        developer.log('[CUBIT:AUTH] updateUserName() -> Success');
         emit(Authenticated(updatedUser));
       } catch (e) {
-        // ignore: avoid_print
-        print('❌ AuthCubit: Ошибка при обновлении имени: $e');
-        developer.log('AuthCubit: Ошибка при обновлении имени', error: e);
+        developer.log('[CUBIT:AUTH] updateUserName() -> Error', error: e);
         emit(AuthFailure(e.toString()));
       }
     }

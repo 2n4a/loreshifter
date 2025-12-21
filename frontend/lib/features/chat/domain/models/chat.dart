@@ -61,13 +61,13 @@ class ChatSegment {
 
   factory ChatSegment.fromJson(Map<String, dynamic> json) {
     return ChatSegment(
-      chatId: json['chatId'] as int,
-      chatOwner: json['chatOwner'] as int?,
+      chatId: json['chat_id'] as int,
+      chatOwner: json['chat_owner'] as int?,
       messages: (json['messages'] as List)
           .map((e) => Message.fromJson(e as Map<String, dynamic>))
           .toList(),
-      previousId: json['previousId'] as int?,
-      nextId: json['nextId'] as int?,
+      previousId: json['previous_id'] as int?,
+      nextId: json['next_id'] as int?,
       suggestions: (json['suggestions'] as List).map((e) => e as String).toList(),
       interface: ChatInterface.fromJson(json['interface']),
     );
