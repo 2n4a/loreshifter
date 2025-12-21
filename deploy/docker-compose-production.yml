@@ -45,6 +45,7 @@ services:
       - db-password
       - gen-api-key
       - proxy-api-key
+      - jwt-secret
 
   frontend:
     image: ghcr.io/2n4a/loreshifter-web:latest
@@ -66,6 +67,8 @@ secrets:
     file: ./secrets/gen-api-key
   proxy-api-key:
     file: ./secrets/proxy-api-key
+  jwt-secret:
+    file: ./secrets/jwt-secret
 
 volumes:
   postgres_data:
