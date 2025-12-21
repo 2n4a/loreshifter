@@ -13,8 +13,8 @@ from fastapi.encoders import jsonable_encoder
 
 from starlette.websockets import WebSocketState
 
-HEARTBEAT_TIMEOUT = 30
-DISCONNECT_TIMEOUT = 30
+HEARTBEAT_TIMEOUT = 999999
+DISCONNECT_TIMEOUT = 5
 
 
 class WebSocketController:
@@ -43,7 +43,7 @@ class WebSocketController:
                     await game.disconnect_player(
                         conn=conn,
                         player_id=user_id,
-                        kick_immediately=True,
+                        kick_immediately=False,
                     )
 
         except asyncio.CancelledError:
