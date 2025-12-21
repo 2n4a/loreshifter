@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.websockets import WebSocket
 
-from app.dependencies import Conn, AuthDep, U, W, UserDep, Log
+from app.dependencies import Conn, AuthDep, U, W, UserDep, Log, lazy_ws_auth
 from game.chat import ChatSystem
 from lstypes.error import (
     ServiceCode,
@@ -537,12 +537,22 @@ async def websocket_endpoint(
     websocket: WebSocket,
     game_id: int,
     conn: Conn,
-    user: AuthDep,
+    user: UserDep,
     ws_controller: W,
-    log: Log
+    log: Log,
+    lazy_auth: bool = False,
 ):
-    if user is None:
+    if lazy_auth:
+        await websocket.accept()
+        user = await lazy_ws_auth(websocket, conn)
+        if user is None:
+            await websocket.close(code=1008)
+            return
+    elif user is None:
         raise HTTPException(status_code=401, detail="User is not authenticated")
+    else:
+        await websocket.accept()
+
     game = GameSystem.of(game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")

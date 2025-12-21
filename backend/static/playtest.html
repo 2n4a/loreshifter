@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loreshifter Playtest</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .setup-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .players-container {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            overflow-x: auto;
+            min-height: 80vh;
+            justify-content: center;
+        }
+        .player-column {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            height: 80vh;
+        }
+        .player-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .chats-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .chat-box {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            flex-shrink: 0;
+        }
+        .chat-header {
+            background: #eee;
+            padding: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .message {
+            padding: 5px;
+            border-radius: 4px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .message.own {
+            align-self: flex-end;
+            background-color: #dcf8c6;
+        }
+        .message.other {
+            align-self: flex-start;
+            background-color: #fff;
+            border: 1px solid #eee;
+        }
+        .message.system {
+            align-self: center;
+            background-color: #eee;
+            font-style: italic;
+            font-size: 0.8em;
+        }
+        .chat-input-area {
+            padding: 5px;
+            border-top: 1px solid #ccc;
+            display: flex;
+            gap: 5px;
+        }
+        .chat-input-area input {
+            flex: 1;
+        }
+        .hidden {
+            display: none;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup-panel" class="setup-panel">
+        <h2>Setup</h2>
+        <div>
+            <label>
+                <input type="radio" name="world-source" value="file" checked> Load World from JSON File
+            </label>
+            <input type="file" id="world-file">
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="world-source" value="text"> Load World from JSON Text
+            </label>
+            <textarea id="world-text" placeholder='{"name": "My World", ...}'>{"initialState": {}}</textarea>
+        </div>
+        <div>
+            <label>
+                <input type="radio" name="world-source" value="id"> Load Existing World ID
+            </label>
+            <input type="number" id="world-id" placeholder="World ID">
+        </div>
+        <br>
+        <button id="start-btn">Start Simulation</button>
+        <div id="setup-status"></div>
+    </div>
+
+    <div id="players-container" class="players-container hidden"></div>
+</div>
+
+<script>
+    // --- Configuration & State ---
+    const API_BASE = '/api/v0';
+    const WS_BASE = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + API_BASE;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const NUM_PLAYERS = parseInt(urlParams.get('players')) || 2;
+
+    let players = []; // { user: User, token: string, ws: WebSocket, gameId: number, state: GameState, pingInterval: number }
+    let gameId = null;
+
+    // --- Helpers ---
+    async function request(method, url, token, body = null) {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        const options = {
+            method,
+            headers,
+        };
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
+        const res = await fetch(API_BASE + url, options);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(err.message || res.statusText);
+        }
+        return res.json();
+    }
+
+    function log(msg) {
+        console.log(`[System] ${msg}`);
+        const status = document.getElementById('setup-status');
+        if (status) status.innerText = msg;
+    }
+
+    // --- Setup Flow ---
+
+    async function init() {
+        log(`Creating ${NUM_PLAYERS} temporary users...`);
+        try {
+            for (let i = 0; i < NUM_PLAYERS; i++) {
+                const loginRes = await request('GET', '/test-login?name=Player' + (i + 1));
+                const userRes = await request('GET', '/user/me', loginRes.token);
+                players.push({
+                    token: loginRes.token,
+                    user: userRes,
+                    index: i
+                });
+            }
+            log(`Created ${players.length} users.`);
+        } catch (e) {
+            log(`Error creating users: ${e.message}`);
+            console.error(e);
+        }
+    }
+
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        const source = document.querySelector('input[name="world-source"]:checked').value;
+        let worldId = null;
+
+        try {
+            // 1. Get/Create World
+            if (source === 'id') {
+                worldId = parseInt(document.getElementById('world-id').value);
+                if (!worldId) throw new Error("Invalid World ID");
+            } else {
+                let worldData = null;
+                if (source === 'file') {
+                    const fileInput = document.getElementById('world-file');
+                    if (fileInput.files.length === 0) throw new Error("No file selected");
+                    const text = await fileInput.files[0].text();
+                    worldData = JSON.parse(text);
+                } else {
+                    const text = document.getElementById('world-text').value;
+                    if (!text) throw new Error("No JSON text provided");
+                    worldData = JSON.parse(text);
+                }
+                
+                // Create world using Player 0
+                const worldRes = await request('POST', '/world', players[0].token, {
+                    name: worldData.name || "Debug World",
+                    public: true,
+                    data: worldData
+                });
+                worldId = worldRes.id;
+            }
+
+            log(`Using World ID: ${worldId}. Creating Game...`);
+
+            // 2. Create Game (Player 0 is host)
+            const gameRes = await request('POST', '/game', players[0].token, {
+                world_id: worldId,
+                name: "Debug Game",
+                public: true,
+                max_players: NUM_PLAYERS
+            });
+            gameId = gameRes.id;
+
+            log(`Game Created: ${gameId}. Joining other players...`);
+
+            // 3. Join other players
+            for (let i = 1; i < players.length; i++) {
+                await request('POST', `/game/${gameId}/join`, players[i].token);
+            }
+
+            log("All players joined. Initializing interfaces...");
+            
+            document.getElementById('setup-panel').classList.add('hidden');
+            document.getElementById('players-container').classList.remove('hidden');
+
+            // 4. Initialize UI and WebSockets
+            for (const player of players) {
+                createPlayerUI(player);
+                // Fetch initial state
+                const state = await request('GET', `/game/${gameId}/state`, player.token);
+                player.state = state;
+                updatePlayerControls(player, state);
+                renderChats(player, state);
+                
+                connectWebSocket(player);
+            }
+
+        } catch (e) {
+            log(`Error: ${e.message}`);
+            console.error(e);
+            alert(`Error: ${e.message}`);
+        }
+    });
+
+    // --- UI Generation ---
+
+    function createPlayerUI(player) {
+        const container = document.getElementById('players-container');
+        const col = document.createElement('div');
+        col.className = 'player-column';
+        col.id = `player-col-${player.index}`;
+        
+        col.innerHTML = `
+            <div class="player-header">
+                <h3>${player.user.name} (ID: ${player.user.id})</h3>
+                <div class="controls" id="controls-${player.index}">
+                    <!-- Dynamic controls will go here -->
+                </div>
+            </div>
+            <div class="chats-container" id="chats-${player.index}">
+                <!-- Chats will go here -->
+            </div>
+        `;
+        container.appendChild(col);
+    }
+
+    function updatePlayerControls(player, state) {
+        const controlsDiv = document.getElementById(`controls-${player.index}`);
+        controlsDiv.innerHTML = '';
+
+        if (state.status === 'waiting') {
+            // Ready Button
+            const readyBtn = document.createElement('button');
+            const isReady = state.game.players.find(p => p.user.id === player.user.id)?.is_ready;
+            readyBtn.innerText = isReady ? "Unready" : "Ready";
+            readyBtn.onclick = async () => {
+                await request('POST', `/game/${gameId}/ready`, player.token, { ready: !isReady });
+            };
+            controlsDiv.appendChild(readyBtn);
+
+            // Start Game Button (Host only)
+            if (state.game.host_id === player.user.id) {
+                const startBtn = document.createElement('button');
+                startBtn.innerText = "Start Game";
+                startBtn.onclick = async () => {
+                    try {
+                        await request('POST', `/game/${gameId}/start`, player.token);
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                };
+                controlsDiv.appendChild(startBtn);
+            }
+        }
+    }
+
+    function renderChats(player, state) {
+        const chatsContainer = document.getElementById(`chats-${player.index}`);
+        
+        let chatsToShow = [];
+        
+        // Based on types.ts GameState structures
+        if (state.status === 'waiting') {
+            if (state.game_chat) chatsToShow.push({ ...state.game_chat, title: "Game Chat" });
+            if (state.character_creation_chat) chatsToShow.push({ ...state.character_creation_chat, title: "Char Creation" });
+        } else if (state.status === 'playing' || state.status === 'finished' || state.status === 'archived') {
+            if (state.game_chat) chatsToShow.push({ ...state.game_chat, title: "Game Chat" });
+            if (state.player_chats) {
+                state.player_chats.forEach((c, i) => chatsToShow.push({ ...c, title: `Player Chat ${i+1}` }));
+            }
+            if (state.advice_chats) {
+                state.advice_chats.forEach((c, i) => chatsToShow.push({ ...c, title: `Advice Chat ${i+1}` }));
+            }
+        }
+
+        // Hide chats that are no longer present
+        Array.from(chatsContainer.children).forEach(child => {
+            const chatId = parseInt(child.dataset.chatId);
+            if (!chatsToShow.find(c => c.chat_id === chatId)) {
+                child.remove();
+            }
+        });
+
+        // Create or Update chats
+        chatsToShow.forEach(chatData => {
+            let chatBox = chatsContainer.querySelector(`.chat-box[data-chat-id="${chatData.chat_id}"]`);
+            if (!chatBox) {
+                chatBox = createChatBox(player, chatData);
+                chatsContainer.appendChild(chatBox);
+            }
+            updateChatBox(player, chatBox, chatData);
+        });
+    }
+
+    function createChatBox(player, chatData) {
+        const div = document.createElement('div');
+        div.className = 'chat-box';
+        div.dataset.chatId = chatData.chat_id;
+        div.innerHTML = `
+            <div class="chat-header">${chatData.title} (ID: ${chatData.chat_id})</div>
+            <div class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" placeholder="Type a message...">
+                <button>Send</button>
+            </div>
+        `;
+
+        const input = div.querySelector('input');
+        const btn = div.querySelector('button');
+
+        const send = async () => {
+            const text = input.value;
+            if (!text) return;
+            try {
+                await request('POST', `/game/${gameId}/chat/${chatData.chat_id}/send`, player.token, {
+                    text: text,
+                    special: null,
+                    metadata: {}
+                });
+                input.value = '';
+            } catch (e) {
+                console.error(e);
+                alert("Failed to send: " + e.message);
+            }
+        };
+
+        btn.onclick = send;
+        input.onkeydown = (e) => { if (e.key === 'Enter') send(); };
+
+        return div;
+    }
+
+    function updateChatBox(player, chatBox, chatData) {
+        const msgsDiv = chatBox.querySelector('.chat-messages');
+        
+        const existingIds = new Set(Array.from(msgsDiv.children).map(el => parseInt(el.dataset.msgId)));
+        
+        chatData.messages.forEach(msg => {
+            if (!existingIds.has(msg.id)) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${msg.sender_id === player.user.id ? 'own' : 'other'}`;
+                if (msg.kind === 'system') msgDiv.classList.add('system');
+                
+                msgDiv.dataset.msgId = msg.id;
+                msgDiv.innerText = msg.text;
+                msgsDiv.appendChild(msgDiv);
+                
+                // Auto-scroll
+                msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            } else {
+                // Update existing message (for edits)
+                const msgDiv = msgsDiv.querySelector(`div[data-msg-id="${msg.id}"]`);
+                if (msgDiv && msgDiv.innerText !== msg.text) {
+                    msgDiv.innerText = msg.text;
+                }
+            }
+        });
+        
+        // Update interface state (readonly etc)
+        const inputArea = chatBox.querySelector('.chat-input-area');
+        if (chatData.interface && chatData.interface.type === 'readonly') {
+             inputArea.classList.add('hidden');
+        } else {
+             inputArea.classList.remove('hidden');
+        }
+    }
+
+    // --- WebSocket Logic ---
+
+    function connectWebSocket(player) {
+        if (player.ws) {
+            try { player.ws.close(); } catch(e) {}
+        }
+
+        const ws = new WebSocket(`${WS_BASE}/game/${gameId}/ws?lazy_auth=true`);
+        player.ws = ws;
+
+        ws.onopen = () => {
+            console.log(`WS Connected for ${player.user.name}. Sending auth...`);
+            ws.send(JSON.stringify({
+                type: 'auth',
+                payload: player.token
+            }));
+
+            // Start Ping Interval
+            if (player.pingInterval) clearInterval(player.pingInterval);
+            player.pingInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 10000);
+        };
+
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            handleWsMessage(player, msg);
+        };
+
+        ws.onclose = (e) => {
+            console.log(`WS Closed for ${player.user.name} (code: ${e.code})`);
+            if (player.pingInterval) clearInterval(player.pingInterval);
+            
+            // Reconnect logic (simple exponential backoff could be added, but fixed delay for now)
+            if (e.code !== 1000 && e.code !== 1001 && e.code !== 1008) {
+                setTimeout(() => {
+                    console.log(`Reconnecting ${player.user.name}...`);
+                    connectWebSocket(player);
+                }, 3000);
+            }
+        };
+        
+        ws.onerror = (err) => {
+            console.error(`WS Error for ${player.user.name}`, err);
+        };
+    }
+
+    function handleWsMessage(player, msg) {
+        // msg: { type: string, payload: any }
+        
+        if (msg.type === 'pong') {
+            // console.log(`Pong received for ${player.user.name}`);
+            return;
+        }
+
+        if (msg.type === 'GameStatusEvent') {
+            if (player.state) {
+                player.state.status = msg.payload.new_status;
+                updatePlayerControls(player, player.state);
+                renderChats(player, player.state);
+            }
+        }
+        else if (msg.type === 'PlayerJoinedEvent') {
+            if (player.state && player.state.game) {
+                const p = msg.payload.player;
+                const existing = player.state.game.players.find(x => x.user.id === p.user.id);
+                if (existing) {
+                    Object.assign(existing, p);
+                } else {
+                    player.state.game.players.push(p);
+                }
+                updatePlayerControls(player, player.state);
+            }
+        }
+        else if (msg.type === 'PlayerLeftEvent' || msg.type === 'PlayerKickedEvent') {
+            if (player.state && player.state.game) {
+                const p = msg.payload.player;
+                const existing = player.state.game.players.find(x => x.user.id === p.user.id);
+                if (existing) {
+                    existing.is_joined = false;
+                }
+                updatePlayerControls(player, player.state);
+            }
+        }
+        else if (msg.type === 'PlayerReadyEvent') {
+            if (player.state && player.state.game) {
+                const { player_id, ready } = msg.payload;
+                const existing = player.state.game.players.find(x => x.user.id === player_id);
+                if (existing) {
+                    existing.is_ready = ready;
+                }
+                updatePlayerControls(player, player.state);
+            }
+        }
+        else if (msg.type === 'GameChatEvent') {
+            const { chat_id, event } = msg.payload;
+            
+            // Find chat in state
+            let chat = findChatInState(player.state, chat_id);
+            if (!chat) return;
+
+            // Handle inner event
+            // We infer type based on fields because backend might not send inner type discriminator clearly
+            // Sent: { message: { msg: {...}, ... } }
+            // Edit/Delete: { message: { id: ..., ... } } (and no msg field)
+            
+            if (event.message) {
+                if (event.message.msg) {
+                    // Sent
+                    const newMsg = event.message.msg;
+                    if (!chat.messages.find(m => m.id === newMsg.id)) {
+                        chat.messages.push(newMsg);
+                    }
+                } else {
+                    // Edit or Delete
+                    const updatedMsg = event.message;
+                    const idx = chat.messages.findIndex(m => m.id === updatedMsg.id);
+                    if (idx !== -1) {
+                        // If it's a delete, we might want to remove it or update it.
+                        // Assuming update for now as we don't have explicit delete flag in MessageOut
+                        chat.messages[idx] = updatedMsg;
+                    }
+                }
+                renderChats(player, player.state);
+            } else if (event.suggestions) {
+                chat.suggestions = event.suggestions;
+                renderChats(player, player.state);
+            }
+        }
+    }
+
+    function findChatInState(state, chatId) {
+        if (!state) return null;
+        if (state.game_chat && state.game_chat.chat_id === chatId) return state.game_chat;
+        if (state.character_creation_chat && state.character_creation_chat.chat_id === chatId) return state.character_creation_chat;
+        if (state.player_chats) {
+            const c = state.player_chats.find(c => c.chat_id === chatId);
+            if (c) return c;
+        }
+        if (state.advice_chats) {
+            const c = state.advice_chats.find(c => c.chat_id === chatId);
+            if (c) return c;
+        }
+        return null;
+    }
+
+    // Start
+    init();
+
+</script>
+
+</body>
+</html>

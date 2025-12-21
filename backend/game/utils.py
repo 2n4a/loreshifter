@@ -80,7 +80,7 @@ async def get_conn():
     import app.dependencies
 
     if app.dependencies.state is not None:
-        with app.dependencies.state.pg_pool.acquire() as conn:
+        async with app.dependencies.state.pg_pool.acquire() as conn:
             yield conn
     else:
         import tests.conftest

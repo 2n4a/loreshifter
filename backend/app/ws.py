@@ -86,8 +86,6 @@ class WebSocketController:
             except Exception as e:
                 await self.log.awarning("Failed to cancel pending disconnect", e)
 
-        await websocket.accept()
-
         async with self._lock:
             self.user_to_ws.setdefault(game_id, {})[user_id] = websocket
 
@@ -136,6 +134,7 @@ class WebSocketController:
             if getattr(ws, "client_state", None) == WebSocketState.DISCONNECTED:
                 raise RuntimeError("WebSocket already disconnected")
 
+            await self.log.ainfo(f"Sending message: {message}", game_id=game_id, user_id=user_id)
             await ws.send_json(message)
             return True
 

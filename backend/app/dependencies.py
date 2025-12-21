@@ -8,7 +8,7 @@ from typing import Annotated
 
 import asyncpg
 import structlog
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, WebSocket
 from fastapi.params import Cookie, Header
 from structlog import BoundLogger
 
@@ -70,8 +70,6 @@ async def get_jwt(
         return None
 
     tokens: list[str] = []
-    if session is not None:
-        tokens.append(session)
     if authorization is not None:
         auth = authorization.strip()
         if auth.lower().startswith("bearer "):
@@ -82,6 +80,8 @@ async def get_jwt(
         auth = authentication.strip()
         if auth:
             tokens.append(auth)
+    if session is not None:
+        tokens.append(session)
 
     for token in tokens:
         try:
@@ -164,3 +164,28 @@ async def livespan(_app: FastAPI):
 
             await universe.stop()
             state = None
+
+
+async def lazy_ws_auth(websocket: WebSocket, conn: asyncpg.Connection) -> FullUserOut | None:
+    try:
+        msg = await websocket.receive_json()
+    except Exception:
+        return None
+
+    if not isinstance(msg, dict) or msg.get("type") != "auth":
+        return None
+    
+    token = msg.get("payload")
+    if not isinstance(token, str):
+        return None
+
+    try:
+        payload = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
+    except jwt.JWTError:
+        return None
+
+    user = await game.user.get_user(conn, payload["id"], deleted_ok=False)
+    if isinstance(user, ServiceError):
+        return None
+    
+    return user

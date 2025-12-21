@@ -1,5 +1,6 @@
 import dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import HTMLResponse
 
 dotenv.load_dotenv()
 
@@ -11,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 import uvicorn
+from pathlib import Path
 
 from app.dependencies import livespan
 from lstypes.error import ServiceErrorException
@@ -44,6 +46,11 @@ app.add_middleware(
 @app.get("/api/v0/liveness")
 def liveness():
     return {}
+
+
+@app.get("/playtest")
+def playtest(players: int = 1):
+    return HTMLResponse(content=Path("static/playtest.html").read_text("utf-8"))
 
 
 def main():
