@@ -27,9 +27,6 @@ from lstypes.error import (
 router = APIRouter()
 
 
-SELF_URL = "http://localhost:8000"
-
-
 def generate_jwt(payload: dict[str, typing.Any]):
     return jwt.encode(payload, config.JWT_SECRET, algorithm="HS256")
 
@@ -49,7 +46,7 @@ class AuthProvider(abc.ABC):
     def provider_name(self): ...
 
     def redirect_url(self):
-        return f"{SELF_URL}/api/v0/login/callback/{self.provider_name}"
+        return f"{config.SELF_URL}/api/v0/login/callback/{self.provider_name}"
 
     async def extract_state(self, data: dict[str, str]) -> dict[str, typing.Any]: ...
 

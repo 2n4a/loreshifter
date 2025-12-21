@@ -27,6 +27,7 @@ JWT_SECRET: str = load_secret("JWT_SECRET")
 OAUTH2_GITHUB_CLIENT_ID: str = load_secret("OAUTH2_GITHUB_CLIENT_ID")
 OAUTH2_GITHUB_CLIENT_SECRET: str = load_secret("OAUTH2_GITHUB_CLIENT_SECRET")
 LOG_STACKTRACE: bool = os.environ.get("LOG_STACKTRACE", "false").lower() == "true"
+SELF_URL = os.environ.get("SELF_URL", "http://localhost:8000")
 
 if "POSTGRES_URL" in os.environ or ENVIRONMENT == "dev":
     POSTGRES_URL: str = os.environ.get(
