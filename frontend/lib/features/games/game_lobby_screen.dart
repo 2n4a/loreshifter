@@ -169,8 +169,34 @@ class _GameLobbyScreenState extends State<GameLobbyScreen>
           await _loadGameDetails();
         }
       } else if (type == 'GameChatEvent') {
-        // Reload current chat if needed
-        // Could be more selective here
+        if (_isDisposed || !mounted) return;
+        if (_currentGameId == null || _gameState == null) return;
+
+        final chatId = payload?['chat_id'] ?? payload?['chatId'];
+        if (chatId is! int) return;
+
+        final isGeneralChat = _tabController.index == 0;
+        final expectedChatId = isGeneralChat
+            ? _gameState!.gameChat?.chatId ?? _gameState!.characterCreationChat?.chatId
+            : _gameState!.characterCreationChat?.chatId;
+
+        if (chatId != expectedChatId) {
+          return;
+        }
+
+        try {
+          await context.read<GameplayCubit>().loadChat(
+            gameId: _currentGameId!,
+            chatId: chatId,
+          );
+          if (mounted) {
+            setState(() {
+              _loadedChatId = chatId;
+            });
+          }
+        } catch (e) {
+          developer.log('[GAME_LOBBY] Failed to refresh chat: $e', error: e);
+        }
       }
     }, onError: (error) {
       if (_isDisposed || !mounted) return;
