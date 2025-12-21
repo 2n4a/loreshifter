@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 
+from lstypes.error import ServiceError
+
 
 class Timer:
     def __init__(self, seconds: float):
@@ -85,3 +87,23 @@ async def get_conn():
     else:
         import tests.conftest
         yield tests.conftest.active_conn
+
+
+async def get_str_from_filter(filter_: str | None, field: str) -> str | None:
+    if not isinstance(filter_, str):
+        return None
+    parts = filter_.split(",")
+    for part in parts:
+        if "=" in part:
+            key, value = part.split("=")
+            if key == field:
+                return value
+    return None
+
+
+async def get_int_from_filter(filter_: str | None, field: str) -> int | None:
+    s = await get_str_from_filter(filter_, field)
+    try:
+        return int(s) if s is not None else None
+    except ValueError:
+        return None

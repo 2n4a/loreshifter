@@ -83,7 +83,6 @@ async def get_games(
     search: str | None = None,
     include_archived: bool = False,
 ) -> list[GameOut]:
-    _ = filter_
     _ = search
 
     return unwrap(
@@ -95,6 +94,8 @@ async def get_games(
             order=order,
             public=public,
             joined_only=joined,
+            filter_=filter_,
+            # search=search,
             requester_id=user.id if user else None,
             include_archived=include_archived,
             log=log,

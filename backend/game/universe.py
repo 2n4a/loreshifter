@@ -9,6 +9,7 @@ import asyncpg
 from game.chat import ChatSystem
 from game.logger import gl_log
 from game.user import check_user_exists
+from game.utils import get_int_from_filter, get_str_from_filter
 from lstypes.chat import ChatType
 from game.game import GameSystem, GameEvent, GameStatusEvent
 from lstypes.error import ServiceCode, ServiceError, error
@@ -316,11 +317,14 @@ class Universe(System[UniverseEvent, None]):
         # order: Literal["lastUpdatedAt"] = "lastUpdatedAt",
         # search: str | None = None,
         public: bool = False,
-        # filter_: str | None = None,
+        filter_: str | None = None,
         requester_id: int | None = None,
         log=gl_log,
     ) -> list[WorldOut] | ServiceError:
         log = log.bind(limit=limit, offset=offset, sort=sort)
+
+        filter_owner = await get_int_from_filter(filter_, "owner")
+
         rows = await conn.fetch(
             f"""
             SELECT
@@ -328,7 +332,9 @@ class Universe(System[UniverseEvent, None]):
                 o.name as owner_name, o.created_at as owner_created_at, o.deleted as owner_deleted
             FROM worlds AS w
             JOIN users AS o ON w.owner_id = o.id
-            WHERE (w.public OR (w.owner_id = $3 AND NOT $4)) AND NOT w.deleted
+            WHERE (w.public OR (w.owner_id = $3 AND NOT $4))
+                AND NOT w.deleted
+                AND ($5::INTEGER IS NULL OR w.owner_id = $5::INTEGER)
             ORDER BY last_updated_at {'ASC' if sort == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
@@ -336,6 +342,7 @@ class Universe(System[UniverseEvent, None]):
             offset,
             requester_id if requester_id is not None else -1,
             public,
+            filter_owner,
         )
 
         await log.ainfo("Fetching worlds: got %s worlds", len(rows))
@@ -478,6 +485,8 @@ class Universe(System[UniverseEvent, None]):
         order: Literal["asc", "desc"] = "desc",
         public: bool = False,
         joined_only: bool = False,
+        filter_: str | None = None,
+        # search: str | None = None,
         requester_id: int | None = None,
         include_archived: bool = False,
         log=gl_log,
@@ -491,6 +500,13 @@ class Universe(System[UniverseEvent, None]):
             joined_only=joined_only,
             requester_id=requester_id,
         )
+
+        filter_owner = await get_int_from_filter(filter_, "owner")
+        filter_status = await get_str_from_filter(filter_, "status")
+        filter_world = await get_int_from_filter(filter_, "world")
+        filter_host = await get_int_from_filter(filter_, "host")
+        if filter_status is not None:
+            filter_status = GameStatus._member_map_.get(filter_status, None)
 
         rows = await conn.fetch(
             f"""
@@ -512,6 +528,10 @@ class Universe(System[UniverseEvent, None]):
                 AND (NOT $6 OR g.id IN (
                     SELECT game_id FROM game_players WHERE user_id = $3 AND is_joined IS TRUE
                 ))
+                AND ($7::INTEGER IS NULL OR w.owner_id = $7::INTEGER)
+                AND ($8::game_status IS NULL OR g.status = $8::game_status)
+                AND ($9::INTEGER IS NULL OR w.id = $9::INTEGER)
+                AND ($10::INTEGER IS NULL OR g.host_id = $10::INTEGER)
             ORDER BY g.created_at {'ASC' if order == 'asc' else 'DESC'}
             LIMIT $1 OFFSET $2
             """,
@@ -521,6 +541,10 @@ class Universe(System[UniverseEvent, None]):
             public,
             include_archived,
             joined_only,
+            filter_owner,
+            filter_status,
+            filter_world,
+            filter_host,
         )
 
         await log.ainfo("Fetching games: got %s games", len(rows))
