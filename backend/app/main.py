@@ -1,6 +1,15 @@
 import dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
+import typing
+from starlette.routing import Match
+
+import config
+from jose import jwt
+from app.rate_limit import TokenBucketLimiter, BucketSpec
+
+
+
 
 dotenv.load_dotenv()
 
@@ -20,10 +29,101 @@ import config
 
 app = FastAPI(lifespan=livespan)
 
+limiter = TokenBucketLimiter(
+    per_route=BucketSpec(capacity=30, refill_rate_per_sec=30 / 60),         
+    per_user=BucketSpec(capacity=120, refill_rate_per_sec=120 / 60),        
+    per_route_user=BucketSpec(capacity=20, refill_rate_per_sec=20 / 60),   
+)
+
+
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(game_router)
 app.include_router(world_router)
+
+def _route_key(request: Request) -> str:
+    """
+    Нормализуем ключ как: 'METHOD /api/v0/game/{game_id}/chat/{chat_id}/send'
+    Чтобы не плодить бакеты на каждый конкретный game_id.
+    """
+    scope = request.scope
+    for r in app.router.routes:
+        match, _child = r.matches(scope)
+        if match == Match.FULL:
+            path_tmpl = getattr(r, "path", request.url.path)
+            return f"{request.method} {path_tmpl}"
+    return f"{request.method} {request.url.path}"
+
+
+def _user_id_from_request(request: Request) -> int | None:
+    """
+    Повторяем логику get_jwt из dependencies.py, но без Depends.
+    Смотрим:
+      - Authorization: Bearer ...
+      - Authentication: ...
+      - cookie session
+    """
+    if not config.JWT_SECRET:
+        return None
+
+    tokens: list[str] = []
+
+    auth = request.headers.get("authorization")
+    if auth:
+        a = auth.strip()
+        if a.lower().startswith("bearer "):
+            a = a[7:].strip()
+        if a:
+            tokens.append(a)
+
+    authentication = request.headers.get("authentication")
+    if authentication:
+        a = authentication.strip()
+        if a:
+            tokens.append(a)
+
+    session = request.cookies.get("session")
+    if session:
+        tokens.append(session)
+
+    for token in tokens:
+        try:
+            payload = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
+            uid = payload.get("id")
+            if isinstance(uid, int):
+                return uid
+            if isinstance(uid, str) and uid.isdigit():
+                return int(uid)
+        except Exception:
+            continue
+
+    return None
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # не лимитим служебные штуки, чтобы не мешали отладке/проверкам
+    if request.url.path in ("/api/v0/liveness", "/playtest"):
+        return await call_next(request)
+
+    route_key = _route_key(request)
+    user_id = _user_id_from_request(request)
+
+    ok = await limiter.check_and_consume(route_key=route_key, user_id=user_id)
+    if not ok:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "code": "TOO_MANY_REQUESTS",
+                "message": "Too Many Requests",
+                "details": {
+                    "route": route_key,
+                    "user_id": user_id,
+                },
+            },
+        )
+
+    return await call_next(request)
+
 
 
 @app.exception_handler(ServiceErrorException)
