@@ -38,7 +38,7 @@ jobs:
         echo '```' >> complexity_report.md
 
     - name: Upload complexity report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: complexity-report
         path: complexity_report.md
