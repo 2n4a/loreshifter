@@ -2,13 +2,15 @@ import dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 import typing
+import hashlib
 from starlette.routing import Match
 
 import config
 from jose import jwt
-from app.dependencies import livespan, state
 
 
+import app.dependencies as deps
+from app.dependencies import livespan
 
 dotenv.load_dotenv()
 
@@ -22,7 +24,6 @@ from starlette.requests import Request
 import uvicorn
 from pathlib import Path
 
-from app.dependencies import livespan
 from lstypes.error import ServiceErrorException
 import config
 
@@ -50,9 +51,7 @@ def _route_key(request: Request) -> str:
     return f"{request.method} {request.url.path}"
 
 
-def _user_id_from_request(request: Request) -> int | None:
-    if not config.JWT_SECRET:
-        return None
+def _user_key_from_request(request: Request) -> str | None:
 
     tokens: list[str] = []
 
@@ -74,35 +73,33 @@ def _user_id_from_request(request: Request) -> int | None:
     if session:
         tokens.append(session)
 
-    for token in tokens:
-        try:
-            payload = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
-            uid = payload.get("id")
-            if isinstance(uid, int):
-                return uid
-            if isinstance(uid, str) and uid.isdigit():
-                return int(uid)
-        except Exception:
-            continue
+    if not tokens:
+        return None
+    raw = tokens[0]
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()  
 
-    return None
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    if state is None:
+
+    if deps.state is None:
         return await call_next(request)
 
     route_key = _route_key(request)
-    user_id = _user_id_from_request(request)
+    user_key = _user_key_from_request(request)
 
-    ok = await state.limiter.check_and_consume(route_key=route_key, user_id=user_id)
+    ok = await deps.state.limiter.check_and_consume(route_key=route_key, user_key=user_key)
     if not ok:
         return JSONResponse(
             status_code=429,
             content={
                 "code": "TOO_MANY_REQUESTS",
                 "message": "Too Many Requests",
-                "details": {"route": route_key, "user_id": user_id},
+                "details": {
+                    "route": route_key,
+                    "has_user_key": user_key is not None,
+                    "user_key_prefix": (user_key[:8] if user_key is not None else None),
+                },
             },
         )
 

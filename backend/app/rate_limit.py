@@ -50,8 +50,8 @@ class TokenBucketLimiter:
 
         self._lock = asyncio.Lock()
         self._route: dict[str, TokenBucket] = {}
-        self._user: dict[int, TokenBucket] = {}
-        self._route_user: dict[tuple[str, int], TokenBucket] = {}
+        self._user: dict[str, TokenBucket] = {}
+        self._route_user: dict[tuple[str, str], TokenBucket] = {}
         self._gc_task: asyncio.Task | None = None
         self._last_gc_at: float = 0.0
 
@@ -81,7 +81,7 @@ class TokenBucketLimiter:
 
         self._last_gc_at = now
 
-    async def check_and_consume(self, *, route_key: str, user_id: int | None) -> bool:
+    async def check_and_consume(self, *, route_key: str, user_key: str | None) -> bool:
         now = time.monotonic()
 
         async with self._lock:
@@ -103,20 +103,20 @@ class TokenBucketLimiter:
             rb.refill(now)
             rb.touch(now)
 
-            if user_id is None:
+            if user_key is None:
                 if rb.tokens < 1.0:
                     return False
                 rb.tokens -= 1.0
                 return True
 
-            ub = self._user.get(user_id)
+            ub = self._user.get(user_key)
             if ub is None:
                 ub = self._mk_bucket(self.per_user, now)
-                self._user[user_id] = ub
+                self._user[user_key] = ub
             ub.refill(now)
             ub.touch(now)
 
-            rk = (route_key, user_id)
+            rk = (route_key, user_key)
             rub = self._route_user.get(rk)
             if rub is None:
                 rub = self._mk_bucket(self.per_route_user, now)
