@@ -19,6 +19,7 @@ from game.logger import gl_log
 from lstypes.error import ServiceCode, ServiceError, raise_service_error
 from lstypes.user import FullUserOut
 from game.universe import Universe
+from app.rate_limit import TokenBucketLimiter, BucketSpec
 
 from jose import jwt
 
@@ -31,6 +32,7 @@ class AppState:
     universe: Universe
     ws_controller: WebSocketController
     log: structlog.BoundLogger
+    limiter: TokenBucketLimiter
 
 
 state: AppState | None = None
@@ -151,6 +153,14 @@ async def livespan(_app: FastAPI):
     ) as pg_pool:
         universe = Universe(pg_pool)
         ws_controller = WebSocketController(pg_pool)
+
+        limiter = TokenBucketLimiter(
+            per_route=BucketSpec(capacity=30, refill_rate_per_sec=30 / 60),         
+            per_user=BucketSpec(capacity=120, refill_rate_per_sec=120 / 60),        
+            per_route_user=BucketSpec(capacity=20, refill_rate_per_sec=20 / 60),   
+        )
+        limiter.start_gc()
+
         async with asyncio.TaskGroup() as bg_tasks:
             bg_tasks.create_task(ws_controller.listen(universe))
 
@@ -159,10 +169,12 @@ async def livespan(_app: FastAPI):
                 universe=universe,
                 ws_controller=ws_controller,
                 log=log,
+                limiter=limiter,
             )
 
             yield
 
+            await limiter.stop_gc()
             await universe.stop()
             state = None
 

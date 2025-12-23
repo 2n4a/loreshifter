@@ -6,8 +6,7 @@ from starlette.routing import Match
 
 import config
 from jose import jwt
-from app.rate_limit import TokenBucketLimiter, BucketSpec
-
+from app.dependencies import livespan, state
 
 
 
@@ -29,11 +28,7 @@ import config
 
 app = FastAPI(lifespan=livespan)
 
-limiter = TokenBucketLimiter(
-    per_route=BucketSpec(capacity=30, refill_rate_per_sec=30 / 60),         
-    per_user=BucketSpec(capacity=120, refill_rate_per_sec=120 / 60),        
-    per_route_user=BucketSpec(capacity=20, refill_rate_per_sec=20 / 60),   
-)
+
 
 
 app.include_router(auth_router)
@@ -94,21 +89,20 @@ def _user_id_from_request(request: Request) -> int | None:
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    if state is None:
+        return await call_next(request)
 
     route_key = _route_key(request)
     user_id = _user_id_from_request(request)
 
-    ok = await limiter.check_and_consume(route_key=route_key, user_id=user_id)
+    ok = await state.limiter.check_and_consume(route_key=route_key, user_id=user_id)
     if not ok:
         return JSONResponse(
             status_code=429,
             content={
                 "code": "TOO_MANY_REQUESTS",
                 "message": "Too Many Requests",
-                "details": {
-                    "route": route_key,
-                    "user_id": user_id,
-                },
+                "details": {"route": route_key, "user_id": user_id},
             },
         )
 
