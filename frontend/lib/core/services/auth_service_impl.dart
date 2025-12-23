@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 import '/core/services/base_service.dart';
 import '/core/services/interfaces/auth_service_interface.dart';
 import '/features/auth/domain/models/user.dart';
+import 'package:dio/dio.dart';
+
 
 /// Реальная реализация сервиса аутентификации
 class AuthServiceImpl extends BaseService implements AuthService {
@@ -21,6 +23,13 @@ class AuthServiceImpl extends BaseService implements AuthService {
       );
       return user;
     } catch (e, stackTrace) {
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        if (status == 401 || status == 403) {
+          rethrow;
+        }
+      }
+
       developer.log(
         '[SERVICE:AUTH] getCurrentUser() -> Error',
         error: e,
