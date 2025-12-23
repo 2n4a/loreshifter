@@ -746,11 +746,14 @@ class _GameScreenViewState extends State<_GameScreenView>
     final cs = Theme.of(context).colorScheme;
     final isCurrentUser = message.senderId == state.currentUserId;
     final displayName = _resolveSenderName(state, message);
-    final nameStyle = TextStyle(
+    final baseNameStyle = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       color: cs.onSurfaceVariant,
     );
+    final nameStyle = message.sender.type == 'assistant'
+        ? baseNameStyle.copyWith(color: Colors.black87)
+        : baseNameStyle;
 
     Color bubbleColor;
     BorderRadius borderRadius;
@@ -765,7 +768,7 @@ class _GameScreenViewState extends State<_GameScreenView>
     } else if (message.sender.type == 'assistant') {
       bubbleColor = cs.secondaryContainer;
       borderRadius = BorderRadius.circular(16);
-      textColor = cs.onSecondaryContainer;
+      textColor = Colors.black;
     } else if (isCurrentUser) {
       bubbleColor = cs.primaryContainer;
       borderRadius = const BorderRadius.only(
@@ -774,7 +777,7 @@ class _GameScreenViewState extends State<_GameScreenView>
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
-      textColor = cs.onPrimaryContainer;
+      textColor = Colors.black;
     } else {
       bubbleColor = cs.surfaceContainerHigh;
       borderRadius = const BorderRadius.only(
