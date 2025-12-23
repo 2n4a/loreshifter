@@ -777,7 +777,7 @@ class _GameScreenViewState extends State<_GameScreenView>
         bottomLeft: Radius.circular(16),
         bottomRight: Radius.circular(16),
       );
-      textColor = Colors.black;
+      textColor = cs.onPrimaryContainer;
     } else {
       bubbleColor = cs.surfaceContainerHigh;
       borderRadius = const BorderRadius.only(
