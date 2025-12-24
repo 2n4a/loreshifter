@@ -609,7 +609,7 @@ class _GameScreenViewState extends State<_GameScreenView>
     final adviceChats = state._visibleAdviceChats();
     for (final chat in adviceChats) {
       final playerName = _playerName(gameState, chat.chatOwner, state.currentUserId);
-      tabs.add(Tab(text: 'Советы $playerName'));
+      tabs.add(Tab(text: 'Советы ($playerName)'));
     }
 
     if (tabs.isEmpty) {
