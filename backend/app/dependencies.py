@@ -155,9 +155,9 @@ async def livespan(_app: FastAPI):
         ws_controller = WebSocketController(pg_pool)
 
         limiter = TokenBucketLimiter(
-            per_route=BucketSpec(capacity=30, refill_rate_per_sec=30 / 60),         
-            per_user=BucketSpec(capacity=120, refill_rate_per_sec=120 / 60),        
-            per_route_user=BucketSpec(capacity=20, refill_rate_per_sec=20 / 60),   
+            per_route=BucketSpec(capacity=30000, refill_rate_per_sec=30000 / 60),
+            per_user=BucketSpec(capacity=120000, refill_rate_per_sec=120000 / 60),
+            per_route_user=BucketSpec(capacity=20000, refill_rate_per_sec=20000 / 60),
         )
         limiter.start_gc()
 
