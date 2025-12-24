@@ -10,6 +10,7 @@ class ModernCard extends StatelessWidget {
   final bool withAnimation;
   final BorderRadius? borderRadius;
   final Gradient? gradient;
+  final TextStyle? textStyle;
 
   const ModernCard({
     super.key,
@@ -22,6 +23,7 @@ class ModernCard extends StatelessWidget {
     this.withAnimation = true,
     this.borderRadius,
     this.gradient,
+    this.textStyle,
   });
 
   @override
