@@ -283,6 +283,7 @@ class GameSystem(System[GameEvent]):
         self.state = state
         self.db_pool = db_pool
         self.character_sessions: dict[int, CharacterCreationSession] = {}
+        self.llm_sessions: dict[int, list[dict[str, any]]] = {}
         self.pending_actions: list[PendingAction] = []
         self.action_event = asyncio.Event()
         self.action_lock = asyncio.Lock()
@@ -305,10 +306,12 @@ class GameSystem(System[GameEvent]):
         if force_stop or player.is_spectator:
             if player.character_chat is not None:
                 await player.character_chat.stop()
+                self.llm_sessions.pop(player.character_chat.id, None)
             if player.player_chat is not None:
                 await player.player_chat.stop()
             if player.advice_chat is not None:
                 await player.advice_chat.stop()
+                self.llm_sessions.pop(player.advice_chat.id, None)
             player.character_chat = None
             player.player_chat = None
             player.advice_chat = None
@@ -1751,6 +1754,30 @@ class GameSystem(System[GameEvent]):
         await self._persist_state(conn)
         return True
 
+    async def _load_llm_history(
+        self, conn: asyncpg.Connection, chat: ChatSystem, limit: int = 20
+    ) -> list[dict[str, any]]:
+        history = []
+        segment = await chat.get_messages(conn, limit)
+        if isinstance(segment, ServiceError):
+            return history
+
+        for msg in segment.messages:
+            if msg.metadata and "llm_message" in msg.metadata:
+                llm_msg = msg.metadata["llm_message"]
+                if llm_msg.get("role") in ("user", "assistant", "tool"):
+                    history.append(llm_msg)
+            else:
+                if not msg.text:
+                    continue
+                if msg.kind == MessageKind.PLAYER:
+                    role = "user"
+                else:
+                    role = "assistant"
+                history.append({"role": role, "content": msg.text})
+
+        return history
+
     async def _handle_advice_message(
         self,
         player_id: int,
@@ -1768,24 +1795,31 @@ class GameSystem(System[GameEvent]):
         if not player:
             return
 
-        character = self._get_character(player_id)
-        world = self.state.get("world", {})
-        
-        char_info = self._character_card(character) if character else "Персонаж не создан."
-        scene_info = world.get("scene", "Неизвестно")
-        
-        prompt = (
-            f"Персонаж: {char_info}\n"
-            f"Текущая сцена: {scene_info}\n"
-            f"Вопрос игрока: {message}"
-        )
-        
-        messages = [
-            {"role": "system", "content": PLAYER_ADVICE_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
-
         async with self.db_pool.acquire() as conn:
+            messages = self.llm_sessions.get(chat.id)
+            if messages is None:
+                messages = await self._load_llm_history(conn, chat)
+                self.llm_sessions[chat.id] = messages
+
+            character = self._get_character(player_id)
+            world = self.state.get("world", {})
+
+            char_info = (
+                self._character_card(character) if character else "Персонаж не создан."
+            )
+            scene_info = world.get("scene", "Неизвестно")
+
+            system_prompt = (
+                f"{PLAYER_ADVICE_SYSTEM_PROMPT}\n\n"
+                f"Контекст:\n"
+                f"Персонаж: {char_info}\n"
+                f"Текущая сцена: {scene_info}\n"
+            )
+
+            full_history = [{"role": "system", "content": system_prompt}] + messages
+            full_history.append({"role": "user", "content": message})
+            messages.append({"role": "user", "content": message})
+
             placeholder = await chat.send_message(
                 conn,
                 MessageKind.GENERAL_INFO,
@@ -1797,18 +1831,18 @@ class GameSystem(System[GameEvent]):
 
             full_content = ""
             tool_calls_list = []
-            
+
             try:
                 stream = await create_chat_completion_stream(
                     model=PLAYER_MODEL,
-                    messages=messages,
+                    messages=full_history,
                     tools=[ADVICE_ASK_DM_TOOL],
                     tool_choice="auto",
                     temperature=0.7,
                 )
-                
+
                 last_update = time.monotonic()
-                
+
                 async for chunk in stream:
                     if not chunk.choices:
                         continue
@@ -1816,9 +1850,11 @@ class GameSystem(System[GameEvent]):
                     if delta.content:
                         full_content += delta.content
                         if time.monotonic() - last_update > 0.3:
-                            await chat.edit_message(conn, placeholder.msg.id, full_content)
+                            await chat.edit_message(
+                                conn, placeholder.msg.id, full_content
+                            )
                             last_update = time.monotonic()
-                    
+
                     if delta.tool_calls:
                         for tc in delta.tool_calls:
                             index = tc.index
@@ -1842,10 +1878,18 @@ class GameSystem(System[GameEvent]):
                                     tool_calls_list[index]["function"][
                                         "arguments"
                                     ] += tc.function.arguments
-                
-                if full_content:
-                    await chat.edit_message(conn, placeholder.msg.id, full_content)
-                
+
+                assistant_msg = self._tool_call_message(tool_calls_list, full_content)
+                if full_content or tool_calls_list:
+                    messages.append(assistant_msg)
+
+                await chat.edit_message(
+                    conn,
+                    placeholder.msg.id,
+                    full_content,
+                    metadata={"llm_message": assistant_msg},
+                )
+
                 # Handle tool calls
                 for tc in tool_calls_list:
                     if tc["function"]["name"] == "ask_dm":
@@ -1854,44 +1898,56 @@ class GameSystem(System[GameEvent]):
                             args = json.loads(tc["function"]["arguments"])
                         except:
                             pass
-                        
+
                         question = args.get("question")
                         if question:
                             dm_answer = await self._ask_dm(question)
-                            
-                            messages.append(self._tool_call_message([tc], full_content))
-                            messages.append({
+                            tool_msg = {
                                 "role": "tool",
                                 "tool_call_id": tc["id"],
-                                "content": dm_answer
-                            })
-                            
+                                "content": dm_answer,
+                            }
+                            messages.append(tool_msg)
+                            full_history.append(assistant_msg)
+                            full_history.append(tool_msg)
+
                             # Second pass to generate final answer
                             stream2 = await create_chat_completion_stream(
                                 model=PLAYER_MODEL,
-                                messages=messages,
+                                messages=full_history,
                                 temperature=0.7,
                             )
                             
+                            final_content = ""
                             async for chunk in stream2:
                                 if not chunk.choices:
                                     continue
                                 delta = chunk.choices[0].delta
                                 if delta.content:
-                                    full_content += delta.content
+                                    final_content += delta.content
                                     if time.monotonic() - last_update > 0.3:
-                                        await chat.edit_message(conn, placeholder.msg.id, full_content)
+                                        await chat.edit_message(
+                                            conn, placeholder.msg.id, final_content
+                                        )
                                         last_update = time.monotonic()
                             
-                            await chat.edit_message(conn, placeholder.msg.id, full_content)
-                            break # Only one tool call supported for now
+                            full_content = final_content
+                            assistant_msg2 = {"role": "assistant", "content": full_content}
+                            messages.append(assistant_msg2)
+                            await chat.edit_message(
+                                conn,
+                                placeholder.msg.id,
+                                full_content,
+                                metadata={"llm_message": assistant_msg2},
+                            )
+                            break  # Only one tool call supported for now
 
             except Exception as exc:
                 await chat.delete_message(conn, placeholder.msg.id)
                 self._append_llm_log(
                     scope="advice",
                     model=PLAYER_MODEL,
-                    prompt=messages,
+                    prompt=full_history,
                     response=None,
                     player_id=player_id,
                     error_text=str(exc),
@@ -1901,11 +1957,11 @@ class GameSystem(System[GameEvent]):
             self._append_llm_log(
                 scope="advice",
                 model=PLAYER_MODEL,
-                prompt=messages,
+                prompt=full_history,
                 response=full_content,
                 player_id=player_id,
             )
-            
+
             # Update suggestions based on final content
             suggestions = suggest_actions(self.state, character)
             await chat.clear_suggestions()
