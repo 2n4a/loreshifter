@@ -50,17 +50,18 @@ class ApiClient {
           return handler.next(response);
         },
         onError: (error, handler) {
+          final status = error.response?.statusCode;
+
+          if (status == 401 || status == 403) {
+            return handler.next(error);
+          }
+
           developer.log(
-            'HTTP Error ${error.response?.statusCode} from ${error.requestOptions.uri}',
+            'HTTP Error $status from ${error.requestOptions.uri}',
             name: 'ApiClient',
             error: error.message,
           );
-          if (error.response?.data != null) {
-            developer.log(
-              'Error response: ${error.response?.data}',
-              name: 'ApiClient',
-            );
-          }
+
           return handler.next(error);
         },
       ),

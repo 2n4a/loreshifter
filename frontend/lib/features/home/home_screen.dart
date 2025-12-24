@@ -60,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _handleTabChange() {
     if (_tabController.indexIsChanging) return;
+    setState(() {});
     _loadWorldsForTab(_tabController.index);
   }
 
@@ -119,11 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
           _buildWorldsShowcase(),
         ],
       ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => context.push('/worlds/create'),
-          tooltip: 'Создать мир',
-          child: const Icon(Icons.add),
-        ),
+        floatingActionButton: _buildFloatingActionButton(),
       ),
     );
   }
@@ -431,4 +428,27 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+
+
+  Widget? _buildFloatingActionButton() {
+  final authState = context.read<AuthCubit>().state;
+  final isAuthed = authState is Authenticated;
+
+  // 0 = "Комнаты" -> создаём игру
+  if (_tabController.index == 0) {
+    return FloatingActionButton(
+      onPressed: () => context.push(isAuthed ? '/games/create' : '/login'),
+      tooltip: 'Создать игру',
+      child: const Icon(Icons.add),
+    );
+  }
+
+  // 1 = "Мои миры", 2 = "Витрина" -> создаём мир
+  return FloatingActionButton(
+    onPressed: () => context.push(isAuthed ? '/worlds/create' : '/login'),
+    tooltip: 'Создать мир',
+    child: const Icon(Icons.add),
+  );
+}
+
 }
