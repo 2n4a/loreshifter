@@ -1307,6 +1307,12 @@ class GameSystem(System[GameEvent]):
             tool_id = call.get("id")
             name = call.get("name")
             args = call.get("arguments")
+            
+            if not name and "function" in call and isinstance(call["function"], dict):
+                func = call["function"]
+                name = func.get("name")
+                args = func.get("arguments")
+
             if not isinstance(name, str) or not name:
                 continue
             serialized.append(
@@ -1882,6 +1888,7 @@ class GameSystem(System[GameEvent]):
                 assistant_msg = self._tool_call_message(tool_calls_list, full_content)
                 if full_content or tool_calls_list:
                     messages.append(assistant_msg)
+                    full_history.append(assistant_msg)
 
                 await chat.edit_message(
                     conn,
@@ -1908,7 +1915,6 @@ class GameSystem(System[GameEvent]):
                                 "content": dm_answer,
                             }
                             messages.append(tool_msg)
-                            full_history.append(assistant_msg)
                             full_history.append(tool_msg)
 
                             # Second pass to generate final answer
