@@ -8,11 +8,11 @@ from typing import Any
 
 
 DEFAULT_WORLD_STATE = {
-    "title": "Shattered Keep",
-    "scene": "You stand before a ruined fortress. A distant roar echoes from within.",
-    "location": "Outer gate",
+    "title": "Разрушенная Крепость",
+    "scene": "Вы стоите перед разрушенной крепостью. Изнутри доносится далекий рев.",
+    "location": "Внешние ворота",
     "threat": 1,
-    "npcs": ["ancient dragon"],
+    "npcs": ["древний дракон"],
 }
 
 
@@ -81,8 +81,8 @@ class CharacterProfile:
     @staticmethod
     def from_dict(data: dict[str, Any]) -> "CharacterProfile":
         return CharacterProfile(
-            name=data.get("name", "Unnamed"),
-            concept=data.get("concept", "Wanderer"),
+            name=data.get("name", "Безымянный"),
+            concept=data.get("concept", "Странник"),
             strength=int(data.get("strength", 5)),
             dexterity=int(data.get("dexterity", 5)),
             intelligence=int(data.get("intelligence", 5)),
@@ -100,36 +100,36 @@ class CharacterQuestion:
 CHARACTER_QUESTIONS: list[CharacterQuestion] = [
     CharacterQuestion(
         key="name",
-        prompt="What is your character's name?",
-        suggestions=["Alyra", "Torin", "I prefer to stay unnamed"],
+        prompt="Как зовут вашего персонажа?",
+        suggestions=["Алира", "Торин", "Я предпочитаю оставаться безымянным"],
     ),
     CharacterQuestion(
         key="concept",
-        prompt="Describe their role or archetype in a sentence.",
-        suggestions=["Scout", "Scholar", "Mercenary", "Outcast mage"],
+        prompt="Опишите его роль или архетип одним предложением.",
+        suggestions=["Разведчик", "Ученый", "Наемник", "Маг-изгнанник"],
     ),
     CharacterQuestion(
         key="strength",
-        prompt="Rate strength (1-10) or describe how strong they are.",
-        suggestions=["Strength 8", "Strength 5", "Strength 3"],
+        prompt="Оцените силу (1-10) или опишите, насколько он силен.",
+        suggestions=["Сила 8", "Сила 5", "Сила 3"],
     ),
     CharacterQuestion(
         key="dexterity",
-        prompt="Rate dexterity (1-10) or describe how agile they are.",
-        suggestions=["Dexterity 8", "Dexterity 5", "Dexterity 3"],
+        prompt="Оцените ловкость (1-10) или опишите, насколько он ловок.",
+        suggestions=["Ловкость 8", "Ловкость 5", "Ловкость 3"],
     ),
     CharacterQuestion(
         key="intelligence",
-        prompt="Rate intelligence (1-10) or describe how clever they are.",
-        suggestions=["Intelligence 8", "Intelligence 5", "Intelligence 3"],
+        prompt="Оцените интеллект (1-10) или опишите, насколько он умен.",
+        suggestions=["Интеллект 8", "Интеллект 5", "Интеллект 3"],
     ),
     CharacterQuestion(
         key="lore",
-        prompt="Write a short lore/backstory for the character.",
+        prompt="Напишите краткую историю/предысторию персонажа.",
         suggestions=[
-            "Former knight sworn to a broken oath.",
-            "Raised among smugglers in the marshes.",
-            "Searching for a lost sibling in the ruins.",
+            "Бывший рыцарь, нарушивший клятву.",
+            "Вырос среди контрабандистов на болотах.",
+            "Ищет потерянного брата в руинах.",
         ],
     ),
 ]
@@ -161,21 +161,21 @@ def _parse_stat_answer(text: str, fallback: int = 5) -> int:
         return _clamp_stat(int(match.group(1)))
 
     lowered = text.lower()
-    if any(word in lowered for word in ("strong", "powerful", "mighty", "tough")):
+    if any(word in lowered for word in ("сильный", "мощный", "могучий", "крепкий")):
         return 8
-    if any(word in lowered for word in ("weak", "frail", "clumsy")):
+    if any(word in lowered for word in ("слабый", "хрупкий", "неуклюжий")):
         return 3
     return fallback
 
 
 def default_character_profile(player_name: str) -> CharacterProfile:
     return CharacterProfile(
-        name=player_name or "Unnamed",
-        concept="Wanderer",
+        name=player_name or "Безымянный",
+        concept="Странник",
         strength=5,
         dexterity=5,
         intelligence=5,
-        lore="An unknown traveler with a quiet past.",
+        lore="Неизвестный путник с тихим прошлым.",
     )
 
 
@@ -183,12 +183,12 @@ def build_character_from_answers(
     answers: dict[str, str], player_name: str
 ) -> CharacterProfile:
     return CharacterProfile(
-        name=answers.get("name") or player_name or "Unnamed",
-        concept=answers.get("concept", "Wanderer"),
+        name=answers.get("name") or player_name or "Безымянный",
+        concept=answers.get("concept", "Странник"),
         strength=_parse_stat_answer(answers.get("strength", "")),
         dexterity=_parse_stat_answer(answers.get("dexterity", "")),
         intelligence=_parse_stat_answer(answers.get("intelligence", "")),
-        lore=answers.get("lore", "A story yet to be written."),
+        lore=answers.get("lore", "История, которая еще не написана."),
     )
 
 
@@ -237,8 +237,32 @@ class ActionSummary:
     is_auto: bool
 
     def dm_summary(self) -> str:
-        result = "succeeds" if self.success else "fails"
-        return f'{self.player_name} attempts: "{self.text}" and {result}.'
+        result = "преуспевает" if self.success else "терпит неудачу"
+        return f'{self.player_name} пытается: "{self.text}" и {result}.'
+
+
+@dataclasses.dataclass
+class LLMLogEntry:
+    scope: str
+    model: str
+    prompt: list[dict[str, Any]]
+    response: str | dict[str, Any] | None
+    player_id: int | None
+    turn: int
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d = {
+            "scope": self.scope,
+            "model": self.model,
+            "prompt": self.prompt,
+            "response": self.response,
+            "player_id": self.player_id,
+            "turn": self.turn,
+        }
+        if self.error:
+            d["error"] = self.error
+        return d
 
 
 @dataclasses.dataclass
@@ -250,10 +274,10 @@ class TurnResolution:
 
 
 STAT_KEYWORDS = {
-    "strength": ("strike", "smash", "lift", "break", "push", "attack", "hit"),
-    "dexterity": ("sneak", "dodge", "shoot", "steal", "jump", "lockpick"),
-    "intelligence": ("analyze", "investigate", "study", "spell", "plan", "puzzle"),
-    "lore": ("remember", "legend", "history", "recall", "myth"),
+    "strength": ("удар", "крушить", "поднять", "ломать", "толкать", "атака", "бить"),
+    "dexterity": ("красться", "уклоняться", "стрелять", "красть", "прыгать", "взламывать"),
+    "intelligence": ("анализ", "исследовать", "изучать", "заклинание", "план", "загадка"),
+    "lore": ("помнить", "легенда", "история", "вспомнить", "миф"),
 }
 
 
@@ -302,8 +326,8 @@ def summarize_action(
 
 def _narrative_for_summary(summary: ActionSummary) -> str:
     if summary.success:
-        return "You steady your breath and act. The attempt works in your favor."
-    return "You move, but the attempt slips. The danger tightens its grip."
+        return "Вы успокаиваете дыхание и действуете. Попытка оборачивается в вашу пользу."
+    return "Вы двигаетесь, но попытка срывается. Опасность сжимает хватку."
 
 
 def resolve_turn(
@@ -326,7 +350,7 @@ def resolve_turn(
     timeline.append({"turn": world_state["turn"], "summary": turn_summary})
 
     player_narratives = {
-        s.player_id: f"You attempt: {s.text}. {_narrative_for_summary(s)}"
+        s.player_id: f"Вы пытаетесь: {s.text}. {_narrative_for_summary(s)}"
         for s in summaries
     }
     return TurnResolution(
@@ -342,15 +366,15 @@ def suggest_actions(
     character: CharacterProfile | None = None,
 ) -> list[str]:
     scene = world_state.get("world", {}).get("scene", "")
-    suggestions = ["Observe the surroundings", "Listen for threats", "Check for traps"]
-    if "dragon" in scene.lower():
+    suggestions = ["Осмотреться", "Прислушаться к угрозам", "Проверить на ловушки"]
+    if "дракон" in scene.lower() or "dragon" in scene.lower():
         suggestions = [
-            "Look for cover against the dragon",
-            "Search for a weak point",
-            "Prepare a distraction",
+            "Искать укрытие от дракона",
+            "Искать слабое место",
+            "Подготовить отвлекающий маневр",
         ]
     if character and character.dexterity >= 7:
-        suggestions.append("Scout ahead silently")
+        suggestions.append("Тихо разведать впереди")
     return suggestions[:3]
 
 
@@ -359,12 +383,17 @@ def build_advice_response(
     world_state: dict[str, Any],
     character: CharacterProfile | None = None,
 ) -> str:
-    scene = world_state.get("world", {}).get("scene", "The scene is unclear.")
+    scene = world_state.get("world", {}).get("scene", "Сцена неясна.")
     highlight = ""
     if character:
         best_stat = max(
             ("strength", "dexterity", "intelligence"),
             key=lambda key: getattr(character, key),
         )
-        highlight = f"Your {best_stat} stands out. "
-    return f"{highlight}Scene: {scene} Your question: {question}"
+        stat_map = {
+            "strength": "сила",
+            "dexterity": "ловкость",
+            "intelligence": "интеллект",
+        }
+        highlight = f"Ваша {stat_map.get(best_stat, best_stat)} выделяется. "
+    return f"{highlight}Сцена: {scene} Ваш вопрос: {question}"

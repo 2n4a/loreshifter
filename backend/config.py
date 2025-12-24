@@ -41,8 +41,8 @@ else:
     if LLM_ENABLED and not PROXY_API_KEY:
         LLM_ENABLED = False
 
-DM_MODEL: str = os.environ.get("DM_MODEL", "gpt-3.5-turbo")
-PLAYER_MODEL: str = os.environ.get("PLAYER_MODEL", "gpt-3.5-turbo")
+DM_MODEL: str = os.environ.get("DM_MODEL", "gpt-4o-mini")
+PLAYER_MODEL: str = os.environ.get("PLAYER_MODEL", "gpt-4o-mini")
 CHARACTER_MODEL: str = os.environ.get("CHARACTER_MODEL", PLAYER_MODEL)
 LLM_LOG_LIMIT: int = int(os.environ.get("LLM_LOG_LIMIT", "200"))
 LOG_STACKTRACE: bool = os.environ.get("LOG_STACKTRACE", "false").lower() == "true"

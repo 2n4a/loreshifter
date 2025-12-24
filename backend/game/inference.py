@@ -129,6 +129,25 @@ async def create_chat_completion(
     )
 
 
+async def create_chat_completion_stream(
+    *,
+    model: str,
+    messages: list[dict[str, str]],
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: dict[str, Any] | str | None = None,
+    temperature: float = 0.7,
+) -> Any:
+    client = get_openai_client()
+    return await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        tools=tools,
+        tool_choice=tool_choice,
+        temperature=temperature,
+        stream=True,
+    )
+
+
 def extract_tool_call_args(message: Any, name: str) -> dict[str, Any] | None:
     tool_calls = getattr(message, "tool_calls", None) or []
     for tool_call in tool_calls:
@@ -227,6 +246,21 @@ DM_RESOLVE_TOOL = {
                 },
             },
             "required": ["summary", "player_consequences"],
+        },
+    },
+}
+
+ADVICE_ASK_DM_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "ask_dm",
+        "description": "Ask the Dungeon Master a question about the world or situation.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string"},
+            },
+            "required": ["question"],
         },
     },
 }

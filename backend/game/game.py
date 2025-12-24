@@ -23,6 +23,7 @@ from game.logic import (
     resolve_turn,
     suggest_actions,
     summarize_action,
+    LLMLogEntry,
 )
 from game.chat import ChatSystem
 from game.inference import (
@@ -31,7 +32,9 @@ from game.inference import (
     PLAYER_MODEL,
     CHARACTER_PROFILE_TOOL,
     DM_RESOLVE_TOOL,
+    ADVICE_ASK_DM_TOOL,
     create_chat_completion,
+    create_chat_completion_stream,
     extract_tool_call_args,
     extract_tool_calls,
 )
@@ -143,38 +146,54 @@ PLAYER_MEMORY_LIMIT = 20
 LLM_MEMORY_CONTEXT = 6
 
 CHARACTER_SYSTEM_PROMPT = (
-    "You are a character creation assistant for a fantasy RPG. "
-    "Collect the following fields: name, concept, strength (1-10), "
-    "dexterity (1-10), intelligence (1-10), lore. "
-    "Ask concise questions for missing info, one question at a time. "
-    "If a stat is given in words, map it to 1-10. "
-    "When you have enough info, call submit_character_profile with all fields. "
-    "Respond in the same language as the player."
+    "Ты — помощник по созданию персонажа для фэнтезийной ролевой игры. "
+    "Собери следующие поля: имя (name), концепция (concept), сила (strength, 1-10), "
+    "ловкость (dexterity, 1-10), интеллект (intelligence, 1-10), история (lore). "
+    "Задавай краткие вопросы для недостающей информации, по одному вопросу за раз. "
+    "Если характеристика дана словами, переведи её в число от 1 до 10. "
+    "Когда будет достаточно информации, вызови submit_character_profile со всеми полями. "
+    "Отвечай на русском языке. Будь интересным рассказчиком, вдохновляй игрока."
 )
 CHARACTER_OPENING_PROMPT = (
-    "Let's create your character. Start with their name and role."
+    "Давай создадим твоего персонажа. Начни с его имени и роли."
 )
 PLAYER_ACTION_SYSTEM_PROMPT = (
-    "You are the player's personal narrator. "
-    "Write a short report for the Dungeon Master. "
-    "Use only the player's memory and stats. "
-    "Do not invent new world facts. "
-    "Use third-person and include success or failure. "
-    "Keep it to one sentence."
+    "Ты — внутренний голос и интерпретатор действий персонажа игрока. "
+    "Твоя задача — переписать заявку игрока в третьем лице, добавив детали, соответствующие текущей ситуации и характеристикам персонажа. "
+    "Используй информацию о мире (сцена, локация), чтобы сделать действие более привязанным к контексту. "
+    "Не определяй результат действия (успех или провал), только само намерение и способ исполнения. "
+    "Текст должен быть на русском языке, литературным, но четким для понимания Мастером."
 )
 DM_SYSTEM_PROMPT = (
-    "You are the Dungeon Master. You see the full world state and player reports. "
-    "Decide consequences and update the world. "
-    "If tools are available and needed to change the world, call them first. "
-    "Call resolve_turn with a short summary, optional world_update, "
-    "and a consequence text for each player_id after tool results. "
-    "Match the dominant language of the player reports."
+    "Ты — Мастер Подземелий (Dungeon Master), управляющий живым фэнтезийным миром. "
+    "Твоя задача — обрабатывать действия игроков, обновлять состояние мира и продвигать сюжет. "
+    "1. Проанализируй текущую ситуацию, угрозы и заявки игроков. "
+    "2. Реши, как изменится мир. Используй инструменты (tools) для управления состоянием, если нужно. "
+    "3. В конце ОБЯЗАТЕЛЬНО вызови инструмент 'resolve_turn'. "
+    "   - В 'summary' опиши общие события хода для всех игроков (публичное сообщение). "
+    "   - В 'player_consequences' дай индивидуальные результаты для каждого игрока (что с ним случилось, что он чувствует/видит). "
+    "   - В 'world_update' обнови параметры мира (сцена, угроза и т.д.). "
+    "Будь справедлив, но создавай драматичные и интересные ситуации. Язык: Русский."
 )
 PLAYER_NARRATIVE_SYSTEM_PROMPT = (
-    "You are the player's personal narrator. "
-    "Rewrite the DM consequence into a vivid second-person narrative. "
-    "Use only the player's memory and the provided consequence. "
-    "Keep it to 1-3 sentences and match the player's language."
+    "Ты — литературный рассказчик, описывающий события лично для игрока. "
+    "Твоя задача — превратить сухой итог от Мастера (DM) в художественное повествование от второго лица ('Ты видишь...', 'Ты чувствуешь...'). "
+    "Опирайся на характер персонажа и его прошлые действия. "
+    "Сделай текст атмосферным, эмоциональным и погружающим. "
+    "Язык: Русский."
+)
+PLAYER_ADVICE_SYSTEM_PROMPT = (
+    "Ты — мудрый советчик и помощник игрока. "
+    "Твоя задача — отвечать на вопросы игрока, касающиеся механик, его персонажа или текущей ситуации. "
+    "Используй доступную информацию: лист персонажа и описание текущей сцены. "
+    "Если вопрос касается скрытой информации или требует суждения Мастера (DM), используй инструмент 'ask_dm'. "
+    "Отвечай на русском языке."
+)
+DM_QA_SYSTEM_PROMPT = (
+    "Ты — Мастер Подземелий (DM). Игрок задает вопрос. "
+    "Ответь на него, опираясь на полное состояние мира. "
+    "Не раскрывай секреты, которые персонаж не мог бы узнать. "
+    "Будь краток и полезен. Язык: Русский."
 )
 
 
@@ -525,7 +544,8 @@ class GameSystem(System[GameEvent]):
             )
             await self.update_chats_for_player(conn, player, log=log)
             self.player_states[player_id] = player
-            self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id)))
+            self.emit(PlayerJoinedEvent(self.id, player.get_player_out(self.host_id))
+            )
             await log.ainfo("Player joined")
             return None
 
@@ -1068,6 +1088,10 @@ class GameSystem(System[GameEvent]):
                     return ac
                 advice_chats.append(ac)
 
+        llm_logs = []
+        if requester_id == self.host_id:
+            llm_logs = self.state.get("llm_logs", [])
+
         return StateOut(
             game=game,
             status=self.status,
@@ -1075,6 +1099,7 @@ class GameSystem(System[GameEvent]):
             game_chat=game_chat,
             player_chats=player_chats,
             advice_chats=advice_chats,
+            llm_logs=llm_logs,
         )
 
     async def send_message(
@@ -1288,35 +1313,37 @@ class GameSystem(System[GameEvent]):
                     "function": {"name": name, "arguments": args or "{}"},
                 }
             )
-        return {
+        
+        msg = {
             "role": "assistant",
             "content": content or "",
-            "tool_calls": serialized,
         }
+        if serialized:
+            msg["tool_calls"] = serialized
+        return msg
 
     def _append_llm_log(
         self,
         *,
         scope: str,
         model: str,
-        prompt: list[dict[str, str]],
+        prompt: list[dict[str, object]],
         response: str | dict | None,
         player_id: int | None = None,
         turn: int | None = None,
         error_text: str | None = None,
     ):
         logs = self.state.setdefault("llm_logs", [])
-        entry = {
-            "scope": scope,
-            "model": model,
-            "prompt": prompt,
-            "response": response,
-            "player_id": player_id,
-            "turn": turn if turn is not None else int(self.state.get("turn", 0)),
-        }
-        if error_text:
-            entry["error"] = error_text
-        logs.append(entry)
+        entry = LLMLogEntry(
+            scope=scope,
+            model=model,
+            prompt=prompt,
+            response=response,
+            player_id=player_id,
+            turn=turn if turn is not None else int(self.state.get("turn", 0)),
+            error=error_text,
+        )
+        logs.append(entry.to_dict())
         limit = max(0, config.LLM_LOG_LIMIT)
         if limit and len(logs) > limit:
             del logs[:-limit]
@@ -1325,32 +1352,32 @@ class GameSystem(System[GameEvent]):
         self._ensure_player_state(player_id)
         memory = self.state["players"][str(player_id)].get("memory", [])
         if not memory:
-            return "None."
+            return "Нет воспоминаний."
         recent = memory[-LLM_MEMORY_CONTEXT:]
         return "\n".join(f"- {item}" for item in recent)
 
     def _character_card(self, character: CharacterProfile) -> str:
         return (
             f"{character.name} ({character.concept}). "
-            f"STR {character.strength}, DEX {character.dexterity}, "
-            f"INT {character.intelligence}. Lore: {character.lore}"
+            f"СИЛ {character.strength}, ЛОВ {character.dexterity}, "
+            f"ИНТ {character.intelligence}. История: {character.lore}"
         )
 
     def _character_suggestions_from_text(self, text: str) -> list[str]:
         lowered = text.lower()
-        if "name" in lowered:
+        if "имя" in lowered or "name" in lowered:
             return CHARACTER_QUESTIONS[0].suggestions
-        if any(word in lowered for word in ("role", "concept", "archetype")):
+        if any(word in lowered for word in ("роль", "концепция", "архетип", "role", "concept")):
             return CHARACTER_QUESTIONS[1].suggestions
-        if "strength" in lowered or "strong" in lowered or "power" in lowered:
+        if "сила" in lowered or "сильный" in lowered or "strength" in lowered:
             return CHARACTER_QUESTIONS[2].suggestions
-        if "dexterity" in lowered or "agile" in lowered or "quick" in lowered:
+        if "ловкость" in lowered or "ловкий" in lowered or "dexterity" in lowered:
             return CHARACTER_QUESTIONS[3].suggestions
-        if "intelligence" in lowered or "clever" in lowered or "smart" in lowered:
+        if "интеллект" in lowered or "умный" in lowered or "intelligence" in lowered:
             return CHARACTER_QUESTIONS[4].suggestions
-        if "lore" in lowered or "backstory" in lowered or "history" in lowered:
+        if "история" in lowered or "предыстория" in lowered or "lore" in lowered:
             return CHARACTER_QUESTIONS[5].suggestions
-        return ["Surprise me", "Not sure yet", "Let me think"]
+        return ["Удиви меня", "Не уверен", "Дай подумать"]
 
     async def _persist_state(self, conn: asyncpg.Connection):
         await conn.execute(
@@ -1374,7 +1401,7 @@ class GameSystem(System[GameEvent]):
             await player.character_chat.send_message(
                 conn,
                 MessageKind.CHARACTER_CREATION,
-                "Finish character creation before marking ready.",
+                "Завершите создание персонажа перед тем как отметить готовность.",
                 sender_id=None,
                 metadata={"needs_character": True},
                 log=log,
@@ -1456,7 +1483,7 @@ class GameSystem(System[GameEvent]):
         async with self.db_pool.acquire() as conn:
             async with self.lock:
                 session = self.character_sessions.get(player_id)
-                restart_requested = "restart" in lower
+                restart_requested = "restart" in lower or "рестарт" in lower or "заново" in lower
                 if session is None or (session.completed and restart_requested):
                     session = CharacterCreationSession(use_llm=self._llm_enabled())
                     self.character_sessions[player_id] = session
@@ -1496,7 +1523,7 @@ class GameSystem(System[GameEvent]):
                     await chat.send_message(
                         conn,
                         MessageKind.CHARACTER_CREATION,
-                        "Character already created. Send 'restart' to rebuild it.",
+                        "Персонаж уже создан. Отправьте 'рестарт', чтобы создать заново.",
                         sender_id=None,
                     )
                     return
@@ -1522,7 +1549,7 @@ class GameSystem(System[GameEvent]):
                     await chat.send_message(
                         conn,
                         MessageKind.CHARACTER_CREATION,
-                        "Character complete. You can now mark ready.",
+                        "Персонаж создан. Теперь вы можете отметить готовность.",
                         sender_id=None,
                         metadata={"character": result.character.to_dict()},
                     )
@@ -1577,15 +1604,67 @@ class GameSystem(System[GameEvent]):
         else:
             session.messages.append({"role": "user", "content": message.strip()})
 
+        placeholder = await chat.send_message(
+            conn,
+            MessageKind.CHARACTER_CREATION,
+            "...",
+            sender_id=None,
+        )
+
+        full_content = ""
+        tool_calls_list = []
+
         try:
-            response = await create_chat_completion(
+            stream = await create_chat_completion_stream(
                 model=CHARACTER_MODEL,
                 messages=session.messages,
                 tools=[CHARACTER_PROFILE_TOOL],
                 tool_choice="auto",
                 temperature=0.4,
             )
+
+            last_update = time.monotonic()
+
+            async for chunk in stream:
+                if not chunk.choices:
+                    continue
+
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    full_content += delta.content
+                    if time.monotonic() - last_update > 0.3:
+                        await chat.edit_message(conn, placeholder.msg.id, full_content)
+                        last_update = time.monotonic()
+
+                if delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        index = tc.index
+                        while len(tool_calls_list) <= index:
+                            tool_calls_list.append(
+                                {
+                                    "id": "",
+                                    "function": {"name": "", "arguments": ""},
+                                    "type": "function",
+                                }
+                            )
+
+                        if tc.id:
+                            tool_calls_list[index]["id"] = tc.id
+                        if tc.function:
+                            if tc.function.name:
+                                tool_calls_list[index]["function"][
+                                    "name"
+                                ] += tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_list[index]["function"][
+                                    "arguments"
+                                ] += tc.function.arguments
+
+            if full_content:
+                await chat.edit_message(conn, placeholder.msg.id, full_content)
+
         except Exception as exc:
+            await chat.delete_message(conn, placeholder.msg.id)
             self._append_llm_log(
                 scope="character_creation",
                 model=CHARACTER_MODEL,
@@ -1599,9 +1678,16 @@ class GameSystem(System[GameEvent]):
             session.messages = []
             return False
 
-        msg = response.choices[0].message
-        tool_args = extract_tool_call_args(msg, "submit_character_profile")
-        response_text = (msg.content or "").strip() or None
+        tool_args = None
+        for tc in tool_calls_list:
+            if tc["function"]["name"] == "submit_character_profile":
+                try:
+                    tool_args = json.loads(tc["function"]["arguments"])
+                except:
+                    pass
+                break
+
+        response_text = full_content.strip() or None
 
         self._append_llm_log(
             scope="character_creation",
@@ -1620,24 +1706,28 @@ class GameSystem(System[GameEvent]):
                     return fallback
 
             profile = CharacterProfile(
-                name=str(tool_args.get("name") or player.user.name or "Unnamed"),
-                concept=str(tool_args.get("concept") or "Wanderer"),
+                name=str(tool_args.get("name") or player.user.name or "Безымянный"),
+                concept=str(tool_args.get("concept") or "Странник"),
                 strength=max(1, min(10, _safe_int(tool_args.get("strength"), 5))),
                 dexterity=max(1, min(10, _safe_int(tool_args.get("dexterity"), 5))),
                 intelligence=max(
                     1, min(10, _safe_int(tool_args.get("intelligence"), 5))
                 ),
-                lore=str(tool_args.get("lore") or "A story yet to be written."),
+                lore=str(tool_args.get("lore") or "История, которая еще не написана."),
             )
             session.completed = True
             self.character_sessions[player.user.id] = session
             self._set_character(player.user.id, profile)
             await self._persist_state(conn)
             await chat.clear_suggestions()
+
+            if not response_text:
+                await chat.delete_message(conn, placeholder.msg.id)
+
             await chat.send_message(
                 conn,
                 MessageKind.CHARACTER_CREATION,
-                "Character complete. You can now mark ready.",
+                "Персонаж создан. Теперь вы можете отметить готовность.",
                 sender_id=None,
                 metadata={"character": profile.to_dict()},
             )
@@ -1648,26 +1738,16 @@ class GameSystem(System[GameEvent]):
             await chat.clear_suggestions()
             for suggestion in self._character_suggestions_from_text(response_text):
                 await chat.add_suggestion(suggestion)
-            await chat.send_message(
-                conn,
-                MessageKind.CHARACTER_CREATION,
-                response_text,
-                sender_id=None,
-            )
             await self._persist_state(conn)
             return True
 
-        fallback = "Tell me more about your character."
+        fallback = "Расскажи мне больше о своем персонаже."
         session.messages.append({"role": "assistant", "content": fallback})
         await chat.clear_suggestions()
         for suggestion in self._character_suggestions_from_text(fallback):
             await chat.add_suggestion(suggestion)
-        await chat.send_message(
-            conn,
-            MessageKind.CHARACTER_CREATION,
-            fallback,
-            sender_id=None,
-        )
+        
+        await chat.edit_message(conn, placeholder.msg.id, fallback)
         await self._persist_state(conn)
         return True
 
@@ -1684,19 +1764,174 @@ class GameSystem(System[GameEvent]):
         if self.db_pool is None:
             return
 
+        player = self.player_states.get(player_id)
+        if not player:
+            return
+
         character = self._get_character(player_id)
-        response = build_advice_response(message, self.state, character)
-        suggestions = suggest_actions(self.state, character)
+        world = self.state.get("world", {})
+        
+        char_info = self._character_card(character) if character else "Персонаж не создан."
+        scene_info = world.get("scene", "Неизвестно")
+        
+        prompt = (
+            f"Персонаж: {char_info}\n"
+            f"Текущая сцена: {scene_info}\n"
+            f"Вопрос игрока: {message}"
+        )
+        
+        messages = [
+            {"role": "system", "content": PLAYER_ADVICE_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+
         async with self.db_pool.acquire() as conn:
-            await chat.send_message(
+            placeholder = await chat.send_message(
                 conn,
                 MessageKind.GENERAL_INFO,
-                response,
+                "...",
                 sender_id=None,
             )
-        await chat.clear_suggestions()
-        for suggestion in suggestions:
-            await chat.add_suggestion(suggestion)
+            if isinstance(placeholder, ServiceError):
+                return
+
+            full_content = ""
+            tool_calls_list = []
+            
+            try:
+                stream = await create_chat_completion_stream(
+                    model=PLAYER_MODEL,
+                    messages=messages,
+                    tools=[ADVICE_ASK_DM_TOOL],
+                    tool_choice="auto",
+                    temperature=0.7,
+                )
+                
+                last_update = time.monotonic()
+                
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        full_content += delta.content
+                        if time.monotonic() - last_update > 0.3:
+                            await chat.edit_message(conn, placeholder.msg.id, full_content)
+                            last_update = time.monotonic()
+                    
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            index = tc.index
+                            while len(tool_calls_list) <= index:
+                                tool_calls_list.append(
+                                    {
+                                        "id": "",
+                                        "function": {"name": "", "arguments": ""},
+                                        "type": "function",
+                                    }
+                                )
+
+                            if tc.id:
+                                tool_calls_list[index]["id"] = tc.id
+                            if tc.function:
+                                if tc.function.name:
+                                    tool_calls_list[index]["function"][
+                                        "name"
+                                    ] += tc.function.name
+                                if tc.function.arguments:
+                                    tool_calls_list[index]["function"][
+                                        "arguments"
+                                    ] += tc.function.arguments
+                
+                if full_content:
+                    await chat.edit_message(conn, placeholder.msg.id, full_content)
+                
+                # Handle tool calls
+                for tc in tool_calls_list:
+                    if tc["function"]["name"] == "ask_dm":
+                        args = {}
+                        try:
+                            args = json.loads(tc["function"]["arguments"])
+                        except:
+                            pass
+                        
+                        question = args.get("question")
+                        if question:
+                            dm_answer = await self._ask_dm(question)
+                            
+                            messages.append(self._tool_call_message([tc], full_content))
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc["id"],
+                                "content": dm_answer
+                            })
+                            
+                            # Second pass to generate final answer
+                            stream2 = await create_chat_completion_stream(
+                                model=PLAYER_MODEL,
+                                messages=messages,
+                                temperature=0.7,
+                            )
+                            
+                            async for chunk in stream2:
+                                if not chunk.choices:
+                                    continue
+                                delta = chunk.choices[0].delta
+                                if delta.content:
+                                    full_content += delta.content
+                                    if time.monotonic() - last_update > 0.3:
+                                        await chat.edit_message(conn, placeholder.msg.id, full_content)
+                                        last_update = time.monotonic()
+                            
+                            await chat.edit_message(conn, placeholder.msg.id, full_content)
+                            break # Only one tool call supported for now
+
+            except Exception as exc:
+                await chat.delete_message(conn, placeholder.msg.id)
+                self._append_llm_log(
+                    scope="advice",
+                    model=PLAYER_MODEL,
+                    prompt=messages,
+                    response=None,
+                    player_id=player_id,
+                    error_text=str(exc),
+                )
+                return
+
+            self._append_llm_log(
+                scope="advice",
+                model=PLAYER_MODEL,
+                prompt=messages,
+                response=full_content,
+                player_id=player_id,
+            )
+            
+            # Update suggestions based on final content
+            suggestions = suggest_actions(self.state, character)
+            await chat.clear_suggestions()
+            for suggestion in suggestions:
+                await chat.add_suggestion(suggestion)
+
+    async def _ask_dm(self, question: str) -> str:
+        world = self.state.get("world", {})
+        prompt = (
+            f"Состояние мира: {json.dumps(world, ensure_ascii=False)}\n"
+            f"Вопрос игрока: {question}"
+        )
+        messages = [
+            {"role": "system", "content": DM_QA_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        try:
+            response = await create_chat_completion(
+                model=DM_MODEL,
+                messages=messages,
+                temperature=0.7
+            )
+            return response.choices[0].message.content or "Мастер молчит."
+        except Exception as exc:
+            gl_log.error("DM QA failed", error=str(exc))
+            return "Мастер занят и не может ответить."
 
     async def _notify_game_not_started(self, player_id: int):
         if self.db_pool is None:
@@ -1708,7 +1943,7 @@ class GameSystem(System[GameEvent]):
             await player.player_chat.send_message(
                 conn,
                 MessageKind.SYSTEM,
-                "The game has not started yet.",
+                "Игра еще не началась.",
                 sender_id=None,
             )
 
@@ -1743,7 +1978,7 @@ class GameSystem(System[GameEvent]):
             actions.append(
                 PendingAction(
                     player_id=player.user.id,
-                    text="holds position and keeps watch",
+                    text="держит позицию и наблюдает",
                     is_auto=True,
                 )
             )
@@ -1805,21 +2040,21 @@ class GameSystem(System[GameEvent]):
                     "success": summary.success,
                     "auto": summary.is_auto,
                 }
-                await player.player_chat.send_message(
-                    conn,
-                    MessageKind.PRIVATE_INFO,
-                    narrative,
-                    sender_id=None,
-                    metadata=metadata,
-                )
+                # await player.player_chat.send_message(
+                #     conn,
+                #     MessageKind.PRIVATE_INFO,
+                #     narrative,
+                #     sender_id=None,
+                #     metadata=metadata,
+                # )
                 self._remember_for_player(summary.player_id, narrative)
 
-            await self.game_chat.send_message(
-                conn,
-                MessageKind.PUBLIC_INFO,
-                resolution.turn_summary,
-                sender_id=None,
-            )
+            # await self.game_chat.send_message(
+            #     conn,
+            #     MessageKind.PUBLIC_INFO,
+            #     resolution.turn_summary,
+            #     sender_id=None,
+            # )
             await self._persist_state(conn)
 
     async def _resolve_actions_with_llm(
@@ -1831,10 +2066,14 @@ class GameSystem(System[GameEvent]):
         next_turn = int(self.state.get("turn", 0)) + 1
         reports = []
         action_map = {action.player_id: action for action in actions}
+        
+        world = self.state.get("world", {})
+        
         for action, summary in zip(actions, summaries):
             report = await self._local_llm_action_report(
                 action,
                 summary,
+                world_state=world,
                 turn=next_turn,
             )
             if not report:
@@ -1847,51 +2086,48 @@ class GameSystem(System[GameEvent]):
                 }
             )
 
-        dm_result = await self._dm_resolve_turn_llm(reports, turn=next_turn)
-        if not dm_result:
-            return False
+        dm_result = await self._dm_resolve_turn_llm(conn, reports, turn=next_turn)
+        
+        consequences = {}
+        summary_text = ""
 
-        summary_text = str(dm_result.get("summary", "")).strip()
-        if not summary_text:
-            return False
+        if dm_result:
+            summary_text = str(dm_result.get("summary", "")).strip()
+            
+            world_update = dm_result.get("world_update") or {}
+            if not isinstance(world_update, dict):
+                world_update = {}
 
-        world_update = dm_result.get("world_update") or {}
-        if not isinstance(world_update, dict):
-            world_update = {}
-
-        world = self.state.setdefault("world", {})
-        scene = world_update.get("scene")
-        if scene:
-            world["scene"] = str(scene)
-        location = world_update.get("location")
-        if location:
-            world["location"] = str(location)
-        if "threat" in world_update:
-            try:
-                world["threat"] = max(0, min(5, int(world_update["threat"])))
-            except (TypeError, ValueError):
-                pass
-        npcs = world_update.get("npcs")
-        if isinstance(npcs, list):
-            world["npcs"] = [str(npc) for npc in npcs if npc]
-
-        self.state["turn"] = next_turn
-        timeline = self.state.setdefault("timeline", [])
-        timeline.append({"turn": next_turn, "summary": summary_text})
-
-        consequences: dict[int, str] = {}
-        raw_consequences = dm_result.get("player_consequences") or []
-        if isinstance(raw_consequences, list):
-            for item in raw_consequences:
-                if not isinstance(item, dict):
-                    continue
+            world = self.state.setdefault("world", {})
+            if "scene" in world_update: world["scene"] = str(world_update["scene"])
+            if "location" in world_update: world["location"] = str(world_update["location"])
+            if "threat" in world_update:
                 try:
-                    player_id = int(item.get("player_id"))
+                    world["threat"] = max(0, min(5, int(world_update["threat"])))
                 except (TypeError, ValueError):
-                    continue
-                text = str(item.get("text") or "").strip()
-                if text:
-                    consequences[player_id] = text
+                    pass
+            if "npcs" in world_update and isinstance(world_update["npcs"], list):
+                world["npcs"] = [str(npc) for npc in world_update["npcs"] if npc]
+
+            self.state["turn"] = next_turn
+            timeline = self.state.setdefault("timeline", [])
+            timeline.append({"turn": next_turn, "summary": summary_text})
+
+            raw_consequences = dm_result.get("player_consequences") or []
+            if isinstance(raw_consequences, list):
+                for item in raw_consequences:
+                    if not isinstance(item, dict): continue
+                    try:
+                        pid = int(item.get("player_id"))
+                        text = str(item.get("text") or "").strip()
+                        if text: consequences[pid] = text
+                    except: pass
+        else:
+            # DM LLM failed, fallback to mechanical resolution
+            resolution = resolve_turn(summaries, self.state)
+            self.state = resolution.world_state
+            summary_text = resolution.turn_summary
+            # consequences remains empty
 
         for summary in summaries:
             player = self.player_states.get(summary.player_id)
@@ -1900,15 +2136,7 @@ class GameSystem(System[GameEvent]):
             action = action_map.get(summary.player_id)
             consequence = consequences.get(summary.player_id)
             narrative = None
-            if action is not None and consequence:
-                narrative = await self._local_llm_narrative(
-                    action,
-                    consequence,
-                    turn=next_turn,
-                )
-            if not narrative:
-                narrative = self._fallback_narrative(summary)
-
+            
             metadata = {
                 "roll": summary.roll,
                 "target": summary.target,
@@ -1916,21 +2144,39 @@ class GameSystem(System[GameEvent]):
                 "success": summary.success,
                 "auto": summary.is_auto,
             }
-            await player.player_chat.send_message(
-                conn,
-                MessageKind.PRIVATE_INFO,
-                narrative,
-                sender_id=None,
-                metadata=metadata,
-            )
-            self._remember_for_player(summary.player_id, narrative)
 
-        await self.game_chat.send_message(
-            conn,
-            MessageKind.PUBLIC_INFO,
-            summary_text,
-            sender_id=None,
-        )
+            if action is not None:
+                eff_consequence = consequence or summary.dm_summary()
+                narrative = await self._local_llm_narrative(
+                    conn,
+                    player.player_chat,
+                    action,
+                    eff_consequence,
+                    turn=next_turn,
+                    metadata=metadata,
+                )
+            
+            if not narrative:
+                narrative = self._fallback_narrative(summary)
+                # await player.player_chat.send_message(
+                #     conn,
+                #     MessageKind.PRIVATE_INFO,
+                #     narrative,
+                #     sender_id=None,
+                #     metadata=metadata,
+                # )
+            
+            self._remember_for_player(summary.player_id, narrative or "")
+        
+        if summary_text:
+            pass
+            # await self.game_chat.send_message(
+            #     conn,
+            #     MessageKind.PUBLIC_INFO,
+            #     summary_text,
+            #     sender_id=None,
+            # )
+
         await self._persist_state(conn)
         return True
 
@@ -1939,19 +2185,23 @@ class GameSystem(System[GameEvent]):
         action: PlayerAction,
         summary: ActionSummary,
         *,
+        world_state: dict,
         turn: int,
     ) -> str | None:
         memory = self._format_player_memory(action.player_id)
+        scene = world_state.get("scene", "Неизвестно")
+        location = world_state.get("location", "Неизвестно")
+        
         prompt = (
-            f"Player: {action.player_name} (id {action.player_id})\n"
-            f"Character: {self._character_card(action.character)}\n"
-            f"Known memory:\n{memory}\n"
-            f"Action: {action.text}\n"
-            f"Outcome: {'success' if summary.success else 'failure'}, "
-            f"stat={summary.stat_used}, roll={summary.roll}, target={summary.target}."
+            f"Игрок: {action.player_name} (id {action.player_id})\n"
+            f"Персонаж: {self._character_card(action.character)}\n"
+            f"Локация: {location}\n"
+            f"Сцена: {scene}\n"
+            f"Известная память:\n{memory}\n"
+            f"Заявка игрока: {action.text}\n"
         )
         if action.is_auto:
-            prompt += "\nThis was an auto action."
+            prompt += "\nЭто было автоматическое действие."
 
         messages = [
             {"role": "system", "content": PLAYER_ACTION_SYSTEM_PROMPT},
@@ -1989,6 +2239,7 @@ class GameSystem(System[GameEvent]):
 
     async def _dm_resolve_turn_llm(
         self,
+        conn: asyncpg.Connection,
         reports: list[dict[str, str | int]],
         *,
         turn: int,
@@ -1998,11 +2249,11 @@ class GameSystem(System[GameEvent]):
         recent_timeline = timeline[-3:] if timeline else []
         timeline_text = (
             "\n".join(
-                f"- Turn {item.get('turn')}: {item.get('summary')}"
+                f"- Ход {item.get('turn')}: {item.get('summary')}"
                 for item in recent_timeline
                 if isinstance(item, dict)
             )
-            or "None."
+            or "Нет."
         )
 
         reports_text = "\n".join(
@@ -2017,15 +2268,15 @@ class GameSystem(System[GameEvent]):
             npcs = [str(raw_npcs)]
 
         prompt = (
-            "World state:\n"
-            f"- Title: {world.get('title', '')}\n"
-            f"- Scene: {world.get('scene', '')}\n"
-            f"- Location: {world.get('location', '')}\n"
-            f"- Threat: {world.get('threat', '')}\n"
-            f"- NPCs: {', '.join(npcs)}\n"
-            "Recent timeline:\n"
+            "Состояние мира:\n"
+            f"- Название: {world.get('title', '')}\n"
+            f"- Сцена: {world.get('scene', '')}\n"
+            f"- Локация: {world.get('location', '')}\n"
+            f"- Угроза: {world.get('threat', '')}\n"
+            f"- NPC: {', '.join(npcs)}\n"
+            "Недавняя хронология:\n"
             f"{timeline_text}\n"
-            "Player reports:\n"
+            "Отчеты игроков:\n"
             f"{reports_text}"
         )
 
@@ -2044,19 +2295,77 @@ class GameSystem(System[GameEvent]):
         if lua_tool_defs:
             tool_choice = "auto"
         else:
-            tool_choice = {"type": "function", "function": {"name": "resolve_turn"}}
+            tool_choice = "auto"
 
         max_steps = 4
+        placeholder_msg = None
+
         for _ in range(max_steps):
+            full_content = ""
+            tool_calls_list = []
+            
             try:
-                response = await create_chat_completion(
+                stream = await create_chat_completion_stream(
                     model=DM_MODEL,
                     messages=messages,
                     tools=tools,
                     tool_choice=tool_choice,
                     temperature=0.7,
                 )
+                
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        full_content += delta.content
+                        if placeholder_msg is None:
+                             res = await self.game_chat.send_message(
+                                conn,
+                                MessageKind.PUBLIC_INFO,
+                                "...",
+                                sender_id=None,
+                            )
+                             if not isinstance(res, ServiceError):
+                                 placeholder_msg = res
+                        
+                        await self.game_chat.edit_message(conn, placeholder_msg.msg.id, full_content)
+
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            index = tc.index
+                            while len(tool_calls_list) <= index:
+                                tool_calls_list.append(
+                                    {
+                                        "id": "",
+                                        "function": {"name": "", "arguments": ""},
+                                        "type": "function",
+                                    }
+                                )
+
+                            if tc.id:
+                                tool_calls_list[index]["id"] = tc.id
+                            if tc.function:
+                                if tc.function.name:
+                                    tool_calls_list[index]["function"][
+                                        "name"
+                                    ] += tc.function.name
+                                if tc.function.arguments:
+                                    tool_calls_list[index]["function"][
+                                        "arguments"
+                                    ] += tc.function.arguments
+
+                    if full_content and placeholder_msg:
+                        await self.game_chat.edit_message(
+                            conn,
+                            placeholder_msg.msg.id,
+                            full_content
+                        )
+
             except Exception as exc:
+                if placeholder_msg:
+                    await self.game_chat.delete_message(conn, placeholder_msg.msg.id)
                 self._append_llm_log(
                     scope="dm",
                     model=DM_MODEL,
@@ -2067,110 +2376,158 @@ class GameSystem(System[GameEvent]):
                 )
                 return None
 
-            msg = response.choices[0].message
-            tool_calls = extract_tool_calls(msg)
-            if not tool_calls:
-                response_text = (msg.content or "").strip() or None
-                self._append_llm_log(
-                    scope="dm",
-                    model=DM_MODEL,
-                    prompt=messages,
-                    response=response_text,
-                    turn=turn,
-                )
-                return None
-
-            resolve_call = None
-            other_calls: list[dict[str, object]] = []
-            for call in tool_calls:
-                name = call.get("name")
-                if name == "resolve_turn":
-                    resolve_call = call
-                else:
-                    other_calls.append(call)
-
-            if resolve_call is not None and not other_calls:
-                tool_args = resolve_call.get("args")
-                if not isinstance(tool_args, dict):
-                    return None
-                self._append_llm_log(
-                    scope="dm",
-                    model=DM_MODEL,
-                    prompt=messages,
-                    response=tool_args,
-                    turn=turn,
-                )
-                return tool_args
+            reconstructed_tool_calls = []
+            for tc in tool_calls_list:
+                reconstructed_tool_calls.append({
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "arguments": tc["function"]["arguments"],
+                    "args": {}
+                })
+                try:
+                    reconstructed_tool_calls[-1]["args"] = json.loads(tc["function"]["arguments"])
+                except:
+                    pass
 
             self._append_llm_log(
                 scope="dm",
                 model=DM_MODEL,
                 prompt=messages,
                 response={
-                    "tool_calls": [
-                        {"name": call.get("name"), "args": call.get("args")}
-                        for call in tool_calls
-                    ]
+                    "content": full_content,
+                    "tool_calls": reconstructed_tool_calls
                 },
                 turn=turn,
             )
 
-            messages.append(self._tool_call_message(tool_calls, msg.content))
+            messages.append(self._tool_call_message(reconstructed_tool_calls, full_content))
+            
+            if not tool_calls_list:
+                if full_content:
+                    continue
+                if placeholder_msg:
+                    await self.game_chat.delete_message(conn, placeholder_msg.msg.id)
+                return None
+
+            resolve_call = None
+            other_calls = []
+            
+            for call in reconstructed_tool_calls:
+                if call["name"] == "resolve_turn":
+                    resolve_call = call
+                else:
+                    other_calls.append(call)
+
+            if resolve_call:
+                tool_args = resolve_call["args"]
+                if not isinstance(tool_args, dict):
+                    if placeholder_msg:
+                        await self.game_chat.delete_message(conn, placeholder_msg.msg.id)
+                    return None
+                
+                summary_from_args = tool_args.get("summary")
+                
+                if full_content:
+                    tool_args["summary"] = full_content
+                elif summary_from_args:
+                    if placeholder_msg:
+                        await self.game_chat.edit_message(conn, placeholder_msg.msg.id, summary_from_args)
+                    else:
+                        res = await self.game_chat.send_message(
+                            conn,
+                            MessageKind.PUBLIC_INFO,
+                            summary_from_args,
+                            sender_id=None,
+                        )
+                        if not isinstance(res, ServiceError):
+                            placeholder_msg = res
+                else:
+                    if placeholder_msg:
+                        await self.game_chat.delete_message(conn, placeholder_msg.msg.id)
+                
+                return tool_args
 
             for call in other_calls:
-                name = call.get("name")
-                if not isinstance(name, str) or not name:
-                    continue
-                params = call.get("args")
-                if not isinstance(params, dict):
-                    params = {}
-
+                name = call["name"]
+                params = call["args"]
+                
                 if name not in lua_tool_names:
-                    tool_result: dict[str, object] = {"error": f"Unknown tool: {name}"}
+                    tool_result = {"error": f"Unknown tool: {name}"}
                 else:
                     tool_result = await self._run_lua_tool(name, params)
 
-                tool_call_id = call.get("id")
-                if not tool_call_id:
-                    continue
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": tool_call_id,
+                        "tool_call_id": call["id"],
                         "content": json.dumps(tool_result, ensure_ascii=False),
                     }
                 )
 
-            if resolve_call is not None:
-                continue
-
+        if placeholder_msg:
+            await self.game_chat.delete_message(conn, placeholder_msg.msg.id)
         return None
 
     async def _local_llm_narrative(
         self,
+        conn: asyncpg.Connection,
+        chat: ChatSystem,
         action: PlayerAction,
         consequence: str,
         *,
         turn: int,
+        metadata: dict | None = None,
     ) -> str | None:
         memory = self._format_player_memory(action.player_id)
         prompt = (
-            f"Player: {action.player_name} (id {action.player_id})\n"
-            f"Character: {self._character_card(action.character)}\n"
-            f"Known memory:\n{memory}\n"
-            f"DM consequence: {consequence}"
+            f"Игрок: {action.player_name} (id {action.player_id})\n"
+            f"Персонаж: {self._character_card(action.character)}\n"
+            f"Известная память:\n{memory}\n"
+            f"Последствие от DM: {consequence}"
         )
         messages = [
             {"role": "system", "content": PLAYER_NARRATIVE_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
+        
+        placeholder = await chat.send_message(
+            conn,
+            MessageKind.PRIVATE_INFO,
+            "...",
+            sender_id=None,
+            metadata=metadata,
+        )
+        if isinstance(placeholder, ServiceError):
+            return None
+        
+        full_content = ""
         try:
-            response = await create_chat_completion(
+            stream = await create_chat_completion_stream(
                 model=PLAYER_MODEL,
                 messages=messages,
                 temperature=0.7,
             )
+            
+            last_update = time.monotonic()
+            async for chunk in stream:
+                if not chunk.choices:
+                    continue
+
+                content = chunk.choices[0].delta.content
+                if content:
+                    full_content += content
+                    if time.monotonic() - last_update > 0.3:
+                        await chat.edit_message(conn, placeholder.msg.id, full_content)
+                        last_update = time.monotonic()
+            
+            if full_content:
+                await chat.edit_message(conn, placeholder.msg.id, full_content)
+            else:
+                await chat.delete_message(conn, placeholder.msg.id)
+                return None
+                
         except Exception as exc:
+            await chat.delete_message(conn, placeholder.msg.id)
             self._append_llm_log(
                 scope="player_narrative",
                 model=PLAYER_MODEL,
@@ -2182,32 +2539,30 @@ class GameSystem(System[GameEvent]):
             )
             return None
 
-        msg = response.choices[0].message
-        text = (msg.content or "").strip()
         self._append_llm_log(
             scope="player_narrative",
             model=PLAYER_MODEL,
             prompt=messages,
-            response=text or None,
+            response=full_content,
             player_id=action.player_id,
             turn=turn,
         )
-        return text or None
+        return full_content
 
     def _fallback_narrative(self, summary: ActionSummary) -> str:
         if summary.success:
-            outcome = "You steady your breath and act. The attempt works in your favor."
+            outcome = "Вы успокаиваете дыхание и действуете. Попытка оборачивается в вашу пользу."
         else:
-            outcome = "You move, but the attempt slips. The danger tightens its grip."
-        return f"You attempt: {summary.text}. {outcome}"
+            outcome = "Вы двигаетесь, но попытка срывается. Опасность сжимает хватку."
+        return f"Вы пытаетесь: {summary.text}. {outcome}"
 
     async def _announce_game_start(self, conn: asyncpg.Connection):
         world = self.state.get("world", {})
-        intro = f"Game started. {world.get('scene', '')}".strip()
+        intro = f"Игра началась. {world.get('scene', '')}".strip()
         await self.game_chat.send_message(
             conn,
             MessageKind.SYSTEM,
-            "The game has begun.",
+            "Игра началась.",
             sender_id=None,
         )
         for player in self.player_states.values():

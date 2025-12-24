@@ -36,9 +36,29 @@ class Message {
     required this.sentAt,
     this.metadata,
   }) {
-    final senderName = metadata?['senderName'] as String? ?? 'Пользователь';
+    var senderName = metadata?['senderName'] as String?;
+    if (senderName == 'Пользователь') {
+      senderName = null;
+    }
+    senderName ??= _getDefaultSenderName(kind);
+
     final senderType = _getSenderType(kind);
     sender = Sender(id: senderId, name: senderName, type: senderType);
+  }
+
+  static String _getDefaultSenderName(MessageKind kind) {
+    switch (kind) {
+      case MessageKind.player:
+        return 'Игрок';
+      case MessageKind.system:
+        return 'Система';
+      case MessageKind.characterCreation:
+        return 'Мастер персонажа';
+      case MessageKind.generalInfo:
+      case MessageKind.publicInfo:
+      case MessageKind.privateInfo:
+        return 'Мастер';
+    }
   }
 
   factory Message.fromJson(Map<String, dynamic> json) {

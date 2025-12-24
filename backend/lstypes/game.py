@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import enum
+import typing
 
 from lstypes.chat import ChatSegmentOut
 from lstypes.player import PlayerOut
@@ -38,3 +39,4 @@ class StateOut:
     game_chat: ChatSegmentOut | None = None
     player_chats: list[ChatSegmentOut] = dataclasses.field(default_factory=list)
     advice_chats: list[ChatSegmentOut] = dataclasses.field(default_factory=list)
+    llm_logs: list[dict[str, typing.Any]] = dataclasses.field(default_factory=list)
