@@ -699,15 +699,30 @@ class _GameScreenViewState extends State<_GameScreenView>
     return null;
   }
 
+  String _getDefaultNameForKind(MessageKind kind) {
+    switch (kind) {
+      case MessageKind.player:
+        return 'Игрок';
+      case MessageKind.system:
+        return 'Система';
+      case MessageKind.characterCreation:
+        return 'Мастер персонажа';
+      case MessageKind.generalInfo:
+      case MessageKind.publicInfo:
+      case MessageKind.privateInfo:
+        return 'Мастер';
+    }
+  }
+
   String _resolveSenderName(GameScreenState state, Message message) {
-    final metadata = message.metadata;
-    if (metadata != null) {
-      final metaName = metadata['senderName'] ?? metadata['sender_name'];
-      if (metaName is String && metaName.trim().isNotEmpty) {
-        return metaName;
-      }
+    final defaultName = _getDefaultNameForKind(message.kind);
+
+    // If name is different from default, it means it came from metadata (and is valid).
+    if (message.sender.name != defaultName) {
+      return message.sender.name;
     }
 
+    // It is default. Try to find player name.
     if (message.senderId != null) {
       final playerName = _lookupPlayerName(state, message.senderId!);
       if (playerName != null) {
@@ -718,18 +733,7 @@ class _GameScreenViewState extends State<_GameScreenView>
       }
     }
 
-    switch (message.kind) {
-      case MessageKind.system:
-        return 'Система';
-      case MessageKind.characterCreation:
-        return 'Мастер персонажа';
-      case MessageKind.generalInfo:
-      case MessageKind.publicInfo:
-      case MessageKind.privateInfo:
-        return 'Мастер';
-      case MessageKind.player:
-        return 'Игрок';
-    }
+    return message.sender.name;
   }
 
   String _avatarInitial(String name) {
